@@ -5,9 +5,10 @@ Speaks the transport contract exactly like a real provider binary: prompt on
 stdin, result on stdout, exit code semantics. Behavior is driven by
 directives embedded in the prompt so tests stay declarative:
 
-    [[fail:message]]   exit 1 with `message` on stderr
-    [[sleep:N]]        sleep N seconds before answering (timeout tests)
-    [[output:text]]    reply with exactly `text`
+    [[fail:message]]        exit 1 with `message` on stderr
+    [[sleep:N]]             sleep N seconds before answering (timeout tests)
+    [[output:text]]         reply with exactly `text`
+    [[write:path:content]]  create a file in the cwd (edit-stage simulation)
 
 Zero tokens, zero network, fully deterministic.
 """
@@ -32,6 +33,10 @@ def main() -> int:
     if fail:
         sys.stderr.write(fail.group(1) or "scripted failure")
         return 1
+
+    for path, content in re.findall(r"\[\[write:([^:\]]+):([^\]]*)\]\]", prompt):
+        with open(path, "w") as f:
+            f.write(content + "\n")
 
     output = re.search(r"\[\[output:([^\]]*)\]\]", prompt)
     if output:

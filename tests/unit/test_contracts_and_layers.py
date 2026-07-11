@@ -15,7 +15,7 @@ def test_contract_table_matches_architecture_doc() -> None:
     assert contract_for("planner").inputs == ()
     assert contract_for("designer").inputs == ("plan.md",)
     assert contract_for("coder").inputs == ("plan.md", "design.md")
-    assert contract_for("reviewer").inputs == ("plan.md", "changes.md")
+    assert contract_for("reviewer").inputs == ("plan.md", "changes.md", "diff.patch")
     assert [c.allow_edits for c in CONTRACTS.values()] == [False, False, True, False]
 
 

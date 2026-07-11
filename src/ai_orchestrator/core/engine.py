@@ -18,6 +18,7 @@ from ai_orchestrator.core.models import (
 )
 from ai_orchestrator.core.routing import ResolvedStage
 from ai_orchestrator.core.run_manager import RunManager
+from ai_orchestrator.core.workspace import snapshot_changes
 from ai_orchestrator.observability import events as ev
 from ai_orchestrator.observability.events import EventLog
 from ai_orchestrator.transport.base import Transport
@@ -119,6 +120,29 @@ class PipelineEngine:
             self.run_manager.save_artifact(state, stage.spec.output, result.text)
             artifacts[stage.spec.output] = result.text
             record.artifact = stage.spec.output
+
+            if stage.allow_edits:
+                snapshot = snapshot_changes(self.run_manager.project_dir)
+                if snapshot is not None and not snapshot.changed:
+                    # Protocol said success but nothing changed — the silent
+                    # permission-block signature (ADR-007; claude fixture
+                    # permission_block.json). Only the workspace can tell.
+                    record.status = StageStatus.FAILED
+                    record.error = (
+                        f"{stage.spec.name!r} reported success but no workspace changes "
+                        "were detected. Likely causes: a permission block inside the "
+                        "provider, or the stage decided no changes were needed. Inspect "
+                        f"its output artifact ({stage.spec.output}) and raw logs."
+                    )
+                    state.status = RunStatus.FAILED
+                    self.run_manager.save(state)
+                    log.emit(ev.STAGE_FAILED, stage=stage.spec.name, error=record.error)
+                    failed = True
+                    break
+                if snapshot is not None and snapshot.patch:
+                    self.run_manager.save_artifact(state, "diff.patch", snapshot.patch)
+                    artifacts["diff.patch"] = snapshot.patch
+
             record.status = StageStatus.SUCCEEDED
             self.run_manager.save(state)
             log.emit(
