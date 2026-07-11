@@ -1,10 +1,19 @@
 # Manual Testing Guide
 
-Commands you can run yourself to check the orchestrator, grouped by the milestone that introduced them. Grows with every milestone. All commands run from the project root:
+Commands you can run yourself to check the orchestrator, grouped by the milestone that introduced them. Grows with every milestone.
+
+**`ai` is installed globally** (via `uv tool install --editable .`, 2026-07-11), so every command below works from **any directory** — no `uv run`, no `--project`. Because the install is editable, new milestones are picked up automatically. To remove it ever: `uv tool uninstall ai-orchestrator`.
+
+## The simplest possible test
 
 ```bash
-cd ~/Desktop/ai/ai-agent-test
+mkdir /tmp/play && cd /tmp/play
+ai "Create a file hello.py that prints: Hello from the pipeline"
 ```
+
+That's the whole thing. No config needed — built-in defaults run planner (codex) → designer (skipped) → coder (claude) → reviewer (codex). Costs roughly $0.15–0.30 (the Claude stage); the rest rides your subscriptions.
+
+Only the test-suite commands (`uv run pytest`, `uv run ruff check .`) still need to run from the repo (`~/Desktop/ai/ai-agent-test`).
 
 ---
 
