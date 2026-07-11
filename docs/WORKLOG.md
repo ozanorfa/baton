@@ -84,3 +84,8 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 - 👤 Ran the M3 verification himself (`/tmp/ctx-test`, run 2026-07-11_1746_10dc, countdown.py): planner 15s (13.3k/582), coder 41s (79k/1407), reviewer 20s (44.4k/707) — run succeeded. Generated code quality notably higher than the request demanded (argparse, input validation, help text, main guard) — the role templates + project profile working as intended.
 - 👤 Flagged confusion: `ai init`'s project.md skeleton name-dropped Flutter/Riverpod inside a Python project. 🤖 Root cause: static example text in the template (Flutter-flavored per original spec), no detection involved. Fix: examples made framework-neutral + `ai init` now auto-detects the stack from marker files (pubspec.yaml, package.json, pyproject.toml, go.mod, Cargo.toml, …) and pre-fills the Stack section ("Detected: Python (pyproject.toml)."). 97 tests green.
 - 🤖 Docs synced for the init change (ARCHITECTURE command table, PROJECT_STRUCTURE, TASKS T24 note, MANUAL_TESTING detection test). M4 next on user's go.
+
+## 2026-07-11 · Session 1 — Milestone M4: MVP (T25–T30)
+
+- 👤 Gave go for M4.
+- 🤖 Starting: designer gating tests (T25), coder hardening + git diff capture (T26), report.json (T27), Rich run UX (T28), MVP integration suite (T29), real acceptance run (T30).
