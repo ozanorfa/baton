@@ -8,19 +8,11 @@ stage 0. Pure config-driven; no model ever routes (ADR-004).
 from dataclasses import dataclass
 
 from ai_orchestrator.config.schema import AppConfig
+from ai_orchestrator.context.contracts import contract_for
 from ai_orchestrator.core.models import StageSpec
 from ai_orchestrator.providers.base import ProviderAdapter
 from ai_orchestrator.providers.registry import ProviderRegistry, UnknownProviderError
 from ai_orchestrator.transport.base import Transport
-
-# Built-in role knowledge for the MVP pipeline. In M3 this table moves into
-# context/contracts.py and grows the full input-contract detail.
-ROLE_DEFAULTS: dict[str, dict] = {
-    "planner": {"inputs": [], "output": "plan.md", "allow_edits": False},
-    "designer": {"inputs": ["plan.md"], "output": "design.md", "allow_edits": False},
-    "coder": {"inputs": ["plan.md", "design.md"], "output": "changes.md", "allow_edits": True},
-    "reviewer": {"inputs": ["plan.md", "changes.md"], "output": "review.md", "allow_edits": False},
-}
 
 
 class RoutingError(Exception):
@@ -38,29 +30,22 @@ class ResolvedStage:
 
 
 def build_stage_specs(config: AppConfig) -> list[StageSpec]:
-    """Stage list is data from config, never runtime logic (ADR-004)."""
+    """Stage list is data from config, never runtime logic (ADR-004).
+    Inputs/outputs come from the role contracts (context/contracts.py)."""
     specs: list[StageSpec] = []
     previous_output: str | None = None
     for name in config.pipeline.stages:
-        defaults = ROLE_DEFAULTS.get(name)
-        if defaults is None:
-            # Unknown role: consume the previous stage's artifact, produce <name>.md
-            defaults = {
-                "inputs": [previous_output] if previous_output else [],
-                "output": f"{name}.md",
-                "allow_edits": False,
-            }
-        optional = not config.roles[name].enabled
+        contract = contract_for(name, previous_output)
         specs.append(
             StageSpec(
                 name=name,
                 role=name,
-                optional=optional,
-                inputs=list(defaults["inputs"]),
-                output=defaults["output"],
+                optional=not config.roles[name].enabled,
+                inputs=list(contract.inputs),
+                output=contract.output,
             )
         )
-        previous_output = defaults["output"]
+        previous_output = contract.output
     return specs
 
 
@@ -87,7 +72,7 @@ class RoutingEngine:
                 adapters[role_cfg.provider] = adapter_cls(
                     command=provider_cfg.command, model=provider_cfg.model
                 )
-            allow_edits = ROLE_DEFAULTS.get(spec.role, {}).get("allow_edits", False)
+            allow_edits = contract_for(spec.role).allow_edits
             resolved.append(
                 ResolvedStage(
                     spec=spec,
