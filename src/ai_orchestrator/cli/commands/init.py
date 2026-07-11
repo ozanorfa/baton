@@ -37,17 +37,53 @@ it is sent with every stage, so every line here costs tokens on every run.
 
 ## Stack
 
-<!-- e.g.: Flutter 3.x app. State management: Riverpod. Backend: Firebase. -->
+{stack}
 
 ## Structure & conventions
 
-<!-- e.g.: feature-first layout under lib/features/. Tests mirror lib/ in test/.
-     Naming: snake_case files, English identifiers. -->
+<!-- Describe the layout and rules a new team member would need, e.g.:
+     "feature-first layout under src/features/; tests mirror src/;
+     snake_case files; English identifiers." -->
 
 ## Things AI assistants get wrong in this project
 
-<!-- e.g.: don't suggest setState — this project uses Riverpod everywhere. -->
+<!-- List project-specific corrections, e.g.: "we use library X for state,
+     never suggest its common alternative." -->
 """
+
+# Marker files → stack description, checked in order; all matches are listed.
+STACK_MARKERS: list[tuple[str, str]] = [
+    ("pubspec.yaml", "Flutter/Dart (pubspec.yaml)"),
+    ("package.json", "JavaScript/TypeScript (package.json)"),
+    ("pyproject.toml", "Python (pyproject.toml)"),
+    ("requirements.txt", "Python (requirements.txt)"),
+    ("go.mod", "Go (go.mod)"),
+    ("Cargo.toml", "Rust (Cargo.toml)"),
+    ("Gemfile", "Ruby (Gemfile)"),
+    ("pom.xml", "Java (pom.xml)"),
+    ("build.gradle", "Java/Kotlin (build.gradle)"),
+    ("*.xcodeproj", "iOS/macOS (Xcode project)"),
+]
+
+
+def detect_stack(project: Path) -> str:
+    detected = [
+        label
+        for pattern, label in STACK_MARKERS
+        if ("*" in pattern and next(project.glob(pattern), None) is not None)
+        or ("*" not in pattern and (project / pattern).exists())
+    ]
+    if detected:
+        return (
+            "Detected: " + "; ".join(detected) + ".\n"
+            "<!-- Auto-detected from marker files — refine with versions and key "
+            "libraries, e.g. framework version, state management, backend. -->"
+        )
+    return (
+        "<!-- Describe the stack, e.g.: language + version, framework, "
+        "key libraries, backend services. Nothing was auto-detected. -->"
+    )
+
 
 GITIGNORE_ENTRY = ".ai/runs/"
 
@@ -61,9 +97,10 @@ def init() -> None:
 
     (ai_dir / "prompts").mkdir(parents=True, exist_ok=True)
 
+    profile = STARTER_PROFILE.format(stack=detect_stack(project))
     for path, content in (
         (ai_dir / "config.yaml", STARTER_CONFIG),
-        (ai_dir / "project.md", STARTER_PROFILE),
+        (ai_dir / "project.md", profile),
     ):
         rel = str(path.relative_to(project))
         if path.exists():

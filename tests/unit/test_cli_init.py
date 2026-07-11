@@ -53,3 +53,22 @@ def test_starter_config_yaml_is_valid_yaml(tmp_path: Path, monkeypatch) -> None:
     runner.invoke(app, ["init"])
     data = yaml.safe_load((tmp_path / ".ai" / "config.yaml").read_text())
     assert data["roles"]["designer"]["enabled"] is False
+
+
+def test_init_detects_stack_from_marker_files(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='x'\n")
+    (tmp_path / "pubspec.yaml").write_text("name: app\n")
+    runner.invoke(app, ["init"])
+    profile = (tmp_path / ".ai" / "project.md").read_text()
+    assert "Detected: Flutter/Dart (pubspec.yaml); Python (pyproject.toml)" in profile
+    assert "e.g.:" not in profile.split("## Structure")[0]  # no framework name-dropping
+
+
+def test_init_without_markers_stays_neutral(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    runner.invoke(app, ["init"])
+    profile = (tmp_path / ".ai" / "project.md").read_text()
+    assert "Nothing was auto-detected" in profile
+    assert "Flutter" not in profile  # no misleading framework examples anywhere
+    assert "Riverpod" not in profile
