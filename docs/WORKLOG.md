@@ -70,3 +70,8 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 - 👤 Reviewed the hello-world results with 🤖: plumbing A (routing, sandbox enforcement, artifact flow, cross-vendor review — the reviewer even ran the script to verify), role discipline D (planner attempted the coder's job again; M3's exact scope). Token economics noted: ~107k in / ~1k out on a one-liner = worst-case overhead ratio; amortizes on real tasks; `ai ask` is the right tool for tiny ones.
 - 🤖 Synced all docs to implementation reality: README rewritten (install, quickstart, trust model, doc index); TASKS.md T01–T20 marked ✅ with progress header; IMPLEMENTATION_PLAN milestones M0–M2 ✅; ARCHITECTURE adapter table replaced with *verified* CLI behavior + temp-placement notes (ROLE_DEFAULTS/prompt stub → M3); PROJECT_STRUCTURE matched to repo (run.py, fake_provider harness, M3+/M5+ markers); DECISIONS/MVP status lines updated.
 - ⏸ Next: M3 (T21–T24) on user's go.
+
+## 2026-07-11 · Session 1 — Milestone M3: Context Management (T21–T24)
+
+- 👤 Gave go for M3.
+- 🤖 Starting: role prompt templates (T21), context layers + contracts (T22), ContextManager replacing the naive prompt stub (T23), `ai init` (T24).
