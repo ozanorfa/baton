@@ -1,6 +1,6 @@
 # Architecture — AI Coding Orchestrator
 
-**Status:** Draft v1 · 2026-07-11
+**Status:** Living · updated 2026-07-11 · implemented through M2 (adapter table below reflects *verified* CLI behavior, not assumptions)
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 ---
@@ -89,6 +89,8 @@ for stage in pipeline.stages:                 # order comes from config, never r
 
 MVP semantics: **no retries, no escalation, no parallelism, no reordering.** A failed stage stops the run; the report tells the user exactly what to inspect and how to resume.
 
+*Implementation note (M2):* the role table (inputs/outputs/write-access) currently lives in `core/routing.py` (`ROLE_DEFAULTS`) and prompt assembly is a naive stub in `core/engine.py` — both move into `context/` in M3 (T22/T23) per §5. The engine also emits events to an optional live sink consumed by the CLI's progress rendering.
+
 ### 2.3 Routing Engine
 
 Pure function from config: `role → provider adapter instance`. Resolution order:
@@ -149,15 +151,15 @@ class ProviderAdapter(ABC):
 
 The split between `build_invocation` and `parse` keeps adapters **pure and unit-testable**: feed a recorded fixture of real CLI output into `parse()` — no subprocess needed. This is the primary defense against risk R1 (CLI drift): each adapter ships contract tests against recorded real outputs.
 
-### 3.2 Concrete adapters (MVP)
+### 3.2 Concrete adapters (verified against real CLIs, 2026-07-11)
 
-| Adapter | Invocation | Output | Tokens | Notes |
-|---|---|---|---|---|
-| **ClaudeCodeAdapter** | `claude -p <prompt> --output-format json` | Structured JSON: result, `session_id`, usage, cost | ✅ measured | Coder runs with explicit scoped permission flags (e.g. `--permission-mode acceptEdits`) so headless runs don't block on prompts |
-| **CodexAdapter** | `codex exec <prompt>` | Text (JSON where supported) | ⚠️ if available | Planner/Reviewer; sandbox/approval flags pinned for non-interactive use |
-| **AntigravityAdapter** | `agy -p <prompt>` | Text | ⚠️ if available | Designer; read-only role, needs no write permissions. Replaces Gemini CLI, retired for personal accounts 2026-06-18 (ADR-012) |
+| Adapter | Invocation | Output | Tokens | Session | Verified quirks |
+|---|---|---|---|---|---|
+| **ClaudeCodeAdapter** (claude 2.1.207) | `claude -p --output-format json`, prompt on stdin | Structured JSON: result, `session_id`, usage, cost | ✅ measured + cost | ✅ `session_id` (`--resume`) | Edit-roles get `--permission-mode acceptEdits`. **A permission-blocked run exits 0 with `is_error:false`** — protocol-invisible; only the stage-level diff check catches it (T26) |
+| **CodexAdapter** (codex-cli 0.144.1) | `codex exec --json --skip-git-repo-check -s <sandbox> -`, prompt on stdin | JSONL events | ✅ measured (`turn.completed`) | ✅ `thread_id` (`codex exec resume`) | Sandbox maps to role write-access: `read-only` for Planner/Reviewer, `workspace-write` for edit-roles — role separation enforced by the OS sandbox, not just prompts |
+| **AntigravityAdapter** (agy 1.1.1) | `agy --print-timeout <t>s -p <prompt>` | Plain text | ❌ none reported | ❌ id not printed in `-p` mode | **No stdin prompt support** → argv exception to ADR-010 (amended). `--sandbox` is incompatible with print mode. `--print-timeout` (default 5m) pinned to request timeout |
 
-Prompt payloads are passed via **stdin, not argv**, to avoid shell-escaping bugs and argv length limits.
+Prompt payloads are passed via **stdin, not argv** (shell-escaping and length safety) — except Antigravity, which cannot read stdin (ADR-010 amendment).
 
 ### 3.3 Session management
 

@@ -1,6 +1,6 @@
 # Task Breakdown — AI Coding Orchestrator
 
-**Status:** Draft v1 · 2026-07-11
+**Status:** Living · updated 2026-07-11 · **progress: 20/35 done (M0 ✅ M1 ✅ M2 ✅ · next: M3/T21)**
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [MVP.md](MVP.md)
 
 35 tasks, 30–90 minutes each, strictly ordered — every task builds on a working previous state and ends in something runnable or testable. Tasks map to milestones M0–M5 from IMPLEMENTATION_PLAN.md §4. Total estimate: ~36 h.
@@ -14,31 +14,31 @@ Conventions:
 
 ## M0 — Foundations
 
-**T01 · Project scaffolding — 45 min**
+**T01 ✅ · Project scaffolding — 45 min**
 `uv init` with `src/` layout per PROJECT_STRUCTURE.md; `pyproject.toml` with deps (typer, rich, pydantic, pyyaml; dev: pytest, ruff), console script `ai`, empty entry-point group `ai_orchestrator.providers`; `.gitignore`; git init + first commit.
 **Done when:** `uv run ai --version` prints the version; `uv run pytest` passes (one placeholder test); `ruff check` clean.
 
-**T02 · Shared models — 60 min**
+**T02 ✅ · Shared models — 60 min**
 `core/models.py`: `StageSpec`, `StageStatus`, `StageResult`, `RunState`, `AgentRequest`, `AgentResult`, `Usage`, `Health`, `Capabilities` as pydantic models per ARCHITECTURE §2.2/§3.1. No imports from other project modules.
 **Done when:** unit tests validate construction, serialization round-trip (`RunState` → JSON → `RunState`), and invalid-status rejection.
 
-**T03 · Config schema + defaults — 60 min**
+**T03 ✅ · Config schema + defaults — 60 min**
 `config/schema.py` (`AppConfig`, `PipelineConfig`, `RoleConfig`, `ProviderConfig`) and `config/defaults.yaml` matching ARCHITECTURE §4 exactly (stage list, role bindings, provider commands/timeouts).
 **Done when:** `defaults.yaml` parses into a valid `AppConfig`; unknown keys warn; a bad value fails with file+key in the message.
 
-**T04 · Config loader with precedence — 90 min**
+**T04 ✅ · Config loader with precedence — 90 min**
 `config/loader.py`: merge defaults ← `~/.config/ai-orchestrator/config.yaml` ← `./.ai/config.yaml` ← env (`AI_ORCH_*`) ← CLI overrides; track the source of every value.
 **Done when:** unit tests cover each precedence pair, deep-merge of nested keys, and missing-file tolerance; every value knows its source.
 
-**T05 · `ai config show` — 45 min**
+**T05 ✅ · `ai config show` — 45 min**
 Typer app skeleton (`cli/app.py`, `cli/commands/config_cmd.py`, `cli/render.py`): render merged config as a Rich table with a source column.
 **Done when:** running it in a dir with a project config shows project values overriding user/defaults, each annotated with its source.
 
-**T06 · RunManager — 60 min**
+**T06 ✅ · RunManager — 60 min**
 `core/run_manager.py`: run-id scheme (`YYYY-MM-DD_HHMM_<hex4>`), run-dir skeleton creation (`artifacts/ prompts/ logs/`), atomic `run.json` writes (temp file + rename), artifact save/load, load-existing-run.
 **Done when:** unit tests cover create → transition → reload; a simulated crash between write and rename leaves the previous `run.json` intact.
 
-**T07 · Structured event log — 45 min**
+**T07 ✅ · Structured event log — 45 min**
 `observability/events.py`: JSONL writer bound to a run dir; events `run_started`, `stage_started`, `provider_invoked`, `stage_succeeded`, `stage_failed`, `run_finished` with timestamps/durations.
 **Done when:** unit test replays a fake run and asserts the JSONL sequence parses and is ordered.
 
@@ -46,35 +46,35 @@ Typer app skeleton (`cli/app.py`, `cli/commands/config_cmd.py`, `cli/render.py`)
 
 ## M1 — Provider Adapter Layer
 
-**T08 · Transport layer — 60 min**
+**T08 ✅ · Transport layer — 60 min**
 `transport/base.py` (`Invocation`, `TransportResult`, `Transport` protocol) + `transport/headless.py`: `subprocess.run`, argv list, `shell=False`, prompt via stdin (ADR-010), timeout → structured timeout result (not an exception), stdout/stderr captured to files in the run dir.
 **Done when:** unit tests against `/bin/cat` and a sleeping script verify stdin delivery, exit-code capture, and timeout handling.
 
-**T09 · Adapter ABC + registry — 60 min**
+**T09 ✅ · Adapter ABC + registry — 60 min**
 `providers/base.py` (`ProviderAdapter` per ARCHITECTURE §3.1) and `providers/registry.py` with built-in registration; unknown-name error lists registered providers.
 **Done when:** a dummy adapter registers and resolves by name; unknown name raises the actionable error.
 
-**T10 · ClaudeCodeAdapter + fixtures — 90 min**
+**T10 ✅ · ClaudeCodeAdapter + fixtures — 90 min**
 `providers/claude.py`: build `claude -p --output-format json` invocations (model/timeout from config; permission flags only when the role edits files, per ADR-007); parse JSON → `AgentResult` with `session_id` and measured `Usage`. Capture real fixtures: success, error, permission-block, malformed JSON → `tests/contract/fixtures/claude/`.
 **Done when:** contract tests pass against all fixtures; malformed output yields a failed `AgentResult` pointing at the raw file, not an exception.
 
-**T11 · CodexAdapter + fixtures — 75 min**
+**T11 ✅ · CodexAdapter + fixtures — 75 min**
 `providers/codex.py`: `codex exec` with pinned non-interactive sandbox/approval flags; parse text output; `Usage` = `None` when unavailable (ADR-003). Real fixtures: success + failure.
 **Done when:** contract tests pass; capabilities correctly report token support.
 
-**T12 · AntigravityAdapter + fixtures — 60 min** *(was GeminiAdapter; ADR-012)*
+**T12 ✅ · AntigravityAdapter + fixtures — 60 min** *(was GeminiAdapter; ADR-012)*
 `providers/antigravity.py`: `agy -p` with explicit non-interactive approval flags; same pattern as T11. Verify actual flags/output against the installed `agy` first — it is younger than the other CLIs.
 **Done when:** contract tests pass against captured fixtures.
 
-**T13 · Entry-point plugin discovery — 45 min**
+**T13 ✅ · Entry-point plugin discovery — 45 min**
 Registry discovers `ai_orchestrator.providers` entry points via `importlib.metadata` at startup; a broken plugin logs a warning and is skipped, never crashes startup.
 **Done when:** integration test installs a toy plugin package into the test env and resolves its adapter by name.
 
-**T14 · `ai doctor` — 60 min**
+**T14 ✅ · `ai doctor` — 60 min**
 Health checks per adapter (binary on PATH, `--version` parse, auth probe where cheap); Rich table: provider, binary, version, auth, status.
 **Done when:** all three real CLIs report healthy on the dev machine; an uninstalled binary shows an actionable failure row instead of a crash.
 
-**T15 · `ai ask` — 60 min**
+**T15 ✅ · `ai ask` — 60 min**
 `ai ask --role <role> "<prompt>"`: resolve role → adapter via config, one-shot invoke through the real transport, print result + usage. First end-to-end token spend.
 **Done when:** `ai ask --role planner "say hi"` round-trips through Codex CLI; result and (if reported) usage print correctly.
 
@@ -82,23 +82,23 @@ Health checks per adapter (binary on PATH, `--version` parse, auth probe where c
 
 ## M2 — Pipeline Engine
 
-**T16 · RoutingEngine — 45 min**
+**T16 ✅ · RoutingEngine — 45 min**
 `core/routing.py`: resolve **all** stages up front from config; health-check each distinct provider once before any stage runs (ARCHITECTURE §2.3).
 **Done when:** unit tests: a mis-bound role fails at run start (not mid-run) with a message naming the role, provider, and failing check.
 
-**T17 · PipelineEngine — 90 min**
+**T17 ✅ · PipelineEngine — 90 min**
 `core/engine.py`: the sequential loop from ARCHITECTURE §2.2 — optional-stage gating, persist-before-evaluate, fail-stop, artifact registry, `run.json` transitions via RunManager, events via T07. Context assembly is a stub interface for now (real one lands in M3).
 **Done when:** unit tests with mock adapters cover: happy path, skipped optional stage, mid-pipeline failure (later stages stay `pending`, artifacts preserved, run marked failed).
 
-**T18 · Fake provider CLI — 60 min**
+**T18 ✅ · Fake provider CLI — 60 min**
 `tests/integration/fake_provider/`: a tiny script speaking the transport contract (reads stdin, emits configurable canned output/exit code/delay) + a test-only adapter registered via the plugin mechanism (validates T13 for real).
 **Done when:** fake provider works through the *real* headless transport and registry — no test-only code paths in `src/`.
 
-**T19 · Integration: two-stage pipeline — 60 min**
+**T19 ✅ · Integration: two-stage pipeline — 60 min**
 Full engine run (planner → coder, both fake) in a temp project dir: assert run-dir layout, artifact contents, `run.json` states, JSONL event sequence, and the failure variant.
 **Done when:** the suite passes in CI-like conditions (no network, no real CLIs) in under ~5 s.
 
-**T20 · `ai "<request>"` wiring — 60 min**
+**T20 ✅ · `ai "<request>"` wiring — 60 min**
 Root command: bare argument triggers the pipeline; dirty-git-tree warning (ADR-007); minimal live progress line per stage via `render.py`.
 **Done when:** `ai "test request"` with fake-provider config runs the pipeline from the shell; **M2 demo achieved** with real providers on a toy request (manual).
 

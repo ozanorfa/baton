@@ -1,6 +1,6 @@
 # Project Structure — AI Coding Orchestrator
 
-**Status:** Draft v1 · 2026-07-11
+**Status:** Living · updated 2026-07-11 · matches the repo through M2 (files marked *(M3+)* don't exist yet)
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Naming: distribution package **`ai-orchestrator`**, import package **`ai_orchestrator`**, console script **`ai`** (all referenced by ADR-009's entry-point group `ai_orchestrator.providers`).
@@ -49,15 +49,17 @@ Each directory under `src/ai_orchestrator/` maps 1:1 to a layer or component in 
 
 ```
 cli/
-├── app.py                  # root Typer app; bare `ai "<request>"` → run pipeline
+├── app.py                  # root Typer app; main() rewrites bare `ai "<request>"` → `ai run`
 ├── commands/
-│   ├── init.py             # `ai init` — bootstrap .ai/ in a project
+│   ├── run.py              # `ai run "<request>"` — the pipeline (+ --with-designer,
+│   │                       #   dirty-git-tree warning)
+│   ├── init.py             # `ai init` — bootstrap .ai/ in a project (M3+)
 │   ├── doctor.py           # `ai doctor` — provider health checks
-│   ├── runs.py             # `ai runs list|show`
-│   ├── resume.py           # `ai resume <run-id>` (M5)
+│   ├── runs.py             # `ai runs list|show` (M5+)
+│   ├── resume.py           # `ai resume <run-id>` (M5+)
 │   ├── config_cmd.py       # `ai config show` (merged config + value sources)
 │   └── ask.py              # `ai ask --role <role> "<prompt>"` — one-shot escape hatch
-└── render.py               # ALL Rich output: progress display, report tables, errors
+└── render.py               # ALL Rich output: progress events, summary/report tables, errors
 ```
 
 **Responsibility:** argument parsing, config loading, delegation, rendering. **Zero business logic** — every command body should read as "parse → call core → render". `render.py` centralizes Rich so the core stays terminal-agnostic (a future MCP entry layer reuses the core untouched, ARCHITECTURE §7).
@@ -69,7 +71,9 @@ core/
 ├── models.py               # pydantic types shared across layers: StageSpec, StageResult,
 │                           #   RunState, AgentRequest, AgentResult, Report
 ├── engine.py               # PipelineEngine: the sequential stage loop, fail-stop semantics
+│                           #   (naive prompt builder lives here until M3/T23)
 ├── routing.py              # RoutingEngine: role → adapter resolution + upfront health checks
+│                           #   (ROLE_DEFAULTS table lives here until M3/T22 → context/contracts.py)
 ├── run_manager.py          # RunManager: run-id, run dir creation, atomic run.json writes,
 │                           #   artifact persistence, resume loading
 └── reporter.py             # Reporter: report.json + data for the terminal summary
@@ -160,10 +164,12 @@ tests/
 │       │                   #   (success, failure, permission-block, malformed)
 │       ├── codex/
 │       └── antigravity/
-└── integration/            # full pipeline against a FAKE provider CLI (a tiny script
-                            #   registered as a test-only adapter): end-to-end run,
-                            #   fail-stop behavior, resume, report correctness — fast,
-                            #   free, deterministic, no real AI calls
+└── integration/            # full pipeline against a FAKE provider CLI — fast, free,
+    │                       #   deterministic, no real AI calls
+    └── fake_provider/      # fake_ai.py (CLI driven by prompt directives like
+                            #   [[fail:msg]]) + fakeplug.py adapter + a COMMITTED
+                            #   dist-info so discovery runs through the real
+                            #   entry-point mechanism (no test-only paths in src/)
 ```
 
 The fake-provider integration suite is the project's main safety net: it exercises the entire engine/run-manager/report path with zero token cost. Real-CLI smoke tests stay manual (`ai doctor` + a scripted demo), never in CI.

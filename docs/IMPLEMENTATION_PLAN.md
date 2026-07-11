@@ -1,6 +1,6 @@
 # Implementation Plan — AI Coding Orchestrator
 
-**Status:** Draft v1 · 2026-07-11
+**Status:** Living · updated 2026-07-11 · **M0–M2 complete, M3 next** · progress detail in [TASKS.md](TASKS.md), history in [WORKLOG.md](WORKLOG.md)
 **Related docs:** [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 ---
@@ -59,19 +59,19 @@ Explicitly out of scope — some permanently, some for the MVP phase:
 
 Each milestone ends in a demonstrable, working state. One milestone at a time; no milestone starts until the previous one is reviewed.
 
-### M0 — Foundations *(docs → skeleton)*
+### M0 — Foundations *(docs → skeleton)* ✅ 2026-07-11
 Project scaffolding: `uv` project, package layout, Typer entry point, logging setup, config loading (user + project YAML merge), run-directory management (`.ai/runs/<run-id>/`).
 **Demo:** `ai --version`, `ai config show` prints the merged effective config.
 
-### M1 — Provider Adapter Layer
+### M1 — Provider Adapter Layer ✅ 2026-07-11
 `ProviderAdapter` ABC + the headless subprocess transport. Three concrete adapters: Claude Code (`claude -p --output-format json`), Codex CLI (`codex exec`), Antigravity CLI (`agy -p`, ADR-012). Health checks (binary present, authenticated), output parsing, token-usage extraction where available.
 **Demo:** `ai doctor` verifies all three CLIs; `ai ask --role coder "hello"` round-trips a single prompt through one provider.
 
-### M2 — Pipeline Engine
+### M2 — Pipeline Engine ✅ 2026-07-11
 Deterministic stage runner: reads the stage list from config, executes stages sequentially, passes each stage the previous stage's artifact, writes all artifacts to the run directory, fail-stop semantics (log, preserve outputs, halt).
 **Demo:** a two-stage pipeline (Planner → Coder) runs end-to-end on a toy request.
 
-### M3 — Context Management
+### M3 — Context Management ⏳ next
 Layered context assembly (Global / Project / Task / Agent), role prompt templates, minimal-context rule enforced in one place. Project context bootstrap (`ai init` generates a project profile).
 **Demo:** stage prompts visible in the run directory show each role received only its layer-appropriate context.
 

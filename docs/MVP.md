@@ -1,6 +1,6 @@
 # MVP — First Working Version
 
-**Status:** Draft v1 · 2026-07-11
+**Status:** Living · updated 2026-07-11 · pipeline mechanics work end-to-end since M2 (full 4-stage run verified on a real machine); role prompt quality and `ai init` land in M3, report/UX polish in M4
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md)
 
 The MVP is milestone **M4** (tasks T01–T30): one command runs a deterministic four-stage pipeline over three AI CLIs and produces inspectable artifacts plus an execution report. Nothing dynamic, nothing parallel, nothing clever.
