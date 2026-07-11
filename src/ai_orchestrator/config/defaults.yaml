@@ -1,0 +1,31 @@
+# Built-in defaults — the lowest precedence layer (ARCHITECTURE.md §4).
+# Override per user (~/.config/ai-orchestrator/config.yaml) or per project (.ai/config.yaml).
+
+pipeline:
+  stages: [planner, designer, coder, reviewer]
+
+roles:
+  planner:
+    provider: codex
+  designer:
+    provider: gemini
+    enabled: false # optional stage, off by default
+  coder:
+    provider: claude
+  reviewer:
+    provider: codex
+
+providers:
+  claude:
+    command: claude
+    model: null
+    timeout_s: 900
+  codex:
+    command: codex
+    timeout_s: 600
+  gemini:
+    command: gemini
+    timeout_s: 600
+
+context:
+  project_profile: .ai/project.md
