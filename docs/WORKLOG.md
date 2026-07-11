@@ -51,3 +51,8 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 - 🤖 T15: `ai ask --role <role>` — first sanctioned token spend. Live round-trips through all three providers succeeded; usage line shows measured tokens/cost/session where available, nothing where not.
 - ✅ **M1 complete:** 65 tests green (unit + contract + integration), one commit per task. Real fixtures recorded from all three CLIs.
 - 👤 Asked for a persistent manual-testing reference; 🤖 created `docs/MANUAL_TESTING.md` (grows per milestone). Also clarified: the orchestrator is a general base, not Flutter-specific — Flutter enters via per-project context (`.ai/project.md`) and role prompt templates.
+
+## 2026-07-11 · Session 1 — Milestone M2: Pipeline Engine (T16–T20)
+
+- 👤 Confirmed the orchestrator must stay usable beyond Flutter (web/backend); gave go for M2.
+- 🤖 Starting M2: routing engine (T16), pipeline engine (T17), fake provider harness (T18), two-stage integration test (T19), `ai "<request>"` wiring (T20).
