@@ -59,7 +59,7 @@ def run_pipeline(project: Path, registry, request: str):
 def test_coder_changes_produce_diff_patch_for_reviewer(tmp_path, fake_registry, monkeypatch):
     project = git_project(tmp_path, monkeypatch)
     state, manager = run_pipeline(
-        project, fake_registry, "make it [[write:hello.py:print('hi')]]"
+        project, fake_registry, "make it [[write@coder:hello.py:print('hi')]]"
     )
 
     assert state.status is RunStatus.SUCCEEDED
