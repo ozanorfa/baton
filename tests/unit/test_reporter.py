@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from ai_orchestrator.core.models import (
+    RunStatus,
     StageSpec,
     StageStatus,
     Usage,
@@ -27,6 +28,7 @@ def make_run(tmp_path: Path, with_review: bool = True):
         stage.started_at = t0
         stage.finished_at = t0
         stage.artifact = state.stages[i].name + ".md"
+    state.status = RunStatus.SUCCEEDED
     state.stages[0].usage = Usage(input_tokens=100, output_tokens=10)
     state.stages[1].usage = Usage(input_tokens=200, output_tokens=20, cost_usd=0.5)
     # reviewer usage stays None (e.g. antigravity)
