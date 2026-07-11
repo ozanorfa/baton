@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.table import Table
 
 from ai_orchestrator.config.loader import LoadedConfig
-from ai_orchestrator.core.models import Health
+from ai_orchestrator.core.models import AgentResult, Health
 
 console = Console()
 error_console = Console(stderr=True, style="bold red")
@@ -42,6 +42,20 @@ def render_config(loaded: LoadedConfig) -> None:
 
 def render_error(message: str) -> None:
     error_console.print(message)
+
+
+def render_usage_line(result: AgentResult) -> None:
+    """Measured values only; '—' where the provider reports nothing (risk R2)."""
+    usage = result.usage
+    parts = []
+    if usage is not None and (usage.input_tokens or usage.output_tokens):
+        parts.append(f"tokens in/out: {usage.input_tokens or '—'}/{usage.output_tokens or '—'}")
+    if usage is not None and usage.cost_usd is not None:
+        parts.append(f"cost: ${usage.cost_usd:.4f}")
+    if result.session_id:
+        parts.append(f"session: {result.session_id}")
+    if parts:
+        console.print("  ".join(parts), style="dim")
 
 
 @dataclass
