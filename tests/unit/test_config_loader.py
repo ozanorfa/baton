@@ -41,7 +41,7 @@ def test_user_overrides_defaults(project: Path, user_cfg: Path) -> None:
     assert loaded.config.providers["claude"].timeout_s == 1200
     # deep merge: sibling keys from defaults survive
     assert loaded.config.providers["claude"].command == "claude"
-    assert loaded.source_of("providers.claude.timeout_s").startswith("user (")
+    assert loaded.source_of("providers.claude.timeout_s") == "user"
     assert loaded.source_of("providers.claude.command") == "defaults"
 
 
@@ -50,7 +50,7 @@ def test_project_overrides_user(project: Path, user_cfg: Path) -> None:
     write(project / ".ai" / "config.yaml", "roles:\n  planner:\n    provider: gemini\n")
     loaded = load(project, user_cfg)
     assert loaded.config.roles["planner"].provider == "gemini"
-    assert loaded.source_of("roles.planner.provider").startswith("project (")
+    assert loaded.source_of("roles.planner.provider") == "project"
     assert loaded.files_read == [user_cfg, project / ".ai" / "config.yaml"]
 
 

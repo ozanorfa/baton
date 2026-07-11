@@ -123,9 +123,9 @@ def load_config(
 
     layers: list[tuple[str, dict, Path | None]] = [("defaults", defaults, None)]
     if user_path.is_file():
-        layers.append((f"user ({user_path})", _read_yaml(user_path), user_path))
+        layers.append(("user", _read_yaml(user_path), user_path))
     if project_path.is_file():
-        layers.append((f"project ({project_path})", _read_yaml(project_path), project_path))
+        layers.append(("project", _read_yaml(project_path), project_path))
     env_layer = _env_layer(env)
     if env_layer:
         layers.append((f"env ({ENV_PREFIX}*)", env_layer, None))
@@ -135,12 +135,14 @@ def load_config(
     merged: dict = {}
     sources: dict[str, str] = {}
     files_read: list[Path] = []
+    label_paths: dict[str, Path] = {}
     for label, layer, path in layers:
         merged = _deep_merge(merged, layer)
         for leaf in _leaf_paths(layer):
             sources[leaf] = label
         if path is not None:
             files_read.append(path)
+            label_paths[label] = path
 
     try:
         config = AppConfig.model_validate(merged)
@@ -149,7 +151,9 @@ def load_config(
         for err in exc.errors():
             dotted = ".".join(str(part) for part in err["loc"])
             origin = sources.get(dotted, "merged config")
-            lines.append(f"  {dotted}: {err['msg']} (set by: {origin})")
+            if origin in label_paths:
+                origin = f"{origin}: {label_paths[origin]}"
+            lines.append(f"  {dotted}: {err['msg']} (set by {origin})")
         raise ConfigError("invalid configuration:\n" + "\n".join(lines)) from exc
 
     warn_unknown_keys(config, " + ".join(label for label, _, _ in layers))
