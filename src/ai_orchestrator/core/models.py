@@ -74,6 +74,7 @@ class AgentRequest(BaseModel):
     workdir: Path
     timeout_s: int
     session_id: str | None = None  # for post-MVP resume; recorded from day one
+    allow_edits: bool = False  # roles that edit files get scoped permissions (ADR-007)
 
 
 class AgentResult(BaseModel):
