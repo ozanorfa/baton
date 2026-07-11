@@ -1,0 +1,44 @@
+[project]
+name = "ai-orchestrator"
+version = "0.1.0"
+description = "Local-first AI coding orchestrator: a deterministic pipeline over AI coding CLIs"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "typer>=0.12",
+    "rich>=13.7",
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+ai = "ai_orchestrator.cli.app:main"
+
+# Provider plugins register here (ADR-009). Built-ins are registered in code;
+# this group exists for third-party adapters.
+[project.entry-points."ai_orchestrator.providers"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "ruff>=0.5",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_orchestrator"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
