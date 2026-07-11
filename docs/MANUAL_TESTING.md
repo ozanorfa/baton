@@ -47,9 +47,39 @@ uv run ai ask --role coder    "In one sentence: what is a Dart mixin?" # → Cla
 
 Check the dim usage line under each answer: Codex and Claude show measured tokens (Claude also cost and session id); Antigravity shows nothing — it reports nothing, and this tool never invents numbers.
 
-## M2 — Pipeline engine *(not built yet)*
+## M2 — Pipeline engine
 
-Will add: `ai "<request>"` running a real Planner → Coder pipeline.
+**Free** — run the full pipeline machinery on the fake provider (no AI, no tokens):
+
+```bash
+uv run pytest tests/integration/   # config → routing → engine → subprocess, end to end
+```
+
+**Spends tokens** — a real two-stage pipeline in a scratch directory (Codex plans ≈ free on subscription, Claude codes ≈ $0.15–0.30):
+
+```bash
+mkdir -p /tmp/pipeline-demo/.ai && cd /tmp/pipeline-demo && git init -q
+cat > .ai/config.yaml << 'YAML'
+pipeline:
+  stages: [planner, coder]
+roles:
+  planner: {provider: codex}
+  coder: {provider: claude}
+YAML
+uv run --project ~/Desktop/ai/ai-agent-test ai "Create a file hello.py that prints: Hello from the pipeline"
+```
+
+Then check what happened:
+
+```bash
+cat hello.py && python3 hello.py            # the coder's real work
+ls .ai/runs/*/artifacts/                    # plan.md, changes.md
+cat .ai/runs/*/artifacts/plan.md            # what the planner produced
+cat .ai/runs/*/prompts/02-coder.md          # exactly what the coder was told
+cat .ai/runs/*/logs/orchestrator.jsonl      # the machine-readable event stream
+```
+
+Failure UX (free, uses git being absent): run the same command in a directory whose config points a provider at a bad binary — preflight fails before any stage runs, exit code 2.
 
 ## Exit codes (for scripting)
 

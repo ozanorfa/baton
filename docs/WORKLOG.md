@@ -56,3 +56,9 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 
 - 👤 Confirmed the orchestrator must stay usable beyond Flutter (web/backend); gave go for M2.
 - 🤖 Starting M2: routing engine (T16), pipeline engine (T17), fake provider harness (T18), two-stage integration test (T19), `ai "<request>"` wiring (T20).
+- 🤖 T16: RoutingEngine — all stages resolved + every distinct active provider health-checked before stage 1; disabled stages' providers not checked.
+- 🤖 T17: PipelineEngine — sequential fail-stop loop; every transition persisted before the next action; prompts and raw stdout/stderr saved per stage; JSONL events.
+- 🤖 T18+T19: fake provider CLI (prompt-directive driven: `[[fail:…]]`, `[[sleep:N]]`, `[[output:…]]`) + adapter discovered via committed dist-info through the real entry-point mechanism; full-stack two-stage integration tests incl. failure variant — zero tokens.
+- 🤖 T20: bare `ai "<request>"` (argv rewrite → `ai run`), `--with-designer`, dirty-git-tree warning, live per-stage progress, summary table with measured tokens.
+- ✅ **M2 demo (real providers):** two-stage pipeline in a scratch repo — Codex planned (7s, 25.9k/171 tokens), Claude Code created `hello.py` (22s, 42.9k/519 tokens), file verified working. **Field finding:** the Planner attempted to create the file itself and was stopped only by its read-only sandbox — M2's naive prompt has no role boundaries; exactly what M3's role templates (T21) exist to fix.
+- ✅ **M2 complete:** 82 tests green. MANUAL_TESTING.md updated with M2 commands.
