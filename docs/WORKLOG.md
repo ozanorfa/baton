@@ -37,3 +37,8 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 - 👤 Decided: **install Antigravity CLI** as the Designer provider (rather than paid Gemini API key or deferring the role).
 - 🤖 Wrote **ADR-012** (Antigravity CLI replaces Gemini CLI); propagated the change across all six docs, `defaults.yaml` (provider `antigravity`, command `agy`), and tests. First real exercise of the provider-agnosticism goal: zero core-design changes needed.
 - ⏳ Pending (user): install Antigravity CLI + sign in, then M1 starts.
+
+## 2026-07-11 · Session 1 — Milestone M1: Provider Adapter Layer (T08–T15)
+
+- 👤 Installed Antigravity CLI (`curl -fsSL https://antigravity.google/cli/install.sh | bash` → `agy` 1.1.1 in `~/.local/bin`) and signed in with Google — **Antigravity authenticated ✅**. All three providers now live: claude 2.1.207, codex 0.144.1, agy 1.1.1.
+- 🤖 Starting M1: transport layer (T08), adapter ABC + registry (T09), three concrete adapters with recorded fixtures (T10–T12), plugin discovery (T13), `ai doctor` (T14), `ai ask` (T15).
