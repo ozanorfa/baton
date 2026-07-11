@@ -185,6 +185,8 @@ Convention: one ADR per consequential decision. New decisions get new ADRs; reve
 
 **Future implications.** Also the right shape for future streaming input.
 
+**Amendment (2026-07-11, during T12).** Antigravity CLI 1.1.1 cannot read prompts from stdin (`-` is taken as a literal prompt). Exception granted: providers without stdin support pass the prompt as a single argv element. The original risks stay controlled — `shell=False` everywhere means no interpolation regardless, ARG_MAX (~256 KB on macOS) far exceeds any stage prompt, and `ps`-visibility is acceptable for a local tool. Stdin remains mandatory for providers that support it.
+
 ---
 
 ## ADR-011 — Stack: Python 3.12 + uv + Typer + Rich + pydantic + YAML
