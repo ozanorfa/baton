@@ -11,6 +11,7 @@ from ai_orchestrator.config.loader import ConfigError, load_config
 from ai_orchestrator.context.manager import ContextManager
 from ai_orchestrator.core.engine import PipelineEngine
 from ai_orchestrator.core.models import RunStatus
+from ai_orchestrator.core.reporter import save_report
 from ai_orchestrator.core.routing import RoutingEngine, RoutingError, build_stage_specs
 from ai_orchestrator.core.run_manager import RunManager
 from ai_orchestrator.providers import load_all
@@ -64,13 +65,15 @@ def run(
 
     manager = RunManager(project_dir)
     context = ContextManager(project_dir, loaded.config.context.project_profile)
+    progress = render.ProgressRenderer()
     engine = PipelineEngine(
         manager, transport,
         prompt_builder=context.build,
-        event_sink=render.render_progress_event,
+        event_sink=progress.handle,
     )
     state = engine.execute(request, resolved)
 
-    render.render_run_summary(state, manager.run_dir(state.run_id))
+    report = save_report(state, manager)
+    render.render_run_summary(state, manager.run_dir(state.run_id), report)
     if state.status is not RunStatus.SUCCEEDED:
         raise typer.Exit(code=1)

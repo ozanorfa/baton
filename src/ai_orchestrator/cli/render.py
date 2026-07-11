@@ -67,20 +67,38 @@ def render_run_header(request: str, resolved) -> None:
     console.print(f"[dim]{stages}[/dim]")
 
 
-def render_progress_event(record: dict) -> None:
-    """Live per-stage progress from the engine's event stream (M2 minimal;
-    the full Rich live UX lands in T28)."""
-    event, stage = record.get("event"), record.get("stage", "")
-    if event == "stage_started":
-        console.print(f"  ▸ {stage} ({record.get('provider')})…")
-    elif event == "stage_succeeded":
-        duration = record.get("duration_s")
-        suffix = f" in {duration:.0f}s" if isinstance(duration, int | float) else ""
-        console.print(f"  [green]✓ {stage}[/green] → {record.get('artifact')}{suffix}")
-    elif event == "stage_skipped":
-        console.print(f"  [dim]○ {stage} skipped ({record.get('reason')})[/dim]")
-    elif event == "stage_failed":
-        console.print(f"  [red]✗ {stage} FAILED: {record.get('error')}[/red]")
+class ProgressRenderer:
+    """Live per-stage progress from the engine's event stream: an animated
+    spinner while a provider works, a result line when it finishes."""
+
+    def __init__(self) -> None:
+        self._status = None
+
+    def _stop_spinner(self) -> None:
+        if self._status is not None:
+            self._status.stop()
+            self._status = None
+
+    def handle(self, record: dict) -> None:
+        event, stage = record.get("event"), record.get("stage", "")
+        if event == "stage_started":
+            self._status = console.status(
+                f"[bold]{stage}[/bold] ({record.get('provider')}) working…", spinner="dots"
+            )
+            self._status.start()
+        elif event == "stage_succeeded":
+            self._stop_spinner()
+            duration = record.get("duration_s")
+            suffix = f" in {duration:.0f}s" if isinstance(duration, int | float) else ""
+            console.print(f"  [green]✓ {stage}[/green] → {record.get('artifact')}{suffix}")
+        elif event == "stage_skipped":
+            self._stop_spinner()
+            console.print(f"  [dim]○ {stage} skipped ({record.get('reason')})[/dim]")
+        elif event == "stage_failed":
+            self._stop_spinner()
+            console.print(f"  [red]✗ {stage} FAILED[/red]")
+        elif event == "run_finished":
+            self._stop_spinner()
 
 
 def _format_duration(seconds: float | None) -> str:
@@ -90,18 +108,21 @@ def _format_duration(seconds: float | None) -> str:
     return f"{minutes}m {secs:02d}s" if minutes else f"{secs}s"
 
 
-def render_run_summary(state: RunState, run_dir: Path) -> None:
+def _tokens_cell(stage) -> str:
+    usage = stage.usage
+    if not usage or (usage.input_tokens is None and usage.output_tokens is None):
+        return "—"
+    left = f"{usage.input_tokens:,}" if usage.input_tokens is not None else "—"
+    right = f"{usage.output_tokens:,}" if usage.output_tokens is not None else "—"
+    return f"{left}/{right}"
+
+
+def render_run_summary(state: RunState, run_dir: Path, report=None) -> None:
     table = Table(title=f"run {state.run_id}", header_style="bold")
     for column in ("stage", "provider", "duration", "tokens in/out", "status"):
         table.add_column(column)
 
     for stage in state.stages:
-        usage = stage.usage
-        tokens = (
-            f"{usage.input_tokens or '—'}/{usage.output_tokens or '—'}"
-            if usage and (usage.input_tokens or usage.output_tokens)
-            else "—"
-        )
         style = {
             StageStatus.SUCCEEDED: "[green]✓[/green]",
             StageStatus.FAILED: "[red]✗[/red]",
@@ -109,17 +130,44 @@ def render_run_summary(state: RunState, run_dir: Path) -> None:
             StageStatus.PENDING: "[dim]· pending[/dim]",
         }.get(stage.status, str(stage.status))
         table.add_row(
-            stage.name, stage.provider or "—", _format_duration(stage.duration_s), tokens, style
+            stage.name,
+            stage.provider or "—",
+            _format_duration(stage.duration_s),
+            _tokens_cell(stage),
+            style,
         )
     console.print(table)
 
+    if report is not None:
+        totals = []
+        if report.total_input_tokens is not None:
+            totals.append(
+                f"tokens {report.total_input_tokens:,}/{report.total_output_tokens or 0:,}"
+            )
+        if report.total_cost_usd is not None:
+            totals.append(f"measured cost ${report.total_cost_usd:.2f}")
+        if totals:
+            console.print("totals: " + " · ".join(totals), style="dim")
+
     if state.status.value == "failed":
-        failed = next(s for s in state.stages if s.status is StageStatus.FAILED)
-        error_console.print(f"stage {failed.name!r} failed: {failed.error}")
-        console.print(f"raw output: {run_dir / 'logs'}")
-        console.print("next steps: [bold]ai doctor[/bold] · inspect the run dir above")
+        failed_idx, failed = next(
+            (i, s) for i, s in enumerate(state.stages, start=1)
+            if s.status is StageStatus.FAILED
+        )
+        error_console.print(f"\nstage {failed.name!r} failed: {failed.error}")
+        stderr_file = run_dir / "logs" / f"{failed_idx:02d}-{failed.name}.stderr"
+        if stderr_file.is_file() and stderr_file.read_text().strip():
+            console.print(f"raw stderr:  {stderr_file}")
+        console.print(f"run detail:  {run_dir}")
+        console.print(
+            "next steps:  [bold]ai doctor[/bold] (provider health) · inspect the files above"
+        )
     else:
+        if report is not None and report.verdict:
+            color = "green" if report.verdict.startswith("APPROVE") else "yellow"
+            console.print(f"reviewer verdict: [{color}]{report.verdict}[/{color}]")
         console.print(f"[green]run succeeded[/green] · artifacts: {run_dir / 'artifacts'}")
+        console.print(f"[dim]report: {run_dir / 'report.json'}[/dim]")
 
 
 @dataclass
