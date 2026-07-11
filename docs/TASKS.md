@@ -1,6 +1,6 @@
 # Task Breakdown — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-11 · **progress: 20/35 done (M0 ✅ M1 ✅ M2 ✅ · next: M3/T21)**
+**Status:** Living · updated 2026-07-11 · **progress: 24/35 done (M0 ✅ M1 ✅ M2 ✅ M3 ✅ · next: M4/T25)**
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [MVP.md](MVP.md)
 
 35 tasks, 30–90 minutes each, strictly ordered — every task builds on a working previous state and ends in something runnable or testable. Tasks map to milestones M0–M5 from IMPLEMENTATION_PLAN.md §4. Total estimate: ~36 h.
@@ -106,19 +106,19 @@ Root command: bare argument triggers the pipeline; dirty-git-tree warning (ADR-0
 
 ## M3 — Context Management
 
-**T21 · Role prompt templates — 90 min**
+**T21 ✅ · Role prompt templates — 90 min**
 `prompts/{planner,designer,coder,reviewer}.md`: role definition, boundaries (single-responsibility per spec §5), output-format instructions, self-contained-artifact rule (ADR-006), named placeholders for context sections. The Reviewer template demands findings, not rewrites.
 **Done when:** each template renders with sample context and passes a review against the role definitions in the original spec.
 
-**T22 · Context layers + contracts — 60 min**
+**T22 ✅ · Context layers + contracts — 60 min**
 `context/layers.py` (Global static text; Project from `.ai/project.md`; Task from request + artifacts; Agent from templates) and `context/contracts.py` — the ARCHITECTURE §5 table as data.
 **Done when:** unit tests assert exactly which artifacts each stage's contract admits (coder gets plan not transcript; reviewer gets diff not design).
 
-**T23 · ContextManager — 75 min**
+**T23 ✅ · ContextManager — 75 min**
 `context/manager.py`: `assemble(stage) → rendered prompt`; enforce contracts; persist every rendered prompt to `prompts/NN-<stage>.md` in the run dir; replace the T17 stub.
 **Done when:** integration test inspects a run dir and verifies each stage's persisted prompt contains only contract-admitted sections.
 
-**T24 · `ai init` — 60 min**
+**T24 ✅ · `ai init` — 60 min**
 Bootstrap `.ai/`: starter `config.yaml`, `project.md` skeleton (stack/conventions prompts for the user to fill), append `.ai/runs/` to `.gitignore`; idempotent (refuses to clobber, offers diff).
 **Done when:** running in a fresh dir creates the documented footprint (PROJECT_STRUCTURE §2.1); second run is a no-op; **M3 demo achieved** — prompts in a real run visibly differ per role contract.
 

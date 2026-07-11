@@ -13,6 +13,8 @@ ai "Create a file hello.py that prints: Hello from the pipeline"
 
 That's the whole thing. No config needed — built-in defaults run planner (codex) → designer (skipped) → coder (claude) → reviewer (codex). Costs roughly $0.15–0.30 (the Claude stage); the rest rides your subscriptions.
 
+For real projects, run `ai init` first and fill in `.ai/project.md` — every stage reads it, and it noticeably improves output quality.
+
 Only the test-suite commands (`uv run pytest`, `uv run ruff check .`) still need to run from the repo (`~/Desktop/ai/ai-agent-test`).
 
 ---
@@ -89,6 +91,28 @@ cat .ai/runs/*/logs/orchestrator.jsonl      # the machine-readable event stream
 ```
 
 Failure UX (free, uses git being absent): run the same command in a directory whose config points a provider at a bad binary — preflight fails before any stage runs, exit code 2.
+
+## M3 — Context management
+
+**Free:**
+
+```bash
+mkdir /tmp/ctx-test && cd /tmp/ctx-test
+ai init                 # creates .ai/config.yaml, .ai/project.md, .gitignore entry
+ai init                 # run again → "nothing to do", nothing overwritten
+cat .ai/project.md      # the profile skeleton — fill this in for real projects
+```
+
+**After any pipeline run**, inspect the prompts to see the context system working:
+
+```bash
+cat .ai/runs/<run-id>/prompts/01-planner.md   # role template + boundaries + your project profile
+cat .ai/runs/<run-id>/prompts/04-reviewer.md  # gets plan + changes — but never design.md (contract)
+```
+
+What to look for: every prompt has "Working rules", your `.ai/project.md` content, and *only* the artifacts that role's contract admits. Role boundaries are explicit ("You **plan only**", "do NOT rewrite the code").
+
+**Template override experiment (free):** put a file at `.ai/prompts/planner.md` containing `MY TEMPLATE $request` — the next run's planner prompt uses it instead of the built-in.
 
 ## Exit codes (for scripting)
 

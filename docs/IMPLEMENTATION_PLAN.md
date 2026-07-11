@@ -1,6 +1,6 @@
 # Implementation Plan — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-11 · **M0–M2 complete, M3 next** · progress detail in [TASKS.md](TASKS.md), history in [WORKLOG.md](WORKLOG.md)
+**Status:** Living · updated 2026-07-11 · **M0–M3 complete, M4 (MVP) next** · progress detail in [TASKS.md](TASKS.md), history in [WORKLOG.md](WORKLOG.md)
 **Related docs:** [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 ---
@@ -71,11 +71,11 @@ Project scaffolding: `uv` project, package layout, Typer entry point, logging se
 Deterministic stage runner: reads the stage list from config, executes stages sequentially, passes each stage the previous stage's artifact, writes all artifacts to the run directory, fail-stop semantics (log, preserve outputs, halt).
 **Demo:** a two-stage pipeline (Planner → Coder) runs end-to-end on a toy request.
 
-### M3 — Context Management ⏳ next
+### M3 — Context Management ✅ 2026-07-11
 Layered context assembly (Global / Project / Task / Agent), role prompt templates, minimal-context rule enforced in one place. Project context bootstrap (`ai init` generates a project profile).
 **Demo:** stage prompts visible in the run directory show each role received only its layer-appropriate context.
 
-### M4 — MVP: Full Four-Role Pipeline
+### M4 — MVP: Full Four-Role Pipeline ⏳ next
 Planner → Designer (optional, config/flag-gated) → Coder → Reviewer wired together; execution report (JSON + Rich terminal summary): duration, provider, status, artifacts, token estimates. This is the MVP defined in [MVP.md](MVP.md).
 **Demo:** `ai "Add Face ID support to the Flutter application"` completes all stages and prints a report.
 

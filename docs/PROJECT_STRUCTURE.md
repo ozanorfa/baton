@@ -1,6 +1,6 @@
 # Project Structure — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-11 · matches the repo through M2 (files marked *(M3+)* don't exist yet)
+**Status:** Living · updated 2026-07-11 · matches the repo through M2 (files marked *(M5+)* don't exist yet)
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Naming: distribution package **`ai-orchestrator`**, import package **`ai_orchestrator`**, console script **`ai`** (all referenced by ADR-009's entry-point group `ai_orchestrator.providers`).
@@ -53,7 +53,7 @@ cli/
 ├── commands/
 │   ├── run.py              # `ai run "<request>"` — the pipeline (+ --with-designer,
 │   │                       #   dirty-git-tree warning)
-│   ├── init.py             # `ai init` — bootstrap .ai/ in a project (M3+)
+│   ├── init.py             # `ai init` — bootstrap .ai/ in a project
 │   ├── doctor.py           # `ai doctor` — provider health checks
 │   ├── runs.py             # `ai runs list|show` (M5+)
 │   ├── resume.py           # `ai resume <run-id>` (M5+)
@@ -71,9 +71,7 @@ core/
 ├── models.py               # pydantic types shared across layers: StageSpec, StageResult,
 │                           #   RunState, AgentRequest, AgentResult, Report
 ├── engine.py               # PipelineEngine: the sequential stage loop, fail-stop semantics
-│                           #   (naive prompt builder lives here until M3/T23)
 ├── routing.py              # RoutingEngine: role → adapter resolution + upfront health checks
-│                           #   (ROLE_DEFAULTS table lives here until M3/T22 → context/contracts.py)
 ├── run_manager.py          # RunManager: run-id, run dir creation, atomic run.json writes,
 │                           #   artifact persistence, resume loading
 └── reporter.py             # Reporter: report.json + data for the terminal summary

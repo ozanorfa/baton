@@ -75,3 +75,9 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 
 - 👤 Gave go for M3.
 - 🤖 Starting: role prompt templates (T21), context layers + contracts (T22), ContextManager replacing the naive prompt stub (T23), `ai init` (T24).
+- 🤖 T21: role templates (`prompts/*.md`): explicit boundaries per role + self-contained-artifact rule (ADR-006) + a `_global.md` rules layer and `_generic.md` fallback for unknown roles.
+- 🤖 T22: `context/contracts.py` (the ARCHITECTURE §5 table as data; moved out of core/routing.py) + `context/layers.py` (Global/Project/Agent/inputs). Layering enforced: context imports models only.
+- 🤖 T23: `ContextManager` wired into `ai run`; integration test proves per-role contract enforcement in real run-dir prompts (reviewer never sees design.md) and project template overrides.
+- 🤖 T24: `ai init` — starter config, project-profile skeleton, gitignore entry; idempotent, never clobbers.
+- ✅ **M3 demo (real providers, greet.py):** planner produced a *real plan* (Goal/Approach/numbered Steps/Acceptance criteria — no more trying to write files itself), citing the project profile's conventions; reviewer followed its template (Verdict: APPROVE, verification section, actually ran the script). Coder's `greet.py` works. Role-discipline grade goes D → A-.
+- ✅ **M3 complete:** 95 tests green. Docs synced (TASKS 24/35, milestone stamps, M2 temp notes removed, MANUAL_TESTING M3 section).

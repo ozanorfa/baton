@@ -1,6 +1,6 @@
 # Architecture — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-11 · implemented through M2 (adapter table below reflects *verified* CLI behavior, not assumptions)
+**Status:** Living · updated 2026-07-11 · implemented through M3 (adapter table below reflects *verified* CLI behavior, not assumptions)
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 ---
@@ -89,7 +89,7 @@ for stage in pipeline.stages:                 # order comes from config, never r
 
 MVP semantics: **no retries, no escalation, no parallelism, no reordering.** A failed stage stops the run; the report tells the user exactly what to inspect and how to resume.
 
-*Implementation note (M2):* the role table (inputs/outputs/write-access) currently lives in `core/routing.py` (`ROLE_DEFAULTS`) and prompt assembly is a naive stub in `core/engine.py` — both move into `context/` in M3 (T22/T23) per §5. The engine also emits events to an optional live sink consumed by the CLI's progress rendering.
+*Implementation note:* the engine emits events to an optional live sink consumed by the CLI's progress rendering. Since M3, contracts live in `context/contracts.py` and prompts are assembled by `context/manager.py` as designed in §5.
 
 ### 2.3 Routing Engine
 
