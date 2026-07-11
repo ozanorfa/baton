@@ -1,9 +1,12 @@
 """All Rich terminal output lives here; the core stays terminal-agnostic."""
 
+from dataclasses import dataclass
+
 from rich.console import Console
 from rich.table import Table
 
 from ai_orchestrator.config.loader import LoadedConfig
+from ai_orchestrator.core.models import Health
 
 console = Console()
 error_console = Console(stderr=True, style="bold red")
@@ -39,3 +42,34 @@ def render_config(loaded: LoadedConfig) -> None:
 
 def render_error(message: str) -> None:
     error_console.print(message)
+
+
+@dataclass
+class DoctorRow:
+    provider: str
+    command: str
+    roles: list[str]
+    health: Health
+
+
+def render_doctor(rows: list[DoctorRow]) -> None:
+    table = Table(title="Provider health", header_style="bold")
+    table.add_column("provider")
+    table.add_column("command")
+    table.add_column("version")
+    table.add_column("used by", style="dim")
+    table.add_column("status")
+
+    for row in rows:
+        if row.health.ok:
+            status = "[green]✓ healthy[/green]"
+        else:
+            status = f"[red]✗ {row.health.detail or 'unavailable'}[/red]"
+        table.add_row(
+            row.provider,
+            row.command,
+            row.health.version or "—",
+            ", ".join(row.roles) or "—",
+            status,
+        )
+    console.print(table)

@@ -4,6 +4,7 @@ import typer
 
 from ai_orchestrator import __version__
 from ai_orchestrator.cli.commands.config_cmd import config_app
+from ai_orchestrator.cli.commands.doctor import doctor
 
 app = typer.Typer(
     name="ai",
@@ -12,6 +13,7 @@ app = typer.Typer(
     add_completion=False,
 )
 app.add_typer(config_app, name="config")
+app.command()(doctor)
 
 
 def _version_callback(value: bool) -> None:

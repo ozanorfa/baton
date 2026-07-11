@@ -1,0 +1,58 @@
+from pathlib import Path
+
+from typer.testing import CliRunner
+
+from ai_orchestrator.cli.app import app
+
+runner = CliRunner()
+
+
+def setup_project(tmp_path: Path, monkeypatch, config_text: str) -> None:
+    project = tmp_path / "proj"
+    (project / ".ai").mkdir(parents=True)
+    (project / ".ai" / "config.yaml").write_text(config_text)
+    monkeypatch.chdir(project)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+
+
+def test_doctor_healthy_with_fake_commands(tmp_path: Path, monkeypatch) -> None:
+    # /usr/bin/true exits 0 for any argv → every health check passes
+    setup_project(
+        tmp_path,
+        monkeypatch,
+        "providers:\n"
+        "  claude: {command: /usr/bin/true}\n"
+        "  codex: {command: /usr/bin/true}\n"
+        "  antigravity: {command: /usr/bin/true}\n",
+    )
+    result = runner.invoke(app, ["doctor"], env={"COLUMNS": "200"})
+    assert result.exit_code == 0
+    assert "healthy" in result.output
+    assert "planner, reviewer" in result.output  # role bindings shown per provider
+
+
+def test_doctor_missing_binary_is_actionable_row_not_crash(tmp_path: Path, monkeypatch) -> None:
+    setup_project(
+        tmp_path,
+        monkeypatch,
+        "providers:\n"
+        "  claude: {command: /usr/bin/true}\n"
+        "  codex: {command: /nonexistent/codex-bin}\n"
+        "  antigravity: {command: /usr/bin/true}\n",
+    )
+    result = runner.invoke(app, ["doctor"], env={"COLUMNS": "200"})
+    assert result.exit_code == 1  # unhealthy → nonzero for scripts
+    assert "binary not found" in result.output
+    assert "healthy" in result.output  # others still reported
+
+
+def test_doctor_unregistered_provider_named(tmp_path: Path, monkeypatch) -> None:
+    setup_project(
+        tmp_path,
+        monkeypatch,
+        "roles:\n  planner: {provider: mystery}\n"
+        "providers:\n  mystery: {command: whatever}\n",
+    )
+    result = runner.invoke(app, ["doctor"], env={"COLUMNS": "250"})
+    assert result.exit_code == 1
+    assert "unknown provider" in result.output
