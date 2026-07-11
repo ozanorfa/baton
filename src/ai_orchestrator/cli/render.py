@@ -1,12 +1,13 @@
 """All Rich terminal output lives here; the core stays terminal-agnostic."""
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from rich.console import Console
 from rich.table import Table
 
 from ai_orchestrator.config.loader import LoadedConfig
-from ai_orchestrator.core.models import AgentResult, Health
+from ai_orchestrator.core.models import AgentResult, Health, RunState, StageStatus
 
 console = Console()
 error_console = Console(stderr=True, style="bold red")
@@ -56,6 +57,69 @@ def render_usage_line(result: AgentResult) -> None:
         parts.append(f"session: {result.session_id}")
     if parts:
         console.print("  ".join(parts), style="dim")
+
+
+def render_run_header(request: str, resolved) -> None:
+    stages = " → ".join(
+        f"{r.spec.name}[{r.provider_name}]" + ("" if r.enabled else " (off)") for r in resolved
+    )
+    console.print(f"[bold]run:[/bold] {request}")
+    console.print(f"[dim]{stages}[/dim]")
+
+
+def render_progress_event(record: dict) -> None:
+    """Live per-stage progress from the engine's event stream (M2 minimal;
+    the full Rich live UX lands in T28)."""
+    event, stage = record.get("event"), record.get("stage", "")
+    if event == "stage_started":
+        console.print(f"  ▸ {stage} ({record.get('provider')})…")
+    elif event == "stage_succeeded":
+        duration = record.get("duration_s")
+        suffix = f" in {duration:.0f}s" if isinstance(duration, int | float) else ""
+        console.print(f"  [green]✓ {stage}[/green] → {record.get('artifact')}{suffix}")
+    elif event == "stage_skipped":
+        console.print(f"  [dim]○ {stage} skipped ({record.get('reason')})[/dim]")
+    elif event == "stage_failed":
+        console.print(f"  [red]✗ {stage} FAILED: {record.get('error')}[/red]")
+
+
+def _format_duration(seconds: float | None) -> str:
+    if seconds is None:
+        return "—"
+    minutes, secs = divmod(int(seconds), 60)
+    return f"{minutes}m {secs:02d}s" if minutes else f"{secs}s"
+
+
+def render_run_summary(state: RunState, run_dir: Path) -> None:
+    table = Table(title=f"run {state.run_id}", header_style="bold")
+    for column in ("stage", "provider", "duration", "tokens in/out", "status"):
+        table.add_column(column)
+
+    for stage in state.stages:
+        usage = stage.usage
+        tokens = (
+            f"{usage.input_tokens or '—'}/{usage.output_tokens or '—'}"
+            if usage and (usage.input_tokens or usage.output_tokens)
+            else "—"
+        )
+        style = {
+            StageStatus.SUCCEEDED: "[green]✓[/green]",
+            StageStatus.FAILED: "[red]✗[/red]",
+            StageStatus.SKIPPED: "[dim]○ skipped[/dim]",
+            StageStatus.PENDING: "[dim]· pending[/dim]",
+        }.get(stage.status, str(stage.status))
+        table.add_row(
+            stage.name, stage.provider or "—", _format_duration(stage.duration_s), tokens, style
+        )
+    console.print(table)
+
+    if state.status.value == "failed":
+        failed = next(s for s in state.stages if s.status is StageStatus.FAILED)
+        error_console.print(f"stage {failed.name!r} failed: {failed.error}")
+        console.print(f"raw output: {run_dir / 'logs'}")
+        console.print("next steps: [bold]ai doctor[/bold] · inspect the run dir above")
+    else:
+        console.print(f"[green]run succeeded[/green] · artifacts: {run_dir / 'artifacts'}")
 
 
 @dataclass

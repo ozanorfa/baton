@@ -40,14 +40,16 @@ class PipelineEngine:
         run_manager: RunManager,
         transport: Transport,
         prompt_builder: PromptBuilder = naive_prompt_builder,
+        event_sink: Callable[[dict], None] | None = None,
     ):
         self.run_manager = run_manager
         self.transport = transport
         self.prompt_builder = prompt_builder
+        self.event_sink = event_sink
 
     def execute(self, request: str, resolved: list[ResolvedStage]) -> RunState:
         state = self.run_manager.create_run(request, [r.spec for r in resolved])
-        log = EventLog(self.run_manager.logs_dir(state.run_id))
+        log = EventLog(self.run_manager.logs_dir(state.run_id), sink=self.event_sink)
         log.emit(ev.RUN_STARTED, run_id=state.run_id, request=request)
 
         artifacts: dict[str, str] = {}

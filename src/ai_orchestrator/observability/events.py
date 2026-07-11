@@ -5,6 +5,7 @@ cli/render.py — one event source, two renderings.
 """
 
 import json
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -22,14 +23,17 @@ RUN_FINISHED = "run_finished"
 
 
 class EventLog:
-    def __init__(self, logs_dir: Path):
+    def __init__(self, logs_dir: Path, sink: Callable[[dict[str, Any]], None] | None = None):
         logs_dir.mkdir(parents=True, exist_ok=True)
         self.path = logs_dir / LOG_FILENAME
+        self.sink = sink  # optional live listener (e.g. CLI progress rendering)
 
     def emit(self, event: str, **fields: Any) -> None:
         record = {"ts": datetime.now(UTC).isoformat(), "event": event, **fields}
         with self.path.open("a") as f:
             f.write(json.dumps(record, default=str) + "\n")
+        if self.sink is not None:
+            self.sink(record)
 
     def read(self) -> list[dict[str, Any]]:
         if not self.path.is_file():
