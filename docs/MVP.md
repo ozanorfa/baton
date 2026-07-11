@@ -32,7 +32,7 @@ pipeline:
   stages: [planner, designer, coder, reviewer]
 roles:
   planner:  { provider: codex }
-  designer: { provider: gemini, enabled: false }
+  designer: { provider: antigravity, enabled: false }
   coder:    { provider: claude }
   reviewer: { provider: codex }
 ```
@@ -41,7 +41,7 @@ roles:
 
 **Stage 1 — Planner (Codex CLI).** Receives: the request + the Project layer (`.ai/project.md`) + planner role template. Produces `artifacts/plan.md` — a self-contained, numbered implementation plan (files to touch, approach, acceptance criteria). Self-contained because downstream stages get the plan, never the Planner's transcript (ADR-006).
 
-**Stage 2 — Designer (Gemini CLI) — skipped unless enabled.** Receives: request + Project layer + `plan.md`. Produces `artifacts/design.md` — widget hierarchy, UX flow, UI suggestions. For the Face ID example this stage is off by default; a `--with-designer` run would add biometric-prompt UX guidance here.
+**Stage 2 — Designer (Antigravity CLI, ADR-012) — skipped unless enabled.** Receives: request + Project layer + `plan.md`. Produces `artifacts/design.md` — widget hierarchy, UX flow, UI suggestions. For the Face ID example this stage is off by default; a `--with-designer` run would add biometric-prompt UX guidance here.
 
 **Stage 3 — Coder (Claude Code).** Receives: `plan.md` (+ `design.md` if present) + Project layer + coder role template. Runs headless with scoped edit permissions (`--permission-mode acceptEdits`, ADR-007) **in the project directory** — it explores the repo with its own tools; the orchestrator never inlines source files into the prompt. Edits land directly in the repo. Produces `artifacts/changes.md` (its own summary of what it changed and why); the orchestrator then snapshots `git diff` into the run dir.
 
@@ -78,7 +78,7 @@ $ ai "Add Face ID support to the Flutter application"
    2. BiometricService swallows PlatformException — surface auth errors to UI
 ```
 
-Token columns show **measured values only** (Claude's JSON reports them; Codex/Gemini may not → `—`, never an estimate presented as fact — risk R2).
+Token columns show **measured values only** (Claude's JSON reports them; Codex/Antigravity may not → `—`, never an estimate presented as fact — risk R2).
 
 ## 4. What's on Disk Afterwards
 
@@ -140,7 +140,7 @@ The Coder stage edits your repository unattended (ADR-007). The safety net is: r
 
 - [ ] `ai init` bootstraps `.ai/` per PROJECT_STRUCTURE §2.1 in a fresh Flutter repo
 - [ ] `ai doctor` shows all three providers healthy
-- [ ] `ai "Add Face ID support to the Flutter application"` completes planner → coder → reviewer with real providers; `--with-designer` adds the Gemini stage
+- [ ] `ai "Add Face ID support to the Flutter application"` completes planner → coder → reviewer with real providers; `--with-designer` adds the Antigravity (Gemini-model) stage
 - [ ] All artifacts, prompts, logs, `run.json`, `report.json` present and correct in the run dir
 - [ ] Coder's real edits match `diff.patch`; nothing committed
 - [ ] Terminal summary shows per-stage provider, duration, status, and measured-or-`—` tokens

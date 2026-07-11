@@ -7,7 +7,7 @@
 
 ## 1. Project Vision
 
-A **local-first AI Coding Orchestrator** that turns multiple AI coding CLIs (Claude Code, Codex CLI, Gemini CLI) into a single deterministic development pipeline, driven by one command:
+A **local-first AI Coding Orchestrator** that turns multiple AI coding CLIs (Claude Code, Codex CLI, Antigravity CLI) into a single deterministic development pipeline, driven by one command:
 
 ```bash
 ai "Add Face ID support to the Flutter application"
@@ -64,7 +64,7 @@ Project scaffolding: `uv` project, package layout, Typer entry point, logging se
 **Demo:** `ai --version`, `ai config show` prints the merged effective config.
 
 ### M1 — Provider Adapter Layer
-`ProviderAdapter` ABC + the headless subprocess transport. Three concrete adapters: Claude Code (`claude -p --output-format json`), Codex CLI (`codex exec`), Gemini CLI (`gemini -p`). Health checks (binary present, authenticated), output parsing, token-usage extraction where available.
+`ProviderAdapter` ABC + the headless subprocess transport. Three concrete adapters: Claude Code (`claude -p --output-format json`), Codex CLI (`codex exec`), Antigravity CLI (`agy -p`, ADR-012). Health checks (binary present, authenticated), output parsing, token-usage extraction where available.
 **Demo:** `ai doctor` verifies all three CLIs; `ai ask --role coder "hello"` round-trips a single prompt through one provider.
 
 ### M2 — Pipeline Engine
@@ -96,7 +96,7 @@ Failure-path UX (clear resume instructions after fail-stop), `ai runs list/show`
 
 ## 5. MVP Scope (summary — full detail in MVP.md)
 
-**In:** one command → four-stage deterministic pipeline → disk artifacts → execution report. Three provider adapters (Claude Code, Codex CLI, Gemini CLI), headless transport, YAML config with role→provider bindings, layered context, fail-stop error handling, run history on disk.
+**In:** one command → four-stage deterministic pipeline → disk artifacts → execution report. Three provider adapters (Claude Code, Codex CLI, Antigravity CLI), headless transport, YAML config with role→provider bindings, layered context, fail-stop error handling, run history on disk.
 
 **Out:** everything listed under MVP-phase non-goals (§3).
 
@@ -116,7 +116,7 @@ ai "Add Face ID support to the Flutter application"
 | # | Risk | Likelihood | Impact | Mitigation |
 |---|------|-----------|--------|------------|
 | R1 | **CLI flag/output-format drift** — vendors change headless flags or JSON schemas | High | Medium | Isolate all CLI specifics inside adapters; version-pin known-good invocations; `ai doctor` detects breakage early; adapter contract tests with recorded fixtures |
-| R2 | **Codex/Gemini headless output less structured than Claude's** — token counts or clean result extraction may be unavailable | Medium | Medium | Adapter contract makes token usage *optional* (`None` = unavailable); report marks estimates vs. measured |
+| R2 | **Codex/Antigravity headless output less structured than Claude's** — token counts or clean result extraction may be unavailable | Medium | Medium | Adapter contract makes token usage *optional* (`None` = unavailable); report marks estimates vs. measured |
 | R3 | **Coder stage needs write access & interactivity** — Claude Code headless may pause on permission prompts | Medium | High | Run Coder with explicit permission flags (e.g. `--permission-mode acceptEdits` scoped to the project dir); document the trust model; fail-stop if the CLI blocks on input |
 | R4 | **Context bloat defeats the token goal** — naive forwarding of full stage outputs grows context each stage | Medium | High | Layered context with per-stage input contracts (Coder gets the plan, not the raw planner transcript); artifact summarization hooks post-MVP |
 | R5 | **Cross-provider quality variance** — a weak plan poisons downstream stages | Medium | Medium | Fail-stop + human review points; artifacts on disk make every stage inspectable; `ai resume` allows fixing an artifact and continuing |

@@ -110,7 +110,7 @@ providers/
 ├── registry.py             # ProviderRegistry: built-in registration + entry-point discovery
 ├── claude.py               # ClaudeCodeAdapter
 ├── codex.py                # CodexAdapter
-└── gemini.py               # GeminiAdapter
+└── antigravity.py          # AntigravityAdapter (ADR-012)
 ```
 
 **Responsibility:** everything CLI-vendor-specific — flags, output parsing, token-usage extraction, auth checks — and *nothing* else. Adapters are pure (build `Invocation`, parse `TransportResult`; never spawn processes), which is what makes `tests/contract/` possible. When a vendor changes their CLI (risk R1), the blast radius is exactly one file plus its fixtures.
@@ -159,7 +159,7 @@ tests/
 │       ├── claude/         # captured `claude -p --output-format json` outputs
 │       │                   #   (success, failure, permission-block, malformed)
 │       ├── codex/
-│       └── gemini/
+│       └── antigravity/
 └── integration/            # full pipeline against a FAKE provider CLI (a tiny script
                             #   registered as a test-only adapter): end-to-end run,
                             #   fail-stop behavior, resume, report correctness — fast,

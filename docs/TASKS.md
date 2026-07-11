@@ -62,8 +62,8 @@ Typer app skeleton (`cli/app.py`, `cli/commands/config_cmd.py`, `cli/render.py`)
 `providers/codex.py`: `codex exec` with pinned non-interactive sandbox/approval flags; parse text output; `Usage` = `None` when unavailable (ADR-003). Real fixtures: success + failure.
 **Done when:** contract tests pass; capabilities correctly report token support.
 
-**T12 · GeminiAdapter + fixtures — 60 min**
-`providers/gemini.py`: `gemini -p`; same pattern as T11.
+**T12 · AntigravityAdapter + fixtures — 60 min** *(was GeminiAdapter; ADR-012)*
+`providers/antigravity.py`: `agy -p` with explicit non-interactive approval flags; same pattern as T11. Verify actual flags/output against the installed `agy` first — it is younger than the other CLIs.
 **Done when:** contract tests pass against captured fixtures.
 
 **T13 · Entry-point plugin discovery — 45 min**

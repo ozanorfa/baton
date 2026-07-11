@@ -8,7 +8,7 @@ roles:
   planner:
     provider: codex
   designer:
-    provider: gemini
+    provider: antigravity
     enabled: false # optional stage, off by default
   coder:
     provider: claude
@@ -23,8 +23,8 @@ providers:
   codex:
     command: codex
     timeout_s: 600
-  gemini:
-    command: gemini
+  antigravity:
+    command: agy # Gemini CLI retired for personal accounts 2026-06-18 (ADR-012)
     timeout_s: 600
 
 context:

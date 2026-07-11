@@ -18,6 +18,7 @@ Convention: one ADR per consequential decision. New decisions get new ADRs; reve
 | [ADR-009](#adr-009) | Provider plugins via entry points; config binds by name | Accepted |
 | [ADR-010](#adr-010) | Prompts delivered via stdin, never argv | Accepted |
 | [ADR-011](#adr-011) | Stack: Python 3.12 + uv + Typer + Rich + pydantic + YAML | Accepted |
+| [ADR-012](#adr-012) | Antigravity CLI replaces Gemini CLI as the Designer provider | Accepted |
 
 ---
 
@@ -199,3 +200,19 @@ Convention: one ADR per consequential decision. New decisions get new ADRs; reve
 **Trade-offs.** pydantic is a heavyweight dependency for config alone, but it also types `run.json` and adapter results.
 
 **Future implications.** If parallelism ever lands (post-MVP roadmap §4.7), the sequential engine loop is the only component that changes; nothing in the stack blocks it.
+
+---
+
+## ADR-012 — Antigravity CLI replaces Gemini CLI as the Designer provider
+
+**Status:** Accepted · 2026-07-11 · **Confirmed with the project owner. Amends ADR references to "Gemini CLI" throughout the doc set.**
+
+**Context.** Google shut down Gemini CLI for personal Google accounts on 2026-06-18 ("This client is no longer supported for Gemini Code Assist for individuals"), directing individuals to the Antigravity product family. Discovered during provider authentication for M1. Gemini CLI remains usable only with enterprise subscriptions or paid API keys.
+
+**Decision.** The Designer role's provider becomes the **Antigravity CLI** (`agy`) — provider name `antigravity`, command `agy`, headless invocation `agy -p` (with explicit approval policy flags for non-interactive use). Task T12 builds `providers/antigravity.py` instead of `providers/gemini.py`. The underlying models are still Google's Gemini family, so the Designer role's purpose is unchanged.
+
+**Alternatives considered.** (a) Paid Gemini API key with the old CLI — works today but adds per-token billing and rides a deprecated client. (b) Defer the Designer role entirely — zero cost and the stage is off by default, but the project owner chose to keep three live providers.
+
+**Trade-offs.** `agy` is young: flag stability and structured-output support are unverified until T12's fixture capture; token usage may be unreportable (already tolerated by the adapter contract — `Usage = None`). Install is a curl-pipe shell script rather than a package manager.
+
+**Future implications.** This is the provider-agnosticism goal (G5) exercised for real, before the adapter layer even exists: the change touched one config default and zero core design. If `agy` proves unstable, swapping back to `gemini` + API key is a config edit plus one adapter.

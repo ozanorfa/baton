@@ -34,3 +34,6 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 - 👤 `gemini` login failed: *"This client is no longer supported for Gemini Code Assist for individuals → migrate to Antigravity"*.
 - 🤖 Researched: **Google shut down Gemini CLI for personal accounts on 2026-06-18** (moved individuals to Antigravity CLI / paid API keys). User's old `~/.antigravity` symlinks are broken (IDE uninstalled). → **Designer-provider decision pending** (Antigravity CLI vs. paid API key vs. defer Designer role). Designer stage is optional & disabled by default, so MVP is not blocked.
 - 👤 Asked for this work log; 🤖 created it and will append every session.
+- 👤 Decided: **install Antigravity CLI** as the Designer provider (rather than paid Gemini API key or deferring the role).
+- 🤖 Wrote **ADR-012** (Antigravity CLI replaces Gemini CLI); propagated the change across all six docs, `defaults.yaml` (provider `antigravity`, command `agy`), and tests. First real exercise of the provider-agnosticism goal: zero core-design changes needed.
+- ⏳ Pending (user): install Antigravity CLI + sign in, then M1 starts.

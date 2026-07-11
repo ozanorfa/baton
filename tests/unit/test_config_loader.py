@@ -47,9 +47,9 @@ def test_user_overrides_defaults(project: Path, user_cfg: Path) -> None:
 
 def test_project_overrides_user(project: Path, user_cfg: Path) -> None:
     write(user_cfg, "roles:\n  planner:\n    provider: claude\n")
-    write(project / ".ai" / "config.yaml", "roles:\n  planner:\n    provider: gemini\n")
+    write(project / ".ai" / "config.yaml", "roles:\n  planner:\n    provider: antigravity\n")
     loaded = load(project, user_cfg)
-    assert loaded.config.roles["planner"].provider == "gemini"
+    assert loaded.config.roles["planner"].provider == "antigravity"
     assert loaded.source_of("roles.planner.provider") == "project"
     assert loaded.files_read == [user_cfg, project / ".ai" / "config.yaml"]
 
@@ -63,7 +63,7 @@ def test_env_overrides_project(project: Path, user_cfg: Path) -> None:
 
 
 def test_cli_overrides_env(project: Path, user_cfg: Path) -> None:
-    env = {"AI_ORCH_ROLES__REVIEWER__PROVIDER": "gemini"}
+    env = {"AI_ORCH_ROLES__REVIEWER__PROVIDER": "antigravity"}
     loaded = load(project, user_cfg, env=env, overrides={"roles.reviewer.provider": "claude"})
     assert loaded.config.roles["reviewer"].provider == "claude"
     assert loaded.source_of("roles.reviewer.provider") == "cli"

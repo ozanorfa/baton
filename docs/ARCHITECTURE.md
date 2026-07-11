@@ -23,7 +23,7 @@ Four layers with strict downward-only dependencies. Every AI-CLI-specific detail
 │  ProviderRegistry → ProviderAdapter (ABC)                   │
 │  ├─ ClaudeCodeAdapter    (claude -p --output-format json)   │
 │  ├─ CodexAdapter         (codex exec)                       │
-│  └─ GeminiAdapter        (gemini -p)                        │
+│  └─ AntigravityAdapter   (agy -p)                           │
 ├─────────────────────────────────────────────────────────────┤
 │  Transport Layer                                            │
 │  HeadlessTransport (subprocess)  ·  [post-MVP] TmuxTransport│
@@ -134,7 +134,7 @@ Aggregates per-stage data into `report.json` + a Rich terminal summary: stage, p
 
 ```python
 class ProviderAdapter(ABC):
-    name: str                          # "claude", "codex", "gemini"
+    name: str                          # "claude", "codex", "antigravity"
     capabilities: Capabilities         # supports_resume, reports_tokens, edits_files
 
     @abstractmethod
@@ -155,7 +155,7 @@ The split between `build_invocation` and `parse` keeps adapters **pure and unit-
 |---|---|---|---|---|
 | **ClaudeCodeAdapter** | `claude -p <prompt> --output-format json` | Structured JSON: result, `session_id`, usage, cost | ✅ measured | Coder runs with explicit scoped permission flags (e.g. `--permission-mode acceptEdits`) so headless runs don't block on prompts |
 | **CodexAdapter** | `codex exec <prompt>` | Text (JSON where supported) | ⚠️ if available | Planner/Reviewer; sandbox/approval flags pinned for non-interactive use |
-| **GeminiAdapter** | `gemini -p <prompt>` | Text | ⚠️ if available | Designer; read-only role, needs no write permissions |
+| **AntigravityAdapter** | `agy -p <prompt>` | Text | ⚠️ if available | Designer; read-only role, needs no write permissions. Replaces Gemini CLI, retired for personal accounts 2026-06-18 (ADR-012) |
 
 Prompt payloads are passed via **stdin, not argv**, to avoid shell-escaping bugs and argv length limits.
 
@@ -190,14 +190,14 @@ pipeline:
 
 roles:
   planner:  { provider: codex }
-  designer: { provider: gemini, enabled: false } # optional stage, off by default
+  designer: { provider: antigravity, enabled: false } # optional stage, off by default
   coder:    { provider: claude }
   reviewer: { provider: codex }
 
 providers:
-  claude: { command: claude, model: null, timeout_s: 900 }
-  codex:  { command: codex,  timeout_s: 600 }
-  gemini: { command: gemini, timeout_s: 600 }
+  claude:      { command: claude, model: null, timeout_s: 900 }
+  codex:       { command: codex,  timeout_s: 600 }
+  antigravity: { command: agy,    timeout_s: 600 }
 
 context:
   project_profile: .ai/project.md    # written by `ai init`
