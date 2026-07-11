@@ -6,6 +6,7 @@ Task    — the request + contract-admitted artifacts (assembled in manager.py)
 Agent   — the role's prompt template (built-in, overridable per project)
 """
 
+from collections.abc import Iterable
 from importlib.resources import files
 from pathlib import Path
 from string import Template
@@ -40,12 +41,12 @@ def agent_template(contract: RoleContract, project_dir: Path) -> Template:
     return Template((_PROMPTS / contract.template).read_text())
 
 
-def inputs_section(contract: RoleContract, artifacts: dict[str, str]) -> str:
+def inputs_section(admitted: Iterable[str], artifacts: dict[str, str]) -> str:
     """Only contract-admitted artifacts, in contract order. Artifacts from
     skipped stages are simply absent — no placeholder noise."""
     sections = [
         f"## Input from a previous stage: {name}\n\n{artifacts[name].strip()}"
-        for name in contract.inputs
+        for name in admitted
         if name in artifacts
     ]
     return "\n\n".join(sections)

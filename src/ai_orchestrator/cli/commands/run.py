@@ -8,6 +8,7 @@ import typer
 
 from ai_orchestrator.cli import render
 from ai_orchestrator.config.loader import ConfigError, load_config
+from ai_orchestrator.context.manager import ContextManager
 from ai_orchestrator.core.engine import PipelineEngine
 from ai_orchestrator.core.models import RunStatus
 from ai_orchestrator.core.routing import RoutingEngine, RoutingError, build_stage_specs
@@ -62,8 +63,11 @@ def run(
     render.render_run_header(request, resolved)
 
     manager = RunManager(project_dir)
+    context = ContextManager(project_dir, loaded.config.context.project_profile)
     engine = PipelineEngine(
-        manager, transport, event_sink=render.render_progress_event
+        manager, transport,
+        prompt_builder=context.build,
+        event_sink=render.render_progress_event,
     )
     state = engine.execute(request, resolved)
 

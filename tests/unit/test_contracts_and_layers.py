@@ -34,7 +34,7 @@ def test_inputs_section_admits_only_contract_artifacts() -> None:
         "changes.md": "THE CHANGES",
         "secret.md": "NOT FOR YOU",
     }
-    reviewer = inputs_section(contract_for("reviewer"), artifacts)
+    reviewer = inputs_section(contract_for("reviewer").inputs, artifacts)
     assert "THE PLAN" in reviewer and "THE CHANGES" in reviewer
     assert "THE DESIGN" not in reviewer  # not in the reviewer's contract
     assert "NOT FOR YOU" not in reviewer
@@ -42,7 +42,7 @@ def test_inputs_section_admits_only_contract_artifacts() -> None:
 
 def test_inputs_section_skips_absent_artifacts_silently() -> None:
     # designer disabled → coder receives plan only, no placeholder noise
-    coder = inputs_section(contract_for("coder"), {"plan.md": "P"})
+    coder = inputs_section(contract_for("coder").inputs, {"plan.md": "P"})
     assert "plan.md" in coder and "design.md" not in coder
 
 

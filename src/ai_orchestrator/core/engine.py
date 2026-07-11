@@ -12,6 +12,7 @@ from ai_orchestrator.core.models import (
     AgentRequest,
     RunState,
     RunStatus,
+    StageSpec,
     StageStatus,
     utcnow,
 )
@@ -21,14 +22,14 @@ from ai_orchestrator.observability import events as ev
 from ai_orchestrator.observability.events import EventLog
 from ai_orchestrator.transport.base import Transport
 
-PromptBuilder = Callable[[ResolvedStage, str, dict[str, str]], str]
+PromptBuilder = Callable[[StageSpec, str, dict[str, str]], str]
 
 
-def naive_prompt_builder(stage: ResolvedStage, request: str, artifacts: dict[str, str]) -> str:
-    """M2 stub: request + inlined input artifacts. Replaced by the layered
-    ContextManager in M3 (T23) — do not grow logic here."""
-    parts = [f"You are the {stage.spec.role}.", "", f"## Request\n{request}"]
-    for name in stage.spec.inputs:
+def naive_prompt_builder(spec: StageSpec, request: str, artifacts: dict[str, str]) -> str:
+    """Bare-bones fallback (used by unit tests). Production wiring passes
+    ContextManager.build (context/manager.py) — the layered system."""
+    parts = [f"You are the {spec.role}.", "", f"## Request\n{request}"]
+    for name in spec.inputs:
         if name in artifacts:
             parts.append(f"## Input: {name}\n{artifacts[name]}")
     return "\n\n".join(parts)
@@ -70,7 +71,7 @@ class PipelineEngine:
             self.run_manager.save(state)
             log.emit(ev.STAGE_STARTED, stage=stage.spec.name, provider=stage.provider_name)
 
-            prompt = self.prompt_builder(stage, request, artifacts)
+            prompt = self.prompt_builder(stage.spec, request, artifacts)
             self.run_manager.save_prompt(state, position, stage.spec.name, prompt)
 
             agent_request = AgentRequest(
