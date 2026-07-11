@@ -195,8 +195,9 @@ Anything pointing the other way is a bug.
 <user-project>/
 └── .ai/
     ├── config.yaml             # project config: pipeline stages, role→provider bindings
-    ├── project.md              # Project context layer: stack, conventions (ai init bootstraps,
-    │                           #   user curates — this file is the token budget's best friend)
+    ├── project.md              # Project context layer: stack, conventions (ai init bootstraps
+    │                           #   with the stack auto-detected from marker files; user curates —
+    │                           #   this file is the token budget's best friend)
     ├── prompts/                # optional per-project role template overrides
     └── runs/
         └── 2026-07-11_1432_a3f9/     # one dir per run (ARCHITECTURE §2.4)

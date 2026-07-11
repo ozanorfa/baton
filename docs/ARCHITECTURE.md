@@ -50,7 +50,7 @@ Typer application, Rich for output. Thin by design: parses arguments, loads conf
 | Command | Purpose |
 |---|---|
 | `ai "<request>"` | Run the configured pipeline on a request |
-| `ai init` | Bootstrap `.ai/` in a project (config + project context profile) |
+| `ai init` | Bootstrap `.ai/` in a project (config + project profile; the profile's Stack section is pre-filled by auto-detecting marker files — pubspec.yaml, package.json, pyproject.toml, go.mod, …) |
 | `ai doctor` | Verify every configured provider: binary found, version, authenticated |
 | `ai runs list` / `ai runs show <id>` | Run history and inspection |
 | `ai resume <run-id>` | Continue a failed run from its failed stage (M5) |

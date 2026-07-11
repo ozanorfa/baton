@@ -103,6 +103,8 @@ ai init                 # run again → "nothing to do", nothing overwritten
 cat .ai/project.md      # the profile skeleton — fill this in for real projects
 ```
 
+**Stack auto-detection:** run `ai init` in a folder containing a `pyproject.toml` (or `pubspec.yaml`, `package.json`, `go.mod`, …) — the profile's Stack section is pre-filled, e.g. `Detected: Python (pyproject.toml).` With no marker files it stays neutral ("Nothing was auto-detected").
+
 **After any pipeline run**, inspect the prompts to see the context system working:
 
 ```bash

@@ -119,7 +119,7 @@ Root command: bare argument triggers the pipeline; dirty-git-tree warning (ADR-0
 **Done when:** integration test inspects a run dir and verifies each stage's persisted prompt contains only contract-admitted sections.
 
 **T24 ✅ · `ai init` — 60 min**
-Bootstrap `.ai/`: starter `config.yaml`, `project.md` skeleton (stack/conventions prompts for the user to fill), append `.ai/runs/` to `.gitignore`; idempotent (refuses to clobber, offers diff).
+Bootstrap `.ai/`: starter `config.yaml`, `project.md` skeleton (stack/conventions prompts for the user to fill), append `.ai/runs/` to `.gitignore`; idempotent (refuses to clobber, offers diff). *Extended post-M3 on user feedback: the Stack section is pre-filled by auto-detecting marker files (pubspec.yaml, package.json, pyproject.toml, go.mod, Cargo.toml, …); skeleton examples are framework-neutral.*
 **Done when:** running in a fresh dir creates the documented footprint (PROJECT_STRUCTURE §2.1); second run is a no-op; **M3 demo achieved** — prompts in a real run visibly differ per role contract.
 
 ---
