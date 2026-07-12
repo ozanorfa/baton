@@ -48,6 +48,7 @@ def test_timeout_passthrough() -> None:
 def test_build_invocation_prompt_in_argv_not_stdin() -> None:
     inv = adapter.build_invocation(request())
     assert inv.argv[0] == "agy"
+    assert inv.argv[1] == "--new-project"  # brain isolation (field bug 2026-07-12)
     assert inv.argv[inv.argv.index("-p") + 1] == "design it"  # ADR-010 exception, documented
     assert inv.stdin == ""
     assert "--sandbox" not in inv.argv  # incompatible with print mode (verified agy 1.1.1)

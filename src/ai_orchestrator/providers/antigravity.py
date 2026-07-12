@@ -13,6 +13,11 @@ Verified against agy 1.1.1 (fixtures in tests/contract/):
   doesn't give up before our transport does.
 - `--conversation <id>` resume exists, but the id is not printed in -p mode,
   so resume is unreachable headlessly today: supports_resume=False.
+- **`--new-project` is mandatory** (field bug, 2026-07-12): without it, agy
+  loads its persistent cross-session "brain" (~/.gemini/antigravity-cli/) and
+  can wander into *other* directories it remembers — a real run spawned ~60
+  internal tasks referencing a different copy of the user's project, went
+  silent, and timed out at 600s. Isolated sessions answer in well under 2 min.
 """
 
 from pathlib import Path
@@ -37,7 +42,7 @@ class AntigravityAdapter(ProviderAdapter):
         return Health(ok=True, binary=self.command, version=raw.stdout.strip())
 
     def build_invocation(self, request: AgentRequest) -> Invocation:
-        argv = [self.command]
+        argv = [self.command, "--new-project"]  # isolate from agy's brain (see docstring)
         if self.model:
             argv += ["--model", self.model]
         if request.allow_edits:
