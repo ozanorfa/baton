@@ -12,6 +12,7 @@ from ai_orchestrator.core.models import (
     AgentRequest,
     RunState,
     RunStatus,
+    StageResult,
     StageSpec,
     StageStatus,
     utcnow,
@@ -24,6 +25,10 @@ from ai_orchestrator.observability.events import EventLog
 from ai_orchestrator.transport.base import Transport
 
 PromptBuilder = Callable[[StageSpec, str, dict[str, str]], str]
+
+
+class ResumeError(Exception):
+    """Resume is impossible or ambiguous; message says why."""
 
 
 def naive_prompt_builder(spec: StageSpec, request: str, artifacts: dict[str, str]) -> str:
@@ -53,11 +58,68 @@ class PipelineEngine:
         state = self.run_manager.create_run(request, [r.spec for r in resolved])
         log = EventLog(self.run_manager.logs_dir(state.run_id), sink=self.event_sink)
         log.emit(ev.RUN_STARTED, run_id=state.run_id, request=request)
+        return self._run(state, resolved, artifacts={}, start=0, log=log)
+
+    def resume(
+        self, state: RunState, resolved: list[ResolvedStage], from_stage: str | None = None
+    ) -> RunState:
+        """Continue a run from its failed stage (or `from_stage`), reusing all
+        artifacts already on disk (ADR-005: resume falls out of the file layout)."""
+        names = [r.spec.name for r in resolved]
+        if from_stage is not None:
+            if from_stage not in names:
+                raise ResumeError(f"unknown stage {from_stage!r}; stages: {names}")
+            start = names.index(from_stage)
+        else:
+            start = next(
+                (
+                    i
+                    for i, s in enumerate(state.stages)
+                    if s.status not in (StageStatus.SUCCEEDED, StageStatus.SKIPPED)
+                ),
+                None,
+            )
+            if start is None:
+                raise ResumeError(
+                    f"run {state.run_id} completed successfully — nothing to resume "
+                    "(use --from <stage> to deliberately redo a stage)"
+                )
+
+        for i in range(start, len(state.stages)):
+            old = state.stages[i]
+            state.stages[i] = StageResult(name=old.name, role=old.role)
+        state.status = RunStatus.RUNNING
+        self.run_manager.save(state)
 
         artifacts: dict[str, str] = {}
+        artifacts_dir = self.run_manager.artifacts_dir(state.run_id)
+        for path in sorted(artifacts_dir.iterdir()) if artifacts_dir.is_dir() else []:
+            if path.is_file():
+                artifacts[path.name] = path.read_text()
+
+        log = EventLog(self.run_manager.logs_dir(state.run_id), sink=self.event_sink)
+        log.emit(
+            ev.RUN_RESUMED,
+            run_id=state.run_id,
+            from_stage=state.stages[start].name,
+            reused_artifacts=sorted(artifacts),
+        )
+        return self._run(state, resolved, artifacts=artifacts, start=start, log=log)
+
+    def _run(
+        self,
+        state: RunState,
+        resolved: list[ResolvedStage],
+        artifacts: dict[str, str],
+        start: int,
+        log: EventLog,
+    ) -> RunState:
+        request = state.request
         failed = False
 
         for position, stage in enumerate(resolved, start=1):
+            if position <= start:
+                continue  # already succeeded/skipped in a previous attempt
             record = state.stage(stage.spec.name)
 
             if not stage.enabled:
@@ -89,7 +151,20 @@ class PipelineEngine:
                 timeout_s=stage.timeout_s,
                 allow_edits=stage.allow_edits,
             )
-            raw = self.transport.run(stage.adapter.build_invocation(agent_request))
+            try:
+                raw = self.transport.run(stage.adapter.build_invocation(agent_request))
+            except KeyboardInterrupt:
+                # Ctrl-C must leave a resumable run, not a corrupt one (T34).
+                record.status = StageStatus.FAILED
+                record.finished_at = utcnow()
+                record.error = (
+                    f"interrupted by user (Ctrl-C); continue with: ai resume {state.run_id}"
+                )
+                state.status = RunStatus.FAILED
+                self.run_manager.save(state)
+                log.emit(ev.STAGE_FAILED, stage=stage.spec.name, error=record.error)
+                log.emit(ev.RUN_FINISHED, run_id=state.run_id, status=state.status)
+                raise
 
             # Persist raw output before evaluating anything (ARCHITECTURE §2.2).
             logs_dir = self.run_manager.logs_dir(state.run_id)

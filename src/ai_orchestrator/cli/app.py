@@ -13,6 +13,7 @@ from ai_orchestrator.cli.commands.ask import ask
 from ai_orchestrator.cli.commands.config_cmd import config_app
 from ai_orchestrator.cli.commands.doctor import doctor
 from ai_orchestrator.cli.commands.init import init
+from ai_orchestrator.cli.commands.resume import resume
 from ai_orchestrator.cli.commands.run import run
 from ai_orchestrator.cli.commands.runs import runs_app
 
@@ -28,6 +29,7 @@ app.command()(ask)
 app.command()(run)
 app.command()(init)
 app.add_typer(runs_app, name="runs")
+app.command()(resume)
 
 _COMMANDS = {"run", "ask", "doctor", "config", "init", "runs", "resume"}
 

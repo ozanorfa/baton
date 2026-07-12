@@ -160,7 +160,8 @@ def render_run_summary(state: RunState, run_dir: Path, report=None) -> None:
             console.print(f"raw stderr:  {stderr_file}")
         console.print(f"run detail:  {run_dir}")
         console.print(
-            "next steps:  [bold]ai doctor[/bold] (provider health) · inspect the files above"
+            f"next steps:  [bold]ai resume {state.run_id}[/bold] (retry from the failed stage) "
+            "· [bold]ai doctor[/bold] (provider health)"
         )
     else:
         if report is not None and report.verdict:

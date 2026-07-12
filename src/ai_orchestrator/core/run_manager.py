@@ -29,9 +29,18 @@ class RunManager:
         return f"{stamp}_{secrets.token_hex(2)}"
 
     def create_run(self, request: str, stages: list[StageSpec]) -> RunState:
-        run_id = self.new_run_id()
-        run_dir = self.runs_dir / run_id
-        for sub in _SUBDIRS:
+        # ids have minute granularity + 2 random bytes; retry on the rare
+        # collision (e.g. concurrent runs in one project) instead of crashing
+        for attempt in range(5):
+            run_id = self.new_run_id()
+            run_dir = self.runs_dir / run_id
+            try:
+                (run_dir / _SUBDIRS[0]).mkdir(parents=True, exist_ok=False)
+                break
+            except FileExistsError:
+                if attempt == 4:
+                    raise
+        for sub in _SUBDIRS[1:]:
             (run_dir / sub).mkdir(parents=True, exist_ok=False)
         state = RunState(
             run_id=run_id,

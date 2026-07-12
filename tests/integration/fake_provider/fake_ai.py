@@ -6,6 +6,8 @@ stdin, result on stdout, exit code semantics. Behavior is driven by
 directives embedded in the prompt so tests stay declarative:
 
     [[fail:message]]        exit 1 with `message` on stderr
+    [[fail_once:message]]   like fail, but only the first time (marker file
+                            `.fake_failed_<role>` in cwd) — for resume tests
     [[sleep:N]]             sleep N seconds before answering (timeout tests)
     [[output:text]]         reply with exactly `text`
     [[write:path:content]]  create a file in the cwd (edit-stage simulation)
@@ -48,6 +50,15 @@ def main() -> int:
         if kind == "fail":
             sys.stderr.write(arg or "scripted failure")
             return 1
+        if kind == "fail_once":
+            import os
+
+            marker = f".fake_failed_{role or 'any'}"
+            if not os.path.exists(marker):
+                with open(marker, "w") as f:
+                    f.write("failed once\n")
+                sys.stderr.write(arg or "scripted one-time failure")
+                return 1
 
     for kind, arg in directives:
         if kind == "write":
