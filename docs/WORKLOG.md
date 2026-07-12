@@ -104,3 +104,8 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 
 - 👤 Asked whether total token use is too high. 🤖 Analysis from his own run's raw logs: of the coder's 222k "input tokens", 94% (208.5k) were cache READS at ~10× discount across 12 agentic turns — the honest metric is the measured $0.79. Levers available today: `ai ask` for small tasks, per-project stage trimming, `providers.claude.model: haiku`, short project.md. Structural fix = session persistence (post-MVP #1). Future polish noted: cache-aware token column.
 - 🤖 Starting M5: `ai runs list/show` (T31), failure-path polish (T32), `ai resume` (T33), timeout/SIGINT/collision hardening (T34), README walkthrough (T35).
+- 🤖 T31: `ai runs list/show` — history table with per-stage glyphs (✓✗○·), measured cost, verdict.
+- 🤖 T33: `ai resume <run-id>` — re-enters at the failed stage, reuses all on-disk artifacts (planner never re-paid), `--from <stage>` for deliberate redo, refuses on pipeline-config drift; failure output now advertises the exact resume command.
+- 🤖 T32+T34: failure-mode matrix fully tested via the fake provider (timeout, provider crash, missing binary, config error, silent no-change, Ctrl-C) with distinct exit codes (0/1/2); Ctrl-C persists a resumable failed state before propagating; run-id collision retry.
+- 🤖 T35: README — everyday-commands table, cost-control guidance, exit codes; MANUAL_TESTING M5 section.
+- ✅ **M5 COMPLETE — ALL 35 TASKS, ALL MILESTONES (M0–M5) DONE.** 123 tests green. Docs closed out across the board.

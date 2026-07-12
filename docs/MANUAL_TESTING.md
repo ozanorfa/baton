@@ -136,6 +136,25 @@ What to look for in the terminal output: an animated spinner while each provider
 
 **Silent-failure detection (the ADR-007 safety net):** if an edit-stage claims success but changes nothing in a git repo, the run fails with "reported success but no workspace changes were detected". You saw the fail-stop UX for real if a provider ever hits its usage limit mid-run — artifacts up to that stage are preserved and the summary names the cause.
 
+## M5 — Hardening (runs, resume)
+
+**Free** — the whole resume/failure machinery on the fake provider:
+
+```bash
+uv run pytest tests/integration/test_resume_and_hardening.py tests/integration/test_runs_command.py
+```
+
+**With any project that has run history:**
+
+```bash
+ai runs list             # all runs: status, per-stage glyphs (✓✗○·), cost, verdict
+ai runs show <run-id>    # one run in detail
+```
+
+**Resume, the real thing:** whenever a run fails (provider limit, timeout, Ctrl-C), the failure message now prints the exact command: `ai resume <run-id>`. It re-enters at the failed stage and reuses every artifact that already succeeded — the planner is never paid twice. `ai resume <id> --from reviewer` deliberately redoes a stage of a successful run. Resume refuses (with explanation) if you changed the pipeline config since the run.
+
+**Ctrl-C experiment (spends a few planner tokens):** start a run, hit Ctrl-C during a stage — then `ai runs show <id>` shows the interrupted stage as failed with a resume hint, and `ai resume <id>` continues it.
+
 ## Exit codes (for scripting)
 
 | code | meaning |

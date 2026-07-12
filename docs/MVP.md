@@ -119,7 +119,7 @@ Fail-stop (ADR-008): the run halts at the failed stage; everything already produ
     ai runs show 2026-07-11_1432_a3f9
 ```
 
-No retries, no fallback provider, no skipping ahead. (`ai resume <run-id>` — continue from the failed stage reusing `plan.md` — arrives in M5, immediately after the MVP.)
+No retries, no fallback provider, no skipping ahead. `ai resume <run-id>` continues from the failed stage reusing `plan.md` (M5, shipped) — the failure output prints the exact command.
 
 ## 6. Explicitly Out of Scope (MVP)
 

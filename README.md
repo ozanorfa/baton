@@ -12,7 +12,7 @@ ai "Add Face ID support to the Flutter application"
 
 ## Status
 
-**MVP achieved** (2026-07-12, milestones M0–M4): the acceptance test — a real Face ID feature planned, implemented, and reviewed on a fresh Flutter app — passed with reviewer verdict APPROVE WITH NOTES. Remaining: M5 hardening (`ai resume`, `ai runs`, failure-path polish). See [docs/TASKS.md](docs/TASKS.md) for progress and [docs/WORKLOG.md](docs/WORKLOG.md) for history.
+**All planned milestones complete (M0–M5, 2026-07-12).** MVP acceptance passed on a real Flutter app (Face ID feature, reviewer verdict APPROVE WITH NOTES); hardening shipped (`ai resume`, `ai runs`, Ctrl-C safety). Next: the post-MVP roadmap (session persistence first). See [docs/TASKS.md](docs/TASKS.md) for progress and [docs/WORKLOG.md](docs/WORKLOG.md) for history.
 
 ## Prerequisites
 
@@ -26,9 +26,24 @@ git clone <this-repo> && cd ai-agent-test
 uv tool install --editable .      # installs the global `ai` command
 
 ai doctor                          # verify all providers are healthy
-cd any-project
+cd any-project                     # ideally a git repo with a clean tree
+ai init                            # once per project; auto-detects the stack
 ai "do something useful"           # run the pipeline
 ```
+
+## Everyday commands
+
+| Command | What it does |
+|---|---|
+| `ai "<request>"` | Run the full pipeline (add `--with-designer` for the UI stage) |
+| `ai resume <run-id>` | Continue a failed run from the failed stage — completed stages are never re-paid |
+| `ai runs list` / `ai runs show <id>` | Run history: status, per-stage glyphs, cost, verdict |
+| `ai ask --role coder "<q>"` | One cheap single-role call, no pipeline |
+| `ai doctor` / `ai config show` / `ai init` | Health check · effective config with sources · project setup |
+
+Exit codes: `0` success · `1` a stage failed · `2` config/usage error.
+
+**Cost control:** the pipeline costs roughly $0.50–1.50 per run (the Claude coder stage; Codex rides your ChatGPT plan). For small tasks use `ai ask`; for cheap runs set `providers: {claude: {model: haiku}}` in `.ai/config.yaml`, or trim stages per project: `pipeline: {stages: [planner, coder]}`.
 
 More: [docs/MANUAL_TESTING.md](docs/MANUAL_TESTING.md) — every command you can try, with token-cost notes.
 

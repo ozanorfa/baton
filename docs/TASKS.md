@@ -1,6 +1,6 @@
 # Task Breakdown — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-12 · **progress: 30/35 done (M0–M4 ✅ · next: M5/T31)**
+**Status:** Living · updated 2026-07-12 · **progress: 35/35 done — ALL MILESTONES COMPLETE (M0–M5 ✅)**
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [MVP.md](MVP.md)
 
 35 tasks, 30–90 minutes each, strictly ordered — every task builds on a working previous state and ends in something runnable or testable. Tasks map to milestones M0–M5 from IMPLEMENTATION_PLAN.md §4. Total estimate: ~36 h.
@@ -154,23 +154,23 @@ The real thing: `ai init` + `ai "Add Face ID support to the Flutter application"
 
 ## M5 — Hardening & DX
 
-**T31 · `ai runs list/show` — 60 min**
+**T31 ✅ · `ai runs list/show` — 60 min**
 List: table of run dirs (id, request excerpt, status, duration, total tokens). Show: per-stage detail + artifact paths for one run.
 **Done when:** both render correctly against a mix of succeeded/failed historical runs.
 
-**T32 · Failure-path polish — 60 min**
+**T32 ✅ · Failure-path polish — 60 min**
 Audit every failure mode surfaced by T30 (timeout, auth expiry, parse failure, permission block): each produces a failure report with cause + raw path + resume instructions, and a distinct exit code (`0` ok, `1` stage failed, `2` config/env error).
 **Done when:** each failure mode is integration-tested via the fake provider (which can simulate all of them).
 
-**T33 · `ai resume <run-id>` — 90 min**
+**T33 ✅ · `ai resume <run-id>` — 90 min**
 Load `run.json`, keep succeeded artifacts, re-enter the loop at the failed stage; refuse (with explanation) if config stage-list changed since the run; `--from <stage>` to deliberately redo a stage.
 **Done when:** integration test: fail at coder → fix fake provider → resume → run completes reusing the original plan artifact; **M5 demo achieved**.
 
-**T34 · Timeout & edge hardening — 60 min**
+**T34 ✅ · Timeout & edge hardening — 60 min**
 Per-provider timeouts from config enforced end-to-end; SIGINT during a run leaves a resumable `run.json`; concurrent runs in one project don't collide.
 **Done when:** integration tests cover timeout-as-stage-failure and Ctrl-C-then-resume.
 
-**T35 · README + quickstart — 45 min**
+**T35 ✅ · README + quickstart — 45 min**
 Install (uv), prerequisites (three CLIs + auth), 5-minute quickstart, trust-model note (ADR-007, prominently), pointers into `docs/`.
 **Done when:** a fresh-machine walkthrough of the README reaches a successful `ai doctor` and demo run without consulting anything else.
 

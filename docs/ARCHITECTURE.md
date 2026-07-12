@@ -1,6 +1,6 @@
 # Architecture — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-11 · implemented through M4/MVP (adapter table below reflects *verified* CLI behavior, not assumptions)
+**Status:** Living · updated 2026-07-11 · fully implemented, M0–M5 (adapter table below reflects *verified* CLI behavior, not assumptions)
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 ---
@@ -53,7 +53,7 @@ Typer application, Rich for output. Thin by design: parses arguments, loads conf
 | `ai init` | Bootstrap `.ai/` in a project (config + project profile; the profile's Stack section is pre-filled by auto-detecting marker files — pubspec.yaml, package.json, pyproject.toml, go.mod, …) |
 | `ai doctor` | Verify every configured provider: binary found, version, authenticated |
 | `ai runs list` / `ai runs show <id>` | Run history and inspection |
-| `ai resume <run-id>` | Continue a failed run from its failed stage (M5) |
+| `ai resume <run-id>` | Continue a failed run from its failed stage |
 | `ai config show` | Print merged effective configuration and its sources |
 | `ai ask --role <role> "<prompt>"` | One-shot single-role invocation (debugging/utility) |
 

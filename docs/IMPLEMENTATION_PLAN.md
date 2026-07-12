@@ -1,6 +1,6 @@
 # Implementation Plan — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-11 · **M0–M4 complete — the MVP works; M5 (hardening) next** · progress detail in [TASKS.md](TASKS.md), history in [WORKLOG.md](WORKLOG.md)
+**Status:** Living · updated 2026-07-11 · **ALL MILESTONES COMPLETE (M0–M5, 2026-07-12)** — next: post-MVP roadmap (§4), starting with session persistence · progress detail in [TASKS.md](TASKS.md), history in [WORKLOG.md](WORKLOG.md)
 **Related docs:** [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 ---
@@ -79,7 +79,7 @@ Layered context assembly (Global / Project / Task / Agent), role prompt template
 Planner → Designer (optional, config/flag-gated) → Coder → Reviewer wired together; execution report (JSON + Rich terminal summary): duration, provider, status, artifacts, token estimates. This is the MVP defined in [MVP.md](MVP.md).
 **Demo:** `ai "Add Face ID support to the Flutter application"` completes all stages and prints a report.
 
-### M5 — Hardening & DX polish ⏳ next
+### M5 — Hardening & DX polish ✅ 2026-07-12
 Failure-path UX (clear resume instructions after fail-stop), `ai runs list/show`, run resumption from a failed stage (`ai resume <run-id>`), timeouts, structured logs, test coverage across engine + adapters.
 **Demo:** kill a provider mid-run → clean failure report → `ai resume` continues from the failed stage.
 
