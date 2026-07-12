@@ -20,10 +20,39 @@ CODE_EXTENSIONS = {
     ".py", ".dart", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java",
     ".kt", ".swift", ".rb", ".php", ".c", ".cc", ".cpp", ".h", ".hpp",
     ".cs", ".m", ".mm", ".scala", ".vue", ".svelte",
+    # the web fundamentals — a plain HTML/CSS site is very much a real project
+    # (field bug: charm_website was misdetected as greenfield, 2026-07-12)
+    ".html", ".htm", ".css", ".scss", ".sass", ".less",
 }
 
 # A workspace with at least this many source files is "established".
 ESTABLISHED_THRESHOLD = 3
+
+# Ecosystem marker files (shared with `ai init`'s stack detection): their
+# presence means a scaffold/toolchain exists → conventions exist → established,
+# even with fewer than ESTABLISHED_THRESHOLD source files.
+STACK_MARKERS: list[tuple[str, str]] = [
+    ("pubspec.yaml", "Flutter/Dart (pubspec.yaml)"),
+    ("package.json", "JavaScript/TypeScript (package.json)"),
+    ("pyproject.toml", "Python (pyproject.toml)"),
+    ("requirements.txt", "Python (requirements.txt)"),
+    ("go.mod", "Go (go.mod)"),
+    ("Cargo.toml", "Rust (Cargo.toml)"),
+    ("Gemfile", "Ruby (Gemfile)"),
+    ("pom.xml", "Java (pom.xml)"),
+    ("build.gradle", "Java/Kotlin (build.gradle)"),
+    ("*.xcodeproj", "iOS/macOS (Xcode project)"),
+]
+
+
+def has_stack_marker(project_dir: Path) -> bool:
+    for pattern, _ in STACK_MARKERS:
+        if "*" in pattern:
+            if next(project_dir.glob(pattern), None) is not None:
+                return True
+        elif (project_dir / pattern).exists():
+            return True
+    return False
 
 # Hard caps — the whole point is bounded context (ADR-013 trade-offs).
 TREE_MAX_DEPTH = 3
@@ -60,6 +89,8 @@ def _iter_tree(root: Path, max_depth: int):
 
 
 def detect_mode(project_dir: Path) -> WorkspaceMode:
+    if has_stack_marker(project_dir):
+        return WorkspaceMode.ESTABLISHED
     code_files = 0
     for _, path in _iter_tree(project_dir, TREE_MAX_DEPTH):
         if path.is_file() and path.suffix.lower() in CODE_EXTENSIONS:
@@ -100,7 +131,10 @@ def _doc_title(path: Path) -> str:
 def docs_index(project_dir: Path) -> list[tuple[str, str]]:
     """(relative path, title) of the project's own markdown docs, capped."""
     candidates: list[Path] = []
-    for name in ("README.md", "readme.md", "CONTRIBUTING.md", "ARCHITECTURE.md", "AGENTS.md"):
+    for name in (
+        "README.md", "readme.md", "CONTRIBUTING.md", "ARCHITECTURE.md",
+        "AGENTS.md", "CLAUDE.md",  # AI-assistant convention files are prime docs
+    ):
         if (project_dir / name).is_file():
             candidates.append(project_dir / name)
     docs_dir = project_dir / "docs"

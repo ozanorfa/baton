@@ -32,6 +32,27 @@ def test_source_files_make_established(tmp_path: Path) -> None:
     assert detect_mode(tmp_path) is WorkspaceMode.ESTABLISHED
 
 
+def test_plain_html_site_is_established(tmp_path: Path) -> None:
+    """Field bug (charm_website, 2026-07-12): HTML/CSS sites are real projects."""
+    for name in ("index.html", "contact.html", "privacy.html"):
+        (tmp_path / name).write_text("<html></html>")
+    assert detect_mode(tmp_path) is WorkspaceMode.ESTABLISHED
+
+
+def test_stack_marker_alone_makes_established(tmp_path: Path) -> None:
+    (tmp_path / "pubspec.yaml").write_text("name: app\n")
+    (tmp_path / "lib").mkdir()
+    (tmp_path / "lib" / "main.dart").write_text("void main() {}\n")
+    assert detect_mode(tmp_path) is WorkspaceMode.ESTABLISHED  # < threshold, but scaffolded
+
+
+def test_claude_md_is_indexed_as_doc(tmp_path: Path) -> None:
+    make_established(tmp_path)
+    (tmp_path / "CLAUDE.md").write_text("# Conventions for AI\nUse Riverpod.\n")
+    layer = workspace_layer(tmp_path)
+    assert "`CLAUDE.md` — Conventions for AI" in layer
+
+
 def test_noise_dirs_do_not_count(tmp_path: Path) -> None:
     (tmp_path / "node_modules" / "pkg").mkdir(parents=True)
     for i in range(10):

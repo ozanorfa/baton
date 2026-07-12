@@ -8,6 +8,7 @@ committed and shared with the team.
 from pathlib import Path
 
 from ai_orchestrator.cli import render
+from ai_orchestrator.context.awareness import STACK_MARKERS  # single source of truth
 
 STARTER_CONFIG = """\
 # AI Orchestrator — project configuration (commit this file)
@@ -50,21 +51,6 @@ it is sent with every stage, so every line here costs tokens on every run.
 <!-- List project-specific corrections, e.g.: "we use library X for state,
      never suggest its common alternative." -->
 """
-
-# Marker files → stack description, checked in order; all matches are listed.
-STACK_MARKERS: list[tuple[str, str]] = [
-    ("pubspec.yaml", "Flutter/Dart (pubspec.yaml)"),
-    ("package.json", "JavaScript/TypeScript (package.json)"),
-    ("pyproject.toml", "Python (pyproject.toml)"),
-    ("requirements.txt", "Python (requirements.txt)"),
-    ("go.mod", "Go (go.mod)"),
-    ("Cargo.toml", "Rust (Cargo.toml)"),
-    ("Gemfile", "Ruby (Gemfile)"),
-    ("pom.xml", "Java (pom.xml)"),
-    ("build.gradle", "Java/Kotlin (build.gradle)"),
-    ("*.xcodeproj", "iOS/macOS (Xcode project)"),
-]
-
 
 def detect_stack(project: Path) -> str:
     detected = [
