@@ -116,6 +116,26 @@ What to look for: every prompt has "Working rules", your `.ai/project.md` conten
 
 **Template override experiment (free):** put a file at `.ai/prompts/planner.md` containing `MY TEMPLATE $request` — the next run's planner prompt uses it instead of the built-in.
 
+## M4 — MVP (report, diff capture, run UX)
+
+**Free** — the full MVP behavior on the fake provider:
+
+```bash
+uv run pytest tests/integration/test_mvp_suite.py   # 4-stage runs + failure at every stage
+```
+
+**After any real pipeline run**, new things to look at:
+
+```bash
+cat .ai/runs/<run-id>/report.json          # machine-readable report: stages, tokens
+                                           #   (measured-or-null), totals, verdict
+cat .ai/runs/<run-id>/artifacts/diff.patch # exactly what the coder changed (incl. new files)
+```
+
+What to look for in the terminal output: an animated spinner while each provider works, a `totals:` line, and a `reviewer verdict: APPROVE / APPROVE WITH NOTES / NEEDS WORK` line on success.
+
+**Silent-failure detection (the ADR-007 safety net):** if an edit-stage claims success but changes nothing in a git repo, the run fails with "reported success but no workspace changes were detected". You saw the fail-stop UX for real if a provider ever hits its usage limit mid-run — artifacts up to that stage are preserved and the summary names the cause.
+
 ## Exit codes (for scripting)
 
 | code | meaning |

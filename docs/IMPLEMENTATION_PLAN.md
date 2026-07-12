@@ -1,6 +1,6 @@
 # Implementation Plan — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-11 · **M0–M3 complete, M4 (MVP) next** · progress detail in [TASKS.md](TASKS.md), history in [WORKLOG.md](WORKLOG.md)
+**Status:** Living · updated 2026-07-11 · **M0–M4 complete — the MVP works; M5 (hardening) next** · progress detail in [TASKS.md](TASKS.md), history in [WORKLOG.md](WORKLOG.md)
 **Related docs:** [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 ---
@@ -75,11 +75,11 @@ Deterministic stage runner: reads the stage list from config, executes stages se
 Layered context assembly (Global / Project / Task / Agent), role prompt templates, minimal-context rule enforced in one place. Project context bootstrap (`ai init` generates a project profile).
 **Demo:** stage prompts visible in the run directory show each role received only its layer-appropriate context.
 
-### M4 — MVP: Full Four-Role Pipeline ⏳ next
+### M4 — MVP: Full Four-Role Pipeline ✅ 2026-07-12
 Planner → Designer (optional, config/flag-gated) → Coder → Reviewer wired together; execution report (JSON + Rich terminal summary): duration, provider, status, artifacts, token estimates. This is the MVP defined in [MVP.md](MVP.md).
 **Demo:** `ai "Add Face ID support to the Flutter application"` completes all stages and prints a report.
 
-### M5 — Hardening & DX polish
+### M5 — Hardening & DX polish ⏳ next
 Failure-path UX (clear resume instructions after fail-stop), `ai runs list/show`, run resumption from a failed stage (`ai resume <run-id>`), timeouts, structured logs, test coverage across engine + adapters.
 **Demo:** kill a provider mid-run → clean failure report → `ai resume` continues from the failed stage.
 

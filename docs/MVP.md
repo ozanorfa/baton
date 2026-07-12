@@ -1,6 +1,6 @@
 # MVP — First Working Version
 
-**Status:** Living · updated 2026-07-11 · pipeline mechanics work end-to-end since M2 (full 4-stage run verified on a real machine); role prompt quality and `ai init` land in M3, report/UX polish in M4
+**Status:** Living · updated 2026-07-12 · **MVP ACHIEVED (M4/T30):** real acceptance run on a fresh Flutter repo — Face ID feature planned (codex), implemented (claude, 299 insertions across 9 files), reviewed (codex, verdict APPROVE WITH NOTES); report.json, diff.patch, all artifacts verified. Checklist below ticked accordingly.
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md)
 
 The MVP is milestone **M4** (tasks T01–T30): one command runs a deterministic four-stage pipeline over three AI CLIs and produces inspectable artifacts plus an execution report. Nothing dynamic, nothing parallel, nothing clever.
@@ -138,12 +138,12 @@ The Coder stage edits your repository unattended (ADR-007). The safety net is: r
 
 ## 8. MVP Definition of Done
 
-- [ ] `ai init` bootstraps `.ai/` per PROJECT_STRUCTURE §2.1 in a fresh Flutter repo
-- [ ] `ai doctor` shows all three providers healthy
-- [ ] `ai "Add Face ID support to the Flutter application"` completes planner → coder → reviewer with real providers; `--with-designer` adds the Antigravity (Gemini-model) stage
-- [ ] All artifacts, prompts, logs, `run.json`, `report.json` present and correct in the run dir
-- [ ] Coder's real edits match `diff.patch`; nothing committed
-- [ ] Terminal summary shows per-stage provider, duration, status, and measured-or-`—` tokens
-- [ ] A mid-pipeline failure (kill a provider) produces the §5 experience: preserved artifacts, cause, raw-output path, next steps
-- [ ] Fake-provider integration suite (T29) green with zero token cost
-- [ ] Swapping a role's provider in `.ai/config.yaml` changes the execution with no code change
+- [x] `ai init` bootstraps `.ai/` per PROJECT_STRUCTURE §2.1 in a fresh Flutter repo
+- [x] `ai doctor` shows all three providers healthy
+- [x] `ai "Add Face ID support to the Flutter application"` completes planner → coder → reviewer with real providers; `--with-designer` adds the Antigravity (Gemini-model) stage *(designer inclusion verified via T25 integration tests + real agy round-trip in M1)*
+- [x] All artifacts, prompts, logs, `run.json`, `report.json` present and correct in the run dir
+- [x] Coder's real edits match `diff.patch`; nothing committed
+- [x] Terminal summary shows per-stage provider, duration, status, and measured-or-`—` tokens
+- [x] A mid-pipeline failure (kill a provider) produces the §5 experience: preserved artifacts, cause, raw-output path, next steps
+- [x] Fake-provider integration suite (T29) green with zero token cost
+- [x] Swapping a role's provider in `.ai/config.yaml` changes the execution with no code change

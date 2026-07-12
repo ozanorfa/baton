@@ -89,3 +89,12 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 
 - 👤 Gave go for M4.
 - 🤖 Starting: designer gating tests (T25), coder hardening + git diff capture (T26), report.json (T27), Rich run UX (T28), MVP integration suite (T29), real acceptance run (T30).
+- 🤖 T25: designer gating covered end-to-end (default off / --with-designer / config-enabled).
+- 🤖 T26: workspace verification for edit-stages — `diff.patch` captured (tracked + untracked, orchestrator's own `.ai/` excluded), reviewer contract gains the diff, and the silent permission-block signature (success + zero changes) now fails the stage with guidance.
+- 🤖 T27: Reporter — `report.json` with measured-only totals (null, never 0) and verdict parsed from review.md.
+- 🤖 T28: run UX — spinner during stages, thousands separators, totals line, verdict line, failure block with exact stderr path.
+- 🤖 T29: MVP suite — full 4-stage CLI runs on the fake provider; failure injected at every stage position via new role-scoped directives (`[[fail@coder:…]]`); report correctness asserted. Zero tokens.
+- 🤖 T30 attempt 1 (2026-07-11): real acceptance on a fresh `flutter create` app. Planner ✓; **coder hit the user's Claude session limit after 3m42s / $1.60** → fail-stop worked exactly as designed in the wild: cause named, plan.md + partial work preserved, reviewer never ran. Strongest possible motivation for M5's `ai resume`.
+- 🤖 T30 attempt 2 (2026-07-12, after limit reset): partial coder work already passed `flutter analyze`; re-ran the pipeline instructing verification/completion. **Run succeeded: verdict APPROVE WITH NOTES** — planner 68s (73.4k/3.3k), coder 160s (390k/9.4k), reviewer 90s (142.9k/3.7k), $1.35, 299 insertions across 9 files, diff.patch + report.json verified. `ai init` stack detection worked on the real repo ("Detected: Flutter/Dart (pubspec.yaml)").
+- 📌 Honest gaps found by the acceptance run: (1) the coder wrote a biometric-gate widget test it couldn't execute in its sandbox — it fails on pumpAndSettle timeout, and the reviewer's suggestions flagged exactly this verification gap → the future Tester role's job description, written by the pipeline itself; (2) session-limit failures argue for `ai resume` (T33, next milestone).
+- ✅ **M4 / MVP COMPLETE:** 113 tests green; MVP.md checklist ticked (9/9); TASKS 30/35.

@@ -1,6 +1,6 @@
 # Task Breakdown — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-11 · **progress: 24/35 done (M0 ✅ M1 ✅ M2 ✅ M3 ✅ · next: M4/T25)**
+**Status:** Living · updated 2026-07-12 · **progress: 30/35 done (M0–M4 ✅ · next: M5/T31)**
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [MVP.md](MVP.md)
 
 35 tasks, 30–90 minutes each, strictly ordered — every task builds on a working previous state and ends in something runnable or testable. Tasks map to milestones M0–M5 from IMPLEMENTATION_PLAN.md §4. Total estimate: ~36 h.
@@ -126,27 +126,27 @@ Bootstrap `.ai/`: starter `config.yaml`, `project.md` skeleton (stack/convention
 
 ## M4 — MVP: Full Pipeline
 
-**T25 · Four-stage default + designer gating — 45 min**
+**T25 ✅ · Four-stage default + designer gating — 45 min**
 Default config gains the full stage list; designer `enabled: false` by default, activated via config or `--with-designer`.
 **Done when:** integration tests cover both paths (designer skipped vs. included) with fake providers.
 
-**T26 · Coder stage hardening — 75 min**
+**T26 ✅ · Coder stage hardening — 75 min**
 Coder invocation with scoped permission flags (ADR-007); capture `changes.md` (the Coder's self-reported summary, per its template) and a `git diff` snapshot into `artifacts/` after the stage; detect blocked-on-permission outcomes → failed stage with guidance.
 **Done when:** manual run against a real toy repo: Claude Code edits files headlessly, and the diff artifact matches the actual repo changes.
 
-**T27 · Reporter — 60 min**
+**T27 ✅ · Reporter — 60 min**
 `core/reporter.py`: aggregate `run.json` + usage into `report.json` (per-stage: provider, model, duration, tokens-or-null, status, artifact paths; totals; verdict from reviewer artifact presence + run status).
 **Done when:** unit tests validate the schema against succeeded/failed/skipped-stage runs; `Usage=None` renders as `null`, never fabricated numbers (risk R2).
 
-**T28 · Rich run UX — 75 min**
+**T28 ✅ · Rich run UX — 75 min**
 `render.py`: live per-stage progress (spinner, stage name, provider, elapsed) and the final summary table; failure rendering names the stage, cause, raw-output path, and next steps.
 **Done when:** demo run reads clearly end-to-end; failure output includes the three pieces above (this is ADR-008's UX half).
 
-**T29 · MVP integration suite — 60 min**
+**T29 ✅ · MVP integration suite — 60 min**
 Fake-provider end-to-end of the full four-stage pipeline: report correctness, designer on/off, failure at each stage position (4 variants).
 **Done when:** the whole suite stays green and fast (<10 s), zero tokens.
 
-**T30 · MVP acceptance run — 90 min**
+**T30 ✅ · MVP acceptance run — 90 min**
 The real thing: `ai init` + `ai "Add Face ID support to the Flutter application"` against a real Flutter sample repo with real providers. Capture fresh contract fixtures from the run. File issues for every rough edge; fix in-scope ones.
 **Done when:** the MVP acceptance test from IMPLEMENTATION_PLAN §5 passes; **M4/MVP achieved**.
 
