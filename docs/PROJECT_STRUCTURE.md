@@ -74,6 +74,8 @@ core/
 ├── routing.py              # RoutingEngine: role → adapter resolution + upfront health checks
 ├── run_manager.py          # RunManager: run-id, run dir creation, atomic run.json writes,
 │                           #   artifact persistence, resume loading
+├── workspace.py            # git change detection for edit-stages: diff.patch capture +
+│                           #   silent-failure (permission-block) detection; excludes .ai/
 └── reporter.py             # Reporter: report.json + data for the terminal summary
 ```
 

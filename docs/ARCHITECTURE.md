@@ -1,6 +1,6 @@
 # Architecture — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-11 · implemented through M3 (adapter table below reflects *verified* CLI behavior, not assumptions)
+**Status:** Living · updated 2026-07-11 · implemented through M4/MVP (adapter table below reflects *verified* CLI behavior, not assumptions)
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 ---
