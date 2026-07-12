@@ -110,3 +110,8 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 - 🤖 T35: README — everyday-commands table, cost-control guidance, exit codes; MANUAL_TESTING M5 section.
 - ✅ **M5 COMPLETE — ALL 35 TASKS, ALL MILESTONES (M0–M5) DONE.** 123 tests green. Docs closed out across the board.
 - 👤 Startled by "$0.79" for the stopwatch run — asked whether he pays it. 🤖 Clarified: the figure is Claude Code's own `total_cost_usd` (API-equivalent value); on his subscription plan runs consume quota, not money (his session-limit hit is that quota mechanism). Per his request, a standing cost note now appears wherever cost is shown: footnote in run summary / `ai ask` / `ai runs list`, and a `cost_note` field in report.json. README/MANUAL_TESTING/MVP/ARCHITECTURE updated to explain quota-vs-billing.
+
+## 2026-07-12 · Session 2 — Published to GitHub
+
+- 👤 Cleared up a misconception (stages DO explore existing codebases — each agent reads the repo itself; project.md is steering, not the sole knowledge); brainstormed existing-project onboarding improvements (ai init --generate, docs-aware templates, repo map, memory, session reuse) — queued pending field evidence.
+- 👤 Asked to publish: private GitHub repo under a better name. 🤖 Named it **baton** — the conductor's baton (deterministic, zero-token coordination) + the relay baton (artifacts handed stage to stage).
