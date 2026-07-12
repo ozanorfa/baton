@@ -26,6 +26,10 @@ def resume(
         False, "--with-designer",
         help="Keep the Designer stage enabled (pass again if the original run used it).",
     ),
+    with_publisher: bool = typer.Option(
+        False, "--with-publisher",
+        help="Keep the Publisher stage enabled (pass again if the original run used it).",
+    ),
 ) -> None:
     """Continue a failed run from its failed stage."""
     project_dir = Path.cwd()
@@ -39,6 +43,8 @@ def resume(
     overrides: dict[str, object] = {}
     if with_designer:
         overrides["roles.designer.enabled"] = True
+    if with_publisher:
+        overrides["roles.publisher.enabled"] = True
     try:
         loaded = load_config(project_dir, overrides=overrides)
     except ConfigError as exc:

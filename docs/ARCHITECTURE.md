@@ -53,7 +53,7 @@ Typer application, Rich for output. Thin by design: parses arguments, loads conf
 | `ai init` | Bootstrap `.ai/` in a project (config + project profile; the profile's Stack section is pre-filled by auto-detecting marker files — pubspec.yaml, package.json, pyproject.toml, go.mod, …) |
 | `ai doctor` | Verify every configured provider: binary found, version, authenticated |
 | `ai runs list` / `ai runs show <id>` | Run history and inspection |
-| `ai resume <run-id>` | Continue a failed run from its failed stage |
+| `ai resume <run-id>` | Continue a failed run from its failed stage (`--with-designer`/`--with-publisher` to keep optional stages enabled) |
 | `ai config show` | Print merged effective configuration and its sources |
 | `ai ask --role <role> "<prompt>"` | One-shot single-role invocation (debugging/utility) |
 

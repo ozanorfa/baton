@@ -1,2 +1,3 @@
 [ai_orchestrator.providers]
 fake = fakeplug:FakeAdapter
+fake_alt = fakeplug:FakeAltAdapter

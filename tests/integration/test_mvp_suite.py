@@ -1,4 +1,4 @@
-"""T29: the MVP end-to-end suite — full four-stage pipeline through the real
+"""T29: the MVP end-to-end suite — full five-stage pipeline through the real
 CLI on the fake provider. Report correctness, verdict parsing, and a failure
 at every stage position. Zero tokens, fully deterministic.
 """
@@ -15,12 +15,12 @@ from ai_orchestrator.cli.app import app
 FAKE_CLI = Path(__file__).parent / "fake_provider" / "fake_ai.py"
 runner = CliRunner()
 
-STAGES = ["planner", "designer", "coder", "reviewer"]
+STAGES = ["planner", "designer", "coder", "reviewer", "publisher"]
 
 
 @pytest.fixture()
 def mvp_project(tmp_path: Path, monkeypatch) -> Path:
-    """Git repo, all four stages enabled, all roles on the fake provider."""
+    """Git repo, all five stages enabled, all roles on the fake provider."""
     project = tmp_path / "proj"
     (project / ".ai").mkdir(parents=True)
     (project / ".ai" / "config.yaml").write_text(
@@ -29,6 +29,7 @@ def mvp_project(tmp_path: Path, monkeypatch) -> Path:
         "  designer: {provider: fake, enabled: true}\n"
         "  coder: {provider: fake}\n"
         "  reviewer: {provider: fake}\n"
+        "  publisher: {provider: fake, enabled: true}\n"
         "providers:\n"
         f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
     )
@@ -50,7 +51,8 @@ def run_dir_of(project: Path) -> Path:
 HAPPY_REQUEST = (
     "add feature "
     "[[write@coder:feature.py:VALUE = 42]] "
-    "[[output@reviewer:**Verdict** — APPROVE. Findings: None.]]"
+    "[[output@reviewer:**Verdict** — APPROVE. Findings: None.]] "
+    "[[output@publisher:Commit message: feat: add feature]]"
 )
 
 
@@ -71,12 +73,21 @@ def test_full_pipeline_report_correctness(mvp_project, fake_registry) -> None:
     assert report["total_cost_usd"] is None
     assert all(s["input_tokens"] is None for s in report["stages"])
 
-    # all four artifacts + the coder's diff
+    # all five artifacts + the coder's diff
     artifacts = run_dir / "artifacts"
-    for name in ("plan.md", "design.md", "changes.md", "review.md", "diff.patch"):
+    expected = ("plan.md", "design.md", "changes.md", "review.md", "diff.patch",
+                "commit_message.md")
+    for name in expected:
         assert (artifacts / name).is_file(), name
     assert "VALUE = 42" in (artifacts / "diff.patch").read_text()
     assert (mvp_project / "feature.py").is_file()
+
+    # publisher never touches git (ADR-014: prepare-only) — still just the
+    # fixture's one "init" commit, despite the coder having written a file
+    log = subprocess.run(
+        ["git", "log", "--oneline"], cwd=mvp_project, capture_output=True, text=True
+    )
+    assert len(log.stdout.strip().splitlines()) == 1
 
     # terminal shows the verdict
     assert "APPROVE" in result.output
@@ -103,4 +114,8 @@ def test_failure_at_each_stage_position(mvp_project, fake_registry, victim) -> N
             assert stage_status[name] == "pending", name  # fail-stop: never reached
 
     assert f"{victim} exploded" in result.output  # failure guidance names the cause
-    assert report["verdict"] is None  # no completed review in any failure variant
+    reviewer_index = STAGES.index("reviewer")
+    if victim_index <= reviewer_index:
+        assert report["verdict"] is None  # reviewer never completed
+    else:
+        assert report["verdict"] == "APPROVE"  # reviewer succeeded before the later failure

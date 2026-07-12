@@ -37,3 +37,11 @@ class FakeAdapter(ProviderAdapter):
         if raw.exit_code != 0:
             return AgentResult(success=False, text=raw.stdout, error=raw.stderr.strip())
         return AgentResult(success=True, text=raw.stdout.strip())
+
+
+class FakeAltAdapter(FakeAdapter):
+    """A second distinct provider identity, same mechanics — lets tests prove
+    that different roles can be pinned to genuinely different providers
+    (e.g. ADR-014: Publisher on a different provider than Coder)."""
+
+    name = "fake_alt"

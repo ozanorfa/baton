@@ -2,7 +2,7 @@
 # Override per user (~/.config/ai-orchestrator/config.yaml) or per project (.ai/config.yaml).
 
 pipeline:
-  stages: [planner, designer, coder, reviewer]
+  stages: [planner, designer, coder, reviewer, publisher]
 
 roles:
   planner:
@@ -14,6 +14,10 @@ roles:
     provider: claude
   reviewer:
     provider: codex
+  publisher:
+    provider: codex # independent of the coder's provider by design (ADR-014)
+    enabled: false # optional stage, off by default — prepares commit/PR drafts only,
+    # never runs git itself. Enable per project: roles: {publisher: {enabled: true}}
 
 providers:
   claude:

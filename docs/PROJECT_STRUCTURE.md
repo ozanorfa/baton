@@ -1,6 +1,6 @@
 # Project Structure — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-12 · matches the repo — all planned milestones (M0–M5) built
+**Status:** Living · updated 2026-07-12 · matches the repo — all planned milestones (M0–M5) built, plus ADR-013 (workspace awareness) and ADR-014 (Publisher role)
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Naming: distribution package **`ai-orchestrator`**, import package **`ai_orchestrator`**, console script **`ai`** (all referenced by ADR-009's entry-point group `ai_orchestrator.providers`).
@@ -103,7 +103,8 @@ prompts/
 ├── planner.md              # role definition + output format ("self-contained plan", ADR-006)
 ├── designer.md
 ├── coder.md
-└── reviewer.md
+├── reviewer.md
+└── publisher.md            # ADR-014: drafts commit message + PR description, never runs git
 ```
 
 **Responsibility:** the Agent context layer. Markdown with named placeholder sections filled by `ContextManager`. Shipped as package data; overridable per project via `.ai/prompts/<role>.md` (ADR-009). Templates are versioned artifacts — prompt changes are code-reviewed like code, because they *are* behavior.

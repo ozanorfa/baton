@@ -12,7 +12,7 @@ ai "Add Face ID support to the Flutter application"
 
 ## Status
 
-**All planned milestones complete (M0–M5, 2026-07-12).** MVP acceptance passed on a real Flutter app (Face ID feature, reviewer verdict APPROVE WITH NOTES); hardening shipped (`ai resume`, `ai runs`, Ctrl-C safety), and workspace awareness landed (ADR-013: established projects get a docs index + read-first instruction; greenfield projects get propose-structure guidance). Next: the post-MVP roadmap (session persistence first). See [docs/TASKS.md](docs/TASKS.md) for progress and [docs/WORKLOG.md](docs/WORKLOG.md) for history.
+**All planned milestones complete (M0–M5, 2026-07-12).** MVP acceptance passed on a real Flutter app (Face ID feature, reviewer verdict APPROVE WITH NOTES); hardening shipped (`ai resume`, `ai runs`, Ctrl-C safety), workspace awareness landed (ADR-013: established projects get a docs index + read-first instruction; greenfield get propose-structure guidance), and an optional Publisher role (ADR-014: drafts a commit message + PR description on a provider of your choice, independent of the coder — never runs git itself). Next: the post-MVP roadmap (session persistence first). See [docs/TASKS.md](docs/TASKS.md) for progress and [docs/WORKLOG.md](docs/WORKLOG.md) for history.
 
 ## Prerequisites
 
@@ -35,7 +35,7 @@ ai "do something useful"           # run the pipeline
 
 | Command | What it does |
 |---|---|
-| `ai "<request>"` | Run the full pipeline (add `--with-designer` for the UI stage) |
+| `ai "<request>"` | Run the full pipeline (`--with-designer` for the UI stage, `--with-publisher` to draft a commit message + PR description) |
 | `ai resume <run-id>` | Continue a failed run from the failed stage — completed stages are never re-paid |
 | `ai runs list` / `ai runs show <id>` | Run history: status, per-stage glyphs, cost, verdict |
 | `ai ask --role coder "<q>"` | One cheap single-role call, no pipeline |

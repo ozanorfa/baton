@@ -191,3 +191,23 @@ ai "one small real feature request"                        # ~$1–2 quota
 ```
 
 Judge three artifacts: `prompts/01-planner.md` (does the Workspace section list *your* docs?), `artifacts/plan.md` (does the plan follow *your* conventions — state management, folder layout — instead of generic boilerplate?), and the `git diff` + review. Discard everything with `git checkout main && git branch -D ai-experiment`, or commit and PR as usual.
+
+## Publisher role (ADR-014) — different provider than the Coder, prepare-only
+
+Motivated by: "I don't want Claude Code to also handle git — let Codex (or whoever) draft that instead, and only for projects I choose."
+
+**Free:** the whole gating + provider-independence behavior, zero tokens:
+
+```bash
+uv run pytest tests/integration/test_publisher_gating.py
+```
+
+**Real test, any git repo:**
+
+```bash
+ai --with-publisher "your feature request"
+```
+
+Then check two things: `.ai/runs/<id>/artifacts/commit_message.md` (a drafted commit message + PR description — Conventional Commits style, cites the reviewer's verdict) and `git log --oneline` (must show **no new commit** — the stage only drafts text, it never runs `git commit`/`git push`, per the explicit trust-model decision in ADR-014). To use a different provider for publishing than for coding: `.ai/config.yaml` → `roles: {publisher: {provider: codex}}` while `roles: {coder: {provider: claude}}` — completely independent, guaranteed by config, never a runtime guess.
+
+Enable it permanently for a project (skip the flag every time): `.ai/config.yaml` → `roles: {publisher: {enabled: true}}`.

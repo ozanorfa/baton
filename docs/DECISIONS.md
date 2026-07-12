@@ -1,6 +1,6 @@
 # Architectural Decision Records — AI Coding Orchestrator
 
-**Status:** Living · 13 ADRs · updated 2026-07-12 (ADR-013 accepted after user code review)
+**Status:** Living · 14 ADRs · updated 2026-07-12
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Convention: one ADR per consequential decision. New decisions get new ADRs; reversals supersede, never rewrite history. Any future proposal for dynamic/LLM-driven orchestration **requires** an ADR here before code (risk R7 guard).
@@ -20,6 +20,7 @@ Convention: one ADR per consequential decision. New decisions get new ADRs; reve
 | [ADR-011](#adr-011) | Stack: Python 3.12 + uv + Typer + Rich + pydantic + YAML | Accepted |
 | [ADR-012](#adr-012) | Antigravity CLI replaces Gemini CLI as the Designer provider | Accepted |
 | [ADR-013](#adr-013) | Context adapts to workspace maturity; detection is deterministic code | Accepted |
+| [ADR-014](#adr-014) | Optional Publisher role: per-project, per-provider, prepare-only | Accepted |
 
 ---
 
@@ -238,3 +239,26 @@ Convention: one ADR per consequential decision. New decisions get new ADRs; reve
 **Trade-offs.** Heuristic detection can misclassify exotic layouts (override-able via config later if it ever matters). The docs index costs a few hundred tokens per stage — accepted, it replaces thousands of exploration tokens.
 
 **Future implications.** The workspace layer is the natural mount point for the future memory system (ADR/roadmap) and repo-map improvements (symbol maps).
+
+---
+
+## ADR-014 — Optional Publisher role: per-project, per-provider, prepare-only
+
+**Status:** Accepted · 2026-07-12 · **Confirmed with the project owner.**
+
+**Context.** The project owner asked how the orchestrator decides *which provider* handles git/publish-type actions, and whether some projects should have that capability while others don't — using GitHub push as the illustrative case but asking for a general answer ("think more wisely"). Evaluated whether Amazon CAO's dynamic supervisor-routing model would serve this better.
+
+**Decision.** Reject dynamic routing again (consistent with ADR-001/ADR-004) and instead add **Publisher** as a fifth optional built-in role, following the exact pattern of Designer:
+
+- Off by default; a project opts in via `pipeline.stages` and picks its own provider (`roles.publisher.provider`), independent of the Coder's provider — e.g. Codex prepares the commit even though Claude wrote the code.
+- **Prepare-only** (per explicit user decision): the stage drafts `commit_message.md` and `pr_description.md` as artifacts. It never runs `git commit`, `git push`, or `gh pr create`. The human executes those, same as ADR-007's Coder boundary.
+- Runs read-only (no `allow_edits`), same sandbox class as Planner/Reviewer.
+- Its contract input is the Reviewer's verdict + the diff — it only drafts a publish narrative for work that's already been reviewed.
+
+**Why this beats CAO's dynamic model for this exact request.** The ask was "guarantee Codex handles this, never Claude, per project." A supervisor-LLM router can't offer that guarantee — it decides fresh, at runtime, per call, at token cost. A static per-project config entry offers it absolutely, for free, and is auditable by reading a YAML file before any run happens.
+
+**Alternatives considered.** (a) Auto-commit — rejected per user decision, escalates the trust model without a clear win. (b) Auto-commit-and-push — rejected, same reasoning, larger blast radius (touches the remote). (c) Fold this into the Reviewer's job — rejected: violates single-responsibility (spec §5); reviewing and drafting a release narrative are different jobs and may legitimately want different providers.
+
+**Trade-offs.** One more optional stage most projects will leave disabled; the artifacts are extra files to generate/read. Accepted — opt-in cost only.
+
+**Future implications.** If real usage later asks for actual commit/push automation, that is a *new, separate* ADR and an explicit trust-model escalation — never a silent capability creep on this one. The same per-project/per-provider pattern generalizes to any future optional role (Tester, Deployment, …).

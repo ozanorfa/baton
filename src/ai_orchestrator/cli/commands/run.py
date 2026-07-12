@@ -45,12 +45,19 @@ def run(
     with_designer: bool = typer.Option(
         False, "--with-designer", help="Enable the optional Designer stage for this run."
     ),
+    with_publisher: bool = typer.Option(
+        False, "--with-publisher",
+        help="Enable the optional Publisher stage (drafts commit message + PR description; "
+        "never runs git itself — ADR-014).",
+    ),
 ) -> None:
     """Run the configured pipeline on a request."""
     project_dir = Path.cwd()
     overrides: dict[str, object] = {}
     if with_designer:
         overrides["roles.designer.enabled"] = True
+    if with_publisher:
+        overrides["roles.publisher.enabled"] = True
 
     try:
         loaded = load_config(project_dir, overrides=overrides)

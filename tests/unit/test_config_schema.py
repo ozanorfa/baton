@@ -14,9 +14,10 @@ def load_defaults() -> dict:
 
 def test_defaults_yaml_is_valid() -> None:
     config = AppConfig.model_validate(load_defaults())
-    assert config.pipeline.stages == ["planner", "designer", "coder", "reviewer"]
+    assert config.pipeline.stages == ["planner", "designer", "coder", "reviewer", "publisher"]
     assert config.roles["coder"].provider == "claude"
     assert config.roles["designer"].enabled is False
+    assert config.roles["publisher"].enabled is False  # opt-in (ADR-014)
     assert config.providers["claude"].timeout_s == 900
     assert warn_unknown_keys(config, "defaults.yaml") == []
 

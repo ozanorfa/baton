@@ -43,10 +43,12 @@ def make_registry(adapter_cls=StubAdapter) -> ProviderRegistry:
 
 def test_build_stage_specs_from_default_pipeline() -> None:
     specs = build_stage_specs(make_config())
-    assert [s.name for s in specs] == ["planner", "designer", "coder", "reviewer"]
+    assert [s.name for s in specs] == ["planner", "designer", "coder", "reviewer", "publisher"]
     assert specs[1].optional  # designer disabled by default
+    assert specs[4].optional  # publisher disabled by default (ADR-014)
     assert specs[2].inputs == ["plan.md", "design.md"]
     assert specs[3].output == "review.md"
+    assert specs[4].inputs == ["changes.md", "diff.patch", "review.md"]
 
 
 def test_unknown_role_gets_generic_chain_spec() -> None:
@@ -56,14 +58,14 @@ def test_unknown_role_gets_generic_chain_spec() -> None:
     specs = build_stage_specs(config)
     tester = specs[-1]
     assert tester.output == "tester.md"
-    assert tester.inputs == ["review.md"]  # consumes the previous stage's artifact
+    assert tester.inputs == ["commit_message.md"]  # consumes the previous stage's artifact
 
 
 def test_resolve_shares_one_adapter_per_provider() -> None:
     engine = RoutingEngine(make_config(), make_registry())
     resolved = engine.resolve(build_stage_specs(make_config()), transport=None)
     adapters = {id(r.adapter) for r in resolved}
-    assert len(adapters) == 1  # all four roles → same provider → same instance
+    assert len(adapters) == 1  # all five roles → same provider → same instance
     assert resolved[2].allow_edits and not resolved[0].allow_edits
     assert resolved[2].timeout_s == 600
 
