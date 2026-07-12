@@ -99,3 +99,8 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 - 📌 Honest gaps found by the acceptance run: (1) the coder wrote a biometric-gate widget test it couldn't execute in its sandbox — it fails on pumpAndSettle timeout, and the reviewer's suggestions flagged exactly this verification gap → the future Tester role's job description, written by the pipeline itself; (2) session-limit failures argue for `ai resume` (T33, next milestone).
 - ✅ **M4 / MVP COMPLETE:** 113 tests green; MVP.md checklist ticked (9/9); TASKS 30/35.
 - 👤 Verified M4 himself (`/tmp/m4-test`, run 2026-07-12_0544_2f4f, stopwatch.py): full pipeline, $0.79 measured, verdict APPROVE WITH NOTES. Reviewer caught a real edge-case bug (`format_duration(59.999)` → `00:00:60.00`) with file/line reference — cross-vendor review demonstrably earning its cost.
+
+## 2026-07-12 · Session 2 — Milestone M5: Hardening (T31–T35)
+
+- 👤 Asked whether total token use is too high. 🤖 Analysis from his own run's raw logs: of the coder's 222k "input tokens", 94% (208.5k) were cache READS at ~10× discount across 12 agentic turns — the honest metric is the measured $0.79. Levers available today: `ai ask` for small tasks, per-project stage trimming, `providers.claude.model: haiku`, short project.md. Structural fix = session persistence (post-MVP #1). Future polish noted: cache-aware token column.
+- 🤖 Starting M5: `ai runs list/show` (T31), failure-path polish (T32), `ai resume` (T33), timeout/SIGINT/collision hardening (T34), README walkthrough (T35).
