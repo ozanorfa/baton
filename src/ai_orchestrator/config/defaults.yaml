@@ -3,6 +3,12 @@
 
 pipeline:
   stages: [planner, designer, coder, reviewer, publisher]
+  # ADR-015: consecutive stages on the SAME provider (by default: planner,
+  # reviewer, publisher are all codex) resume each other's session instead
+  # of cold-starting, cutting redundant repo re-exploration. Never crosses
+  # providers. Disable per project if you want stages fully independent:
+  # pipeline: {session_chaining: false}
+  session_chaining: true
 
 roles:
   planner:

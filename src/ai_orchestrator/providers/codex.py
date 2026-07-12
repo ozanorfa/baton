@@ -33,10 +33,17 @@ class CodexAdapter(ProviderAdapter):
 
     def build_invocation(self, request: AgentRequest) -> Invocation:
         argv = [self.command, "exec"]
-        if request.session_id:
+        resuming = bool(request.session_id)
+        if resuming:
             argv += ["resume", request.session_id]
         argv += ["--json", "--skip-git-repo-check"]
-        argv += ["-s", "workspace-write" if request.allow_edits else "read-only"]
+        # `codex exec resume` does not accept -s/--sandbox at all (verified
+        # 2026-07-12: "error: unexpected argument '-s' found") — a resumed
+        # session keeps the sandbox mode it was created with. The engine
+        # (core/engine.py, ADR-015) only chains sessions between stages with
+        # matching allow_edits, so this is never a silent capability change.
+        if not resuming:
+            argv += ["-s", "workspace-write" if request.allow_edits else "read-only"]
         if self.model:
             argv += ["-m", self.model]
         argv += ["-"]  # read the prompt from stdin (ADR-010)

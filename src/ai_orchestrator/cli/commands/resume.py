@@ -74,7 +74,8 @@ def resume(
     context = ContextManager(project_dir, loaded.config.context.project_profile)
     progress = render.ProgressRenderer()
     engine = PipelineEngine(
-        manager, transport, prompt_builder=context.build, event_sink=progress.handle
+        manager, transport, prompt_builder=context.build, event_sink=progress.handle,
+        session_chaining=loaded.config.pipeline.session_chaining,
     )
     try:
         state = engine.resume(state, resolved, from_stage=from_stage)

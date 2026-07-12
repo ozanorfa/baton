@@ -213,3 +213,30 @@ ai --with-publisher "your feature request"
 Then check two things: `.ai/runs/<id>/artifacts/commit_message.md` (a drafted commit message + PR description — Conventional Commits style, cites the reviewer's verdict) and `git log --oneline` (must show **no new commit** — the stage only drafts text, it never runs `git commit`/`git push`, per the explicit trust-model decision in ADR-014). To use a different provider for publishing than for coding: `.ai/config.yaml` → `roles: {publisher: {provider: codex}}` while `roles: {coder: {provider: claude}}` — completely independent, guaranteed by config, never a runtime guess.
 
 Enable it permanently for a project (skip the flag every time): `.ai/config.yaml` → `roles: {publisher: {enabled: true}}`.
+
+## Session chaining (ADR-015) — the token-savings feature
+
+**Free:** the chaining decision logic in isolation, zero tokens:
+
+```bash
+uv run pytest tests/unit/test_session_chaining.py
+```
+
+**Real test, any git repo, `--with-publisher` to get all 3 default same-provider stages:**
+
+```bash
+ai --with-publisher "your feature request"
+```
+
+Then look at `run.json` — Planner, Reviewer, and Publisher should all show the **identical Codex `session_id`**, proving it's one continued conversation, not three cold ones:
+
+```bash
+python3 -c "
+import json
+d = json.load(open('.ai/runs/<run-id>/run.json'))
+for s in d['stages']: print(s['name'], s['provider'], s['session_id'])"
+```
+
+For the token effect: grep each stage's raw stdout log for `"usage"` and compare `cached_input_tokens` against `input_tokens` — the cached ratio should *rise* through the chain (each later stage's genuinely new/fresh cost should stay roughly flat rather than growing).
+
+Opt out for a project that wants stages fully independent: `.ai/config.yaml` → `pipeline: {session_chaining: false}`.

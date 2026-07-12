@@ -4,6 +4,11 @@ A sequential interpreter over a static stage list. MVP semantics: no retries,
 no escalation, no parallelism, no reordering (ADR-004, ADR-008). Every state
 transition is persisted before the next action (ADR-005), so a crash at any
 point leaves an inspectable, resumable run directory.
+
+Session chaining (ADR-015): when two stages share a provider (e.g. Planner
+and Reviewer both Codex by default), the later one resumes the earlier one's
+session instead of cold-starting, cutting redundant repo re-exploration.
+Never crosses providers — that's a hard vendor boundary, not a choice.
 """
 
 from collections.abc import Callable
@@ -48,11 +53,13 @@ class PipelineEngine:
         transport: Transport,
         prompt_builder: PromptBuilder = naive_prompt_builder,
         event_sink: Callable[[dict], None] | None = None,
+        session_chaining: bool = True,
     ):
         self.run_manager = run_manager
         self.transport = transport
         self.prompt_builder = prompt_builder
         self.event_sink = event_sink
+        self.session_chaining = session_chaining
 
     def execute(self, request: str, resolved: list[ResolvedStage]) -> RunState:
         state = self.run_manager.create_run(request, [r.spec for r in resolved])
@@ -117,6 +124,27 @@ class PipelineEngine:
         request = state.request
         failed = False
 
+        # Seed the per-provider session chain from stages already completed
+        # in a prior attempt (resume), keyed by the provider each historically
+        # used — not by stage adjacency, so Planner -> Coder -> Reviewer still
+        # chains Reviewer to Planner's session when both are the same provider.
+        #
+        # Each entry also records the allow_edits it was created with: some
+        # providers fix sandbox/write-access at session-creation time and
+        # reject changing it on resume (verified: `codex exec resume` errors
+        # on `-s/--sandbox`). Chaining into a stage with different write
+        # needs would silently keep the OLD access level, so we only chain
+        # when allow_edits matches — never a silent capability change.
+        provider_sessions: dict[str, tuple[str, bool]] = {}
+        specs_by_name = {r.spec.name: r for r in resolved}
+        for record_i in state.stages[:start]:
+            succeeded = record_i.status is StageStatus.SUCCEEDED
+            historical_stage = specs_by_name.get(record_i.name)
+            if succeeded and record_i.provider and record_i.session_id and historical_stage:
+                provider_sessions[record_i.provider] = (
+                    record_i.session_id, historical_stage.allow_edits
+                )
+
         for position, stage in enumerate(resolved, start=1):
             if position <= start:
                 continue  # already succeeded/skipped in a previous attempt
@@ -137,12 +165,19 @@ class PipelineEngine:
             prompt = self.prompt_builder(stage.spec, request, artifacts)
             self.run_manager.save_prompt(state, position, stage.spec.name, prompt)
 
+            resume_session_id = None
+            if self.session_chaining and stage.adapter.capabilities.supports_resume:
+                prior = provider_sessions.get(stage.provider_name)
+                if prior is not None and prior[1] == stage.allow_edits:
+                    resume_session_id = prior[0]
+
             agent_request = AgentRequest(
                 role=stage.spec.role,
                 prompt=prompt,
                 workdir=self.run_manager.project_dir,
                 timeout_s=stage.timeout_s,
                 allow_edits=stage.allow_edits,
+                session_id=resume_session_id,
             )
             log.emit(
                 ev.PROVIDER_INVOKED,
@@ -150,6 +185,7 @@ class PipelineEngine:
                 provider=stage.provider_name,
                 timeout_s=stage.timeout_s,
                 allow_edits=stage.allow_edits,
+                resumed_session=resume_session_id,
             )
             try:
                 raw = self.transport.run(stage.adapter.build_invocation(agent_request))
@@ -176,6 +212,8 @@ class PipelineEngine:
             record.finished_at = utcnow()
             record.session_id = result.session_id
             record.usage = result.usage
+            if result.success and result.session_id:
+                provider_sessions[stage.provider_name] = (result.session_id, stage.allow_edits)
 
             if not result.success:
                 record.status = StageStatus.FAILED

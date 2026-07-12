@@ -45,6 +45,8 @@ roles:
 
 **Stage 3 — Coder (Claude Code).** Receives: `plan.md` (+ `design.md` if present) + Project layer + coder role template. Runs headless with scoped edit permissions (`--permission-mode acceptEdits`, ADR-007) **in the project directory** — it explores the repo with its own tools; the orchestrator never inlines source files into the prompt. Edits land directly in the repo. Produces `artifacts/changes.md` (its own summary of what it changed and why); the orchestrator then snapshots `git diff` into the run dir.
 
+**Session chaining (ADR-015).** When consecutive stages share a provider — Planner/Reviewer/Publisher are all Codex by default — the later stage resumes the earlier one's session instead of starting cold, cutting redundant repo re-exploration. Never crosses providers (Coder/Claude is always a fresh session); never changes the read-only/write-access level a session was created with. Opt out per project: `pipeline: {session_chaining: false}`.
+
 **Stage 4 — Reviewer (Codex CLI).** Receives: `plan.md` + `changes.md` + the git diff + reviewer role template. Produces `artifacts/review.md` — findings and improvement suggestions, explicitly *not* rewritten code (role boundary, spec §5). The Reviewer's verdict feeds the report; in the MVP it does **not** gate or loop back to the Coder — the human decides what to do with findings.
 
 **Stage 5 — Report (free, no tokens).** `report.json` + Rich terminal summary.
