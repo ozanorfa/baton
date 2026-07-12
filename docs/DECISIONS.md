@@ -1,6 +1,6 @@
 # Architectural Decision Records — AI Coding Orchestrator
 
-**Status:** Living · 15 ADRs · updated 2026-07-12
+**Status:** Living · 16 ADRs · updated 2026-07-12
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Convention: one ADR per consequential decision. New decisions get new ADRs; reversals supersede, never rewrite history. Any future proposal for dynamic/LLM-driven orchestration **requires** an ADR here before code (risk R7 guard).
@@ -22,6 +22,7 @@ Convention: one ADR per consequential decision. New decisions get new ADRs; reve
 | [ADR-013](#adr-013) | Context adapts to workspace maturity; detection is deterministic code | Accepted |
 | [ADR-014](#adr-014) | Optional Publisher role: per-project, per-provider, prepare-only | Accepted |
 | [ADR-015](#adr-015) | Same-provider session chaining, capability- and access-aware | Accepted |
+| [ADR-016](#adr-016) | Default provider assignment spreads quota across three pools by task depth | Accepted |
 
 ---
 
@@ -297,3 +298,29 @@ Per-project escape hatch: `pipeline: {session_chaining: false}` restores full st
 
 1. **`codex exec resume` rejects `-s/--sandbox`.** `CodexAdapter.build_invocation` now omits the sandbox flag whenever resuming (see `providers/codex.py`).
 2. **Naive chaining could silently strand a stage at the wrong access level.** Fixed via the `allow_edits`-matching guard described above, with a dedicated regression test (`test_mismatched_allow_edits_never_chains`).
+
+---
+
+## ADR-016 — Default provider assignment spreads quota across three pools by task depth
+
+**Status:** Accepted · 2026-07-12 · **Confirmed with the project owner.**
+
+**Context.** The project owner clarified a real goal after ADR-015 shipped: not a *reduction* in total tokens spent, but a *spread* of the same total across independent subscription pools, so no single one (as happened once with Claude's session limit) gets exhausted alone. Illustrated as: "it was once 10,000 tokens by Claude Code, presume — now 4,000 codex, 5,000 claude, 1,000 antigravity — same total, but separated. This is OK, they're all 10,000 in total."
+
+**Decision.** Change the shipped defaults so the three providers split the pipeline by *task depth*, not arbitrarily:
+
+- **Codex holds the deep, chained pair: Planner + Reviewer.** These two genuinely benefit from ADR-015's session chaining — Reviewer needs the Planner's accumulated understanding of the repo, not just its output artifact.
+- **Claude holds Coder, alone, always.** Unchanged — the one role where model choice is load-bearing (its own quota pool, its own session, per ADR-007's trust model).
+- **Antigravity holds the two shallow, bounded jobs: Designer + Publisher.** Neither benefits much from chaining anyway (each is a single-purpose, bounded task — sketch a UI, draft a commit message), so losing cross-vendor chaining costs little, while moving them off Codex's pool entirely frees that pool for the deep work.
+
+Publisher's default provider changes from `codex` to `antigravity` (Designer was already `antigravity`). Both remain independently overridable per project — ADR-014's "independent of the coder's provider by design" now reads more precisely as "independent of every other role's provider."
+
+**Trade-offs, stated plainly.**
+1. **Publisher loses session chaining** (ADR-015 only ever applied within a provider) — it becomes a cold Antigravity call instead of a cheap, ~84%-cached continuation of Reviewer's Codex session. In raw token terms this is a wash or slightly worse; the point is which *pool* pays, not the total.
+2. **Publisher loses token/cost visibility.** Antigravity's `-p` mode reports no usage data at all (already true and accepted for Designer). `ai runs show` will display `—` for Publisher's tokens even though real work happened.
+
+Both are accepted explicitly: the goal is quota-pool diversity, not per-stage cost minimization, and the owner confirmed this trade-off in advance.
+
+**Alternatives considered.** (a) Leave Publisher on Codex, document Antigravity as an opt-in recipe only — rejected: the owner's stated preference is for the spread to be the default experience, not something every project has to opt into by hand. (b) Spread Reviewer to Antigravity instead of Publisher — rejected: Reviewer benefits materially from chaining with the Planner (shared repo understanding); Publisher does not, making it the correct one to move.
+
+**Future implications.** If a fourth provider is ever added, the same principle applies: assign it to whichever role is shallowest/most bounded, keeping the chained Planner→Reviewer pair together and Coder untouched, unless real usage shows otherwise.

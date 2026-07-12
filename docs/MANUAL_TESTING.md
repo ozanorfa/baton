@@ -222,13 +222,13 @@ Enable it permanently for a project (skip the flag every time): `.ai/config.yaml
 uv run pytest tests/unit/test_session_chaining.py
 ```
 
-**Real test, any git repo, `--with-publisher` to get all 3 default same-provider stages:**
+**Real test, any git repo:**
 
 ```bash
-ai --with-publisher "your feature request"
+ai "your feature request"
 ```
 
-Then look at `run.json` — Planner, Reviewer, and Publisher should all show the **identical Codex `session_id`**, proving it's one continued conversation, not three cold ones:
+Then look at `run.json` — Planner and Reviewer should show the **identical Codex `session_id`**, proving it's one continued conversation, not two cold ones (Publisher/Designer default to Antigravity now — ADR-016 — so they won't show a Codex session id at all; that's by design, not a bug):
 
 ```bash
 python3 -c "
