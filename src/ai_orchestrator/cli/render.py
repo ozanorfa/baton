@@ -45,6 +45,12 @@ def render_error(message: str) -> None:
     error_console.print(message)
 
 
+COST_NOTE = (
+    "cost = provider-reported API-equivalent value; on subscription plans "
+    "(Claude Pro/Max, ChatGPT) it consumes plan quota — no per-run charge"
+)
+
+
 def render_usage_line(result: AgentResult) -> None:
     """Measured values only; '—' where the provider reports nothing (risk R2)."""
     usage = result.usage
@@ -52,11 +58,13 @@ def render_usage_line(result: AgentResult) -> None:
     if usage is not None and (usage.input_tokens or usage.output_tokens):
         parts.append(f"tokens in/out: {usage.input_tokens or '—'}/{usage.output_tokens or '—'}")
     if usage is not None and usage.cost_usd is not None:
-        parts.append(f"cost: ${usage.cost_usd:.4f}")
+        parts.append(f"cost: ${usage.cost_usd:.4f}*")
     if result.session_id:
         parts.append(f"session: {result.session_id}")
     if parts:
         console.print("  ".join(parts), style="dim")
+    if usage is not None and usage.cost_usd is not None:
+        console.print(f"* {COST_NOTE}", style="dim")
 
 
 def render_run_header(request: str, resolved) -> None:
@@ -145,9 +153,11 @@ def render_run_summary(state: RunState, run_dir: Path, report=None) -> None:
                 f"tokens {report.total_input_tokens:,}/{report.total_output_tokens or 0:,}"
             )
         if report.total_cost_usd is not None:
-            totals.append(f"measured cost ${report.total_cost_usd:.2f}")
+            totals.append(f"measured cost ${report.total_cost_usd:.2f}*")
         if totals:
             console.print("totals: " + " · ".join(totals), style="dim")
+        if report.total_cost_usd is not None:
+            console.print(f"* {COST_NOTE}", style="dim")
 
     if state.status.value == "failed":
         failed_idx, failed = next(
@@ -194,6 +204,8 @@ def render_runs_list(rows) -> None:
         request = state.request if len(state.request) <= 48 else state.request[:45] + "…"
         table.add_row(state.run_id, status, glyphs, cost, report.verdict or "—", request)
     console.print(table)
+    if any(report.total_cost_usd is not None for _, report in rows):
+        console.print(COST_NOTE, style="dim")
 
 
 @dataclass

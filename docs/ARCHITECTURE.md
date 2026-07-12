@@ -128,7 +128,7 @@ Stage statuses: `pending → running → succeeded | failed | skipped`. `run.jso
 
 ### 2.5 Reporter
 
-Aggregates per-stage data into `report.json` + a Rich terminal summary: stage, provider, model (when reported), duration, token usage (measured when the CLI reports it — Claude's JSON output does — otherwise `null`, never guessed), status, artifact paths.
+Aggregates per-stage data into `report.json` + a Rich terminal summary: stage, provider, model (when reported), duration, token usage (measured when the CLI reports it — Claude's JSON output does — otherwise `null`, never guessed), status, artifact paths. Cost figures carry a standing note (terminal footnote + `cost_note` field in report.json): they are the provider-reported API-equivalent value — subscription plans consume quota, they are not billed per run.
 
 ## 3. Provider Layer
 

@@ -43,7 +43,9 @@ ai "do something useful"           # run the pipeline
 
 Exit codes: `0` success · `1` a stage failed · `2` config/usage error.
 
-**Cost control:** the pipeline costs roughly $0.50–1.50 per run (the Claude coder stage; Codex rides your ChatGPT plan). For small tasks use `ai ask`; for cheap runs set `providers: {claude: {model: haiku}}` in `.ai/config.yaml`, or trim stages per project: `pipeline: {stages: [planner, coder]}`.
+**What the cost figure means:** the `$` value shown after a run is the provider-reported **API-equivalent** value — if you use subscription plans (Claude Pro/Max, ChatGPT), you are **not charged per run**; the run consumes your plan's included quota instead (that's what session limits are). Only API-key users pay it as a real bill. A typical pipeline run "costs" $0.50–1.50 of quota, dominated by fixed per-stage overhead — so it barely grows with task size.
+
+**Quota control:** for small tasks use `ai ask` (one call, no pipeline); set `providers: {claude: {model: haiku}}` in `.ai/config.yaml` for lighter runs; trim stages per project: `pipeline: {stages: [planner, coder]}`.
 
 More: [docs/MANUAL_TESTING.md](docs/MANUAL_TESTING.md) — every command you can try, with token-cost notes.
 

@@ -29,6 +29,12 @@ class StageReport(BaseModel):
     error: str | None
 
 
+COST_NOTE = (
+    "cost figures are the provider-reported API-equivalent value; on "
+    "subscription plans they consume plan quota — no per-run charge"
+)
+
+
 class Report(BaseModel):
     run_id: str
     request: str
@@ -38,6 +44,7 @@ class Report(BaseModel):
     total_input_tokens: int | None  # sum of measured values; null if none measured
     total_output_tokens: int | None
     total_cost_usd: float | None
+    cost_note: str = COST_NOTE
     verdict: str | None  # parsed from review.md when present
     stages: list[StageReport]
 

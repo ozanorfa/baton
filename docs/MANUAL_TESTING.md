@@ -11,7 +11,9 @@ mkdir /tmp/play && cd /tmp/play
 ai "Create a file hello.py that prints: Hello from the pipeline"
 ```
 
-That's the whole thing. No config needed — built-in defaults run planner (codex) → designer (skipped) → coder (claude) → reviewer (codex). Costs roughly $0.15–0.30 (the Claude stage); the rest rides your subscriptions.
+That's the whole thing. No config needed — built-in defaults run planner (codex) → designer (skipped) → coder (claude) → reviewer (codex).
+
+**About the `$` figures below and in run output:** they are the provider-reported API-equivalent value. On subscription plans (Claude Pro/Max, ChatGPT) you are **not charged per run** — runs consume your plan's included quota (session limits are that quota running low). Only API-key users pay the figure as a real bill. A typical full run consumes $0.15–1.50 of quota-equivalent, mostly fixed overhead.
 
 For real projects, run `ai init` first and fill in `.ai/project.md` — every stage reads it, and it noticeably improves output quality.
 

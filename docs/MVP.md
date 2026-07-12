@@ -78,7 +78,7 @@ $ ai "Add Face ID support to the Flutter application"
    2. BiometricService swallows PlatformException — surface auth errors to UI
 ```
 
-Token columns show **measured values only** (Claude's JSON reports them; Codex/Antigravity may not → `—`, never an estimate presented as fact — risk R2).
+Token columns show **measured values only** (Claude's JSON reports them; Codex/Antigravity may not → `—`, never an estimate presented as fact — risk R2). Cost figures are the provider-reported API-equivalent value, footnoted in the output: on subscription plans they consume quota rather than billing per run (`report.json` carries the same `cost_note`).
 
 ## 4. What's on Disk Afterwards
 
