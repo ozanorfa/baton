@@ -122,6 +122,39 @@ def test_resume_unknown_run_id_exit_2(project, fake_registry) -> None:
     assert runner.invoke(app, ["resume", "no-such-run"]).exit_code == 2
 
 
+def test_resume_with_designer_keeps_stage_enabled(project, fake_registry) -> None:
+    """Audit gap (2026-07-12): resuming a --with-designer run without the flag
+    silently dropped the designer. The flag must survive into resume."""
+    config = project / ".ai" / "config.yaml"
+    text = config.read_text()
+    text = text.replace("[planner, coder, reviewer]", "[planner, designer, coder, reviewer]")
+    text = text.replace(
+        "  coder: {provider: fake}",
+        "  designer: {provider: fake}\n  coder: {provider: fake}",
+    )
+    config.write_text(text)
+
+    request = (
+        "build [[fail_once@coder:limit]] [[write@coder:ok.py:x=1]] "
+        "[[output@reviewer:**Verdict** — APPROVE]]"
+    )
+    first = runner.invoke(app, ["run", "--with-designer", request], env={"COLUMNS": "220"})
+    assert first.exit_code == 1  # coder failed once; designer already succeeded
+    run_id = only_run_id(project)
+
+    resumed = runner.invoke(
+        app, ["resume", run_id, "--with-designer"], env={"COLUMNS": "220"}
+    )
+    assert resumed.exit_code == 0
+    state = json.loads((project / ".ai" / "runs" / run_id / "run.json").read_text())
+    designer = next(s for s in state["stages"] if s["name"] == "designer")
+    assert designer["status"] == "succeeded"  # kept, not silently skipped
+    # coder's resumed prompt still received the design artifact from disk
+    coder_prompt = (project / ".ai" / "runs" / run_id / "prompts" / "03-coder.md").read_text()
+    design = (project / ".ai" / "runs" / run_id / "artifacts" / "design.md").read_text()
+    assert design.strip() in coder_prompt
+
+
 def test_timeout_becomes_clean_stage_failure(project, fake_registry) -> None:
     config = project / ".ai" / "config.yaml"
     config.write_text(config.read_text().replace("timeout_s: 30", "timeout_s: 1"))

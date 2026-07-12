@@ -22,6 +22,10 @@ def resume(
     from_stage: str = typer.Option(
         None, "--from", help="Deliberately redo from this stage instead of the failed one."
     ),
+    with_designer: bool = typer.Option(
+        False, "--with-designer",
+        help="Keep the Designer stage enabled (pass again if the original run used it).",
+    ),
 ) -> None:
     """Continue a failed run from its failed stage."""
     project_dir = Path.cwd()
@@ -32,8 +36,11 @@ def resume(
         render.render_error(str(exc))
         raise typer.Exit(code=2) from exc
 
+    overrides: dict[str, object] = {}
+    if with_designer:
+        overrides["roles.designer.enabled"] = True
     try:
-        loaded = load_config(project_dir)
+        loaded = load_config(project_dir, overrides=overrides)
     except ConfigError as exc:
         render.render_error(str(exc))
         raise typer.Exit(code=2) from exc
