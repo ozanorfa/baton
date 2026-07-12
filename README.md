@@ -53,6 +53,8 @@ More: [docs/MANUAL_TESTING.md](docs/MANUAL_TESTING.md) — every command you can
 
 The Coder stage **edits your repository unattended** (scoped to the project directory). Safety net: run from a clean git tree (warned otherwise), every change is diffable, the Reviewer reports on the actual diff, and the tool never commits. Details: [docs/MVP.md](docs/MVP.md) §7, [docs/DECISIONS.md](docs/DECISIONS.md) ADR-007.
 
+**The orchestrator never runs `git commit`, `git push`, or any GitHub/remote operation — for any role, in any mode, ever.** This is not a default that can be silently escalated by config or a flag. The optional Publisher stage (`--with-publisher`, off by default — see below) only *drafts* a commit message and PR description as a text file for you to read and use; it has no code path that touches git or a remote. See ADR-014.
+
 ## Documentation
 
 | Doc | What's in it |

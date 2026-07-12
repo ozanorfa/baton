@@ -246,6 +246,8 @@ Convention: one ADR per consequential decision. New decisions get new ADRs; reve
 
 **Status:** Accepted · 2026-07-12 · **Confirmed with the project owner.**
 
+> **Standing guarantee, restated for anyone skimming:** this role is **disabled by default in every project** and cannot be enabled by accident — only an explicit `--with-publisher` flag or an explicit `roles.publisher.enabled: true` line in that project's own `.ai/config.yaml` turns it on. Even then, it **never runs `git commit`, `git push`, `gh pr create`, or any other state-changing command** — its only capability is writing a markdown draft into the run's artifact folder. Verified live on a real repository (`git log` before/after a `--with-publisher` run showed zero new commits) before this ADR was accepted.
+
 **Context.** The project owner asked how the orchestrator decides *which provider* handles git/publish-type actions, and whether some projects should have that capability while others don't — using GitHub push as the illustrative case but asking for a general answer ("think more wisely"). Evaluated whether Amazon CAO's dynamic supervisor-routing model would serve this better.
 
 **Decision.** Reject dynamic routing again (consistent with ADR-001/ADR-004) and instead add **Publisher** as a fifth optional built-in role, following the exact pattern of Designer:

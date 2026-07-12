@@ -194,6 +194,8 @@ Judge three artifacts: `prompts/01-planner.md` (does the Workspace section list 
 
 ## Publisher role (ADR-014) — different provider than the Coder, prepare-only
 
+**Safety guarantee, upfront:** this stage is **off by default in every project** — a plain `ai "<request>"` never invokes it. Even enabled, it **never runs `git commit`, `git push`, or any GitHub operation** — it only writes a draft text file for you to read. Verify this yourself any time with `git log --oneline` before/after.
+
 Motivated by: "I don't want Claude Code to also handle git — let Codex (or whoever) draft that instead, and only for projects I choose."
 
 **Free:** the whole gating + provider-independence behavior, zero tokens:

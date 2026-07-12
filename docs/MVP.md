@@ -136,6 +136,8 @@ Per IMPLEMENTATION_PLAN §3 — worth restating because each of these will be te
 
 The Coder stage edits your repository unattended (ADR-007). The safety net is: run from a clean git tree (warned otherwise) → every change is in `diff.patch` and `git diff` → the Reviewer reports findings on the actual diff → nothing is committed by the tool. If that trust level is wrong for your project, don't run the pipeline on it — use `ai ask` for advisory-only output.
 
+**No stage ever runs `git commit`, `git push`, or any remote/GitHub operation, in any configuration.** This holds even for the optional Publisher stage (ADR-014), which is (a) off by default in every project and (b) architecturally limited to drafting a commit-message/PR-description text artifact — it has no code path capable of mutating git state.
+
 ## 8. MVP Definition of Done
 
 - [x] `ai init` bootstraps `.ai/` per PROJECT_STRUCTURE §2.1 in a fresh Flutter repo
