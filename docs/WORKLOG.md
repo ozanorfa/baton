@@ -123,3 +123,4 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 - 🐛 Live sanity check caught a real bug before review: macOS case-insensitive filesystem listed README.md twice (README.md + readme.md) — fixed with inode-based dedupe.
 - ✅ 134 tests green (11 new: detection heuristics, caps, dedupe, end-to-end prompt differences). Left uncommitted for user code review.
 - 👤 **Reviewed and approved**; confirmed understanding of the two-step mechanism (Python indexes the docs, the agents read the relevant ones with their own tools). ADR-013 → Accepted; committed and pushed.
+- 🤖 Added real-Flutter-project test walkthrough to MANUAL_TESTING (throwaway branch → free workspace-layer preview → ai init → one small real feature → judge plan against the project's own conventions); README status mentions ADR-013. Pushed.

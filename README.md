@@ -12,7 +12,7 @@ ai "Add Face ID support to the Flutter application"
 
 ## Status
 
-**All planned milestones complete (M0–M5, 2026-07-12).** MVP acceptance passed on a real Flutter app (Face ID feature, reviewer verdict APPROVE WITH NOTES); hardening shipped (`ai resume`, `ai runs`, Ctrl-C safety). Next: the post-MVP roadmap (session persistence first). See [docs/TASKS.md](docs/TASKS.md) for progress and [docs/WORKLOG.md](docs/WORKLOG.md) for history.
+**All planned milestones complete (M0–M5, 2026-07-12).** MVP acceptance passed on a real Flutter app (Face ID feature, reviewer verdict APPROVE WITH NOTES); hardening shipped (`ai resume`, `ai runs`, Ctrl-C safety), and workspace awareness landed (ADR-013: established projects get a docs index + read-first instruction; greenfield projects get propose-structure guidance). Next: the post-MVP roadmap (session persistence first). See [docs/TASKS.md](docs/TASKS.md) for progress and [docs/WORKLOG.md](docs/WORKLOG.md) for history.
 
 ## Prerequisites
 

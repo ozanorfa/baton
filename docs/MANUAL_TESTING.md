@@ -177,3 +177,17 @@ print(workspace_layer(Path.cwd()))"        # established: docs index + file map
 ```
 
 Run the same in an empty directory → the greenfield guidance instead ("propose your structure… state assumptions"). In any real run's `prompts/*.md` you'll now see a `## Workspace:` section; in an established repo it lists the project's own README/docs and instructs the agent to read them before working. Running in a non-git directory now also prints a tip that diff capture is disabled until `git init`.
+
+### Testing workspace awareness on a real project (the one that matters)
+
+```bash
+cd ~/your-real-project && git checkout -b ai-experiment   # throwaway branch
+uv run --project ~/Desktop/ai/ai-agent-test python -c "
+from pathlib import Path
+from ai_orchestrator.context.awareness import workspace_layer
+print(workspace_layer(Path.cwd()))"                        # free: what stages will be told
+ai init                                                    # then a small real feature:
+ai "one small real feature request"                        # ~$1–2 quota
+```
+
+Judge three artifacts: `prompts/01-planner.md` (does the Workspace section list *your* docs?), `artifacts/plan.md` (does the plan follow *your* conventions — state management, folder layout — instead of generic boilerplate?), and the `git diff` + review. Discard everything with `git checkout main && git branch -D ai-experiment`, or commit and PR as usual.
