@@ -170,6 +170,31 @@ def render_run_summary(state: RunState, run_dir: Path, report=None) -> None:
         console.print(f"[dim]report: {run_dir / 'report.json'}[/dim]")
 
 
+_STATUS_GLYPH = {
+    StageStatus.SUCCEEDED: "✓",
+    StageStatus.FAILED: "✗",
+    StageStatus.SKIPPED: "○",
+    StageStatus.PENDING: "·",
+}
+
+
+def render_runs_list(rows) -> None:
+    """rows: list of (RunState, Report) tuples, oldest first."""
+    table = Table(title="runs", header_style="bold")
+    for column in ("run id", "status", "stages", "cost", "verdict", "request"):
+        table.add_column(column)
+    for state, report in rows:
+        glyphs = "".join(_STATUS_GLYPH.get(s.status, "?") for s in state.stages)
+        status = {
+            "succeeded": "[green]succeeded[/green]",
+            "failed": "[red]failed[/red]",
+        }.get(state.status.value, state.status.value)
+        cost = f"${report.total_cost_usd:.2f}" if report.total_cost_usd is not None else "—"
+        request = state.request if len(state.request) <= 48 else state.request[:45] + "…"
+        table.add_row(state.run_id, status, glyphs, cost, report.verdict or "—", request)
+    console.print(table)
+
+
 @dataclass
 class DoctorRow:
     provider: str

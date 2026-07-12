@@ -14,6 +14,7 @@ from ai_orchestrator.cli.commands.config_cmd import config_app
 from ai_orchestrator.cli.commands.doctor import doctor
 from ai_orchestrator.cli.commands.init import init
 from ai_orchestrator.cli.commands.run import run
+from ai_orchestrator.cli.commands.runs import runs_app
 
 app = typer.Typer(
     name="ai",
@@ -26,6 +27,7 @@ app.command()(doctor)
 app.command()(ask)
 app.command()(run)
 app.command()(init)
+app.add_typer(runs_app, name="runs")
 
 _COMMANDS = {"run", "ask", "doctor", "config", "init", "runs", "resume"}
 
