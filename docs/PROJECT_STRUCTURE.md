@@ -1,6 +1,6 @@
 # Project Structure — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-11 · matches the repo through M2 (files marked *(M5+)* don't exist yet)
+**Status:** Living · updated 2026-07-12 · matches the repo through M4/MVP (files marked *(M5+)* don't exist yet)
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Naming: distribution package **`ai-orchestrator`**, import package **`ai_orchestrator`**, console script **`ai`** (all referenced by ADR-009's entry-point group `ai_orchestrator.providers`).
