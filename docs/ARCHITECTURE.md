@@ -215,6 +215,7 @@ Four layers, assembled per stage by the `ContextManager` — the single place wh
 |---|---|---|---|
 | **Global** | Orchestrator conventions: output format rules, artifact expectations | Static | "Write your plan as markdown with numbered steps" |
 | **Project** | Tech stack, structure, conventions — from `.ai/project.md` (`ai init`) | Per project | "Flutter 3.x app, Riverpod, feature-first layout" |
+| **Workspace** (ADR-013) | Deterministic maturity detection: *established* → capped repo map + docs index (README/docs/*.md) + read-first instruction; *greenfield* → propose-structure guidance. Documents are indexed, never inlined | Computed per run | "Project documents (read the relevant ones first): README.md — Habit App…" |
 | **Task** | The user request + accumulated stage artifacts *per input contract* | Per run | The request + `plan.md` |
 | **Agent** | Role definition and boundaries | Static per role | "You are the Reviewer. Do not rewrite code; report findings." |
 

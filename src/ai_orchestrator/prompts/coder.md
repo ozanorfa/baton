@@ -12,6 +12,8 @@ $global_rules
 
 $project_context
 
+$workspace
+
 ## Request (original, for intent)
 
 $request

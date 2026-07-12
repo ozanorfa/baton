@@ -164,3 +164,16 @@ ai runs show <run-id>    # one run in detail
 | 0 | success |
 | 1 | a provider/stage failed |
 | 2 | configuration or usage error |
+
+## Workspace awareness (ADR-013)
+
+**Free, ten seconds:** compare what stages are told in the two worlds.
+
+```bash
+cd ~/Desktop/ai/ai-agent-test && uv run python -c "
+from pathlib import Path
+from ai_orchestrator.context.awareness import workspace_layer
+print(workspace_layer(Path.cwd()))"        # established: docs index + file map
+```
+
+Run the same in an empty directory → the greenfield guidance instead ("propose your structure… state assumptions"). In any real run's `prompts/*.md` you'll now see a `## Workspace:` section; in an established repo it lists the project's own README/docs and instructs the agent to read them before working. Running in a non-git directory now also prints a tip that diff capture is disabled until `git init`.

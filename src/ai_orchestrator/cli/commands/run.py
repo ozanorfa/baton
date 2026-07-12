@@ -27,7 +27,13 @@ def _warn_if_dirty_git_tree(project_dir: Path) -> None:
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return
-    if status.returncode == 0 and status.stdout.strip():
+    if status.returncode != 0:
+        # Not a git repo: diff capture and silent-failure detection are off (ADR-013).
+        render.console.print(
+            "[yellow]⚠ not a git repository — diff capture and the no-change safety "
+            "check are disabled. Run `git init` first to enable them.[/yellow]"
+        )
+    elif status.stdout.strip():
         render.console.print(
             "[yellow]⚠ git working tree is not clean — the coder's changes will mix "
             "with yours. Consider committing or stashing first.[/yellow]"

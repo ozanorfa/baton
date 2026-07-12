@@ -8,6 +8,7 @@ Matches the engine's PromptBuilder signature, so wiring is one argument:
 
 from pathlib import Path
 
+from ai_orchestrator.context.awareness import workspace_layer
 from ai_orchestrator.context.contracts import contract_for
 from ai_orchestrator.context.layers import (
     agent_template,
@@ -22,6 +23,10 @@ class ContextManager:
     def __init__(self, project_dir: Path, profile_relpath: str = ".ai/project.md"):
         self.project_dir = project_dir
         self.profile_relpath = profile_relpath
+        # Computed once per run, not per stage — the workspace doesn't change
+        # between stages (the coder's edits notwithstanding; orientation is
+        # a starting map, not a live view).
+        self._workspace = workspace_layer(project_dir)
 
     def build(self, spec: StageSpec, request: str, artifacts: dict[str, str]) -> str:
         contract = contract_for(spec.role)  # template/boundaries by role
@@ -30,6 +35,7 @@ class ContextManager:
             role=spec.role,
             global_rules=global_layer(),
             project_context=project_layer(self.project_dir, self.profile_relpath),
+            workspace=self._workspace,
             request=request,
             # admitted inputs come from the spec (contract-derived at routing time,
             # incl. generic chain contracts for unknown roles)

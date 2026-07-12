@@ -1,6 +1,6 @@
 # Architectural Decision Records — AI Coding Orchestrator
 
-**Status:** Living · 12 ADRs · updated 2026-07-11 (ADR-012 added and ADR-010 amended during implementation)
+**Status:** Living · 13 ADRs · updated 2026-07-12 (ADR-013 accepted after user code review)
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Convention: one ADR per consequential decision. New decisions get new ADRs; reversals supersede, never rewrite history. Any future proposal for dynamic/LLM-driven orchestration **requires** an ADR here before code (risk R7 guard).
@@ -19,6 +19,7 @@ Convention: one ADR per consequential decision. New decisions get new ADRs; reve
 | [ADR-010](#adr-010) | Prompts delivered via stdin, never argv | Accepted |
 | [ADR-011](#adr-011) | Stack: Python 3.12 + uv + Typer + Rich + pydantic + YAML | Accepted |
 | [ADR-012](#adr-012) | Antigravity CLI replaces Gemini CLI as the Designer provider | Accepted |
+| [ADR-013](#adr-013) | Context adapts to workspace maturity; detection is deterministic code | Accepted |
 
 ---
 
@@ -218,3 +219,22 @@ Convention: one ADR per consequential decision. New decisions get new ADRs; reve
 **Trade-offs.** `agy` is young: flag stability and structured-output support are unverified until T12's fixture capture; token usage may be unreportable (already tolerated by the adapter contract — `Usage = None`). Install is a curl-pipe shell script rather than a package manager.
 
 **Future implications.** This is the provider-agnosticism goal (G5) exercised for real, before the adapter layer even exists: the change touched one config default and zero core design. If `agy` proves unstable, swapping back to `gemini` + API key is a config edit plus one adapter.
+
+---
+
+## ADR-013 — Context adapts to workspace maturity; detection is deterministic code
+
+**Status:** Accepted · 2026-07-12 · **Code-reviewed and approved by the project owner.**
+
+**Context.** Established projects and greenfield directories need different context: an existing codebase has documentation and conventions the stages should read and respect; an empty directory has nothing to read, and stages must instead propose structure explicitly. Requested by the project owner ("read the MD files of existing projects before continuing; for a new project it is not a requirement").
+
+**Decision.** A pure-code detector classifies the workspace as **established** or **greenfield** (by counting real source files, excluding tool/VCS directories). The classification changes only the *context layers*, never routing (ADR-004 intact):
+
+- **Established:** the Project layer gains (a) a capped repo map (file tree) for orientation, (b) a docs index — paths + titles of README/docs/*.md/CONTRIBUTING/ARCHITECTURE — plus a short capped README excerpt, and (c) an explicit instruction to *read the indexed documents with the agent's own tools*. Full documents are never inlined (minimal-context principle, risk R4): we point agents at doors, we don't carry the furniture.
+- **Greenfield:** none of the above; instead a short note telling stages to propose structure/stack explicitly and state assumptions loudly. The CLI additionally suggests `git init` when absent, since diff capture and silent-failure detection depend on git.
+
+**Alternatives considered.** (a) Inline full doc contents — rejected: unbounded token cost on every stage of every run. (b) LLM classifies the workspace — rejected per ADR-004. (c) `ai init --generate` (AI-written profile) — deferred: the docs index may make it redundant; measure first.
+
+**Trade-offs.** Heuristic detection can misclassify exotic layouts (override-able via config later if it ever matters). The docs index costs a few hundred tokens per stage — accepted, it replaces thousands of exploration tokens.
+
+**Future implications.** The workspace layer is the natural mount point for the future memory system (ADR/roadmap) and repo-map improvements (symbol maps).

@@ -89,6 +89,8 @@ core/
 context/
 ├── manager.py              # ContextManager: assemble(stage) → rendered prompt sections
 ├── layers.py               # Global / Project / Task / Agent layer sources
+├── awareness.py            # ADR-013: established/greenfield detection, capped repo map,
+│                           #   docs index — the Workspace layer
 └── contracts.py            # per-stage input contracts (what each role may receive)
 ```
 

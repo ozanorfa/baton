@@ -1,0 +1,166 @@
+"""Workspace awareness (ADR-013): established vs greenfield, decided by code.
+
+Established projects get orientation material (capped repo map + docs index
++ read-instruction); greenfield directories get proposal guidance instead.
+Nothing here is an LLM decision, and no document is ever inlined whole —
+agents are pointed at doors, the furniture stays where it is (risk R4).
+"""
+
+from enum import StrEnum
+from pathlib import Path
+
+# Directories that are tooling/VCS noise, never project source.
+EXCLUDED_DIRS = {
+    ".git", ".ai", ".github", "node_modules", ".venv", "venv", "__pycache__",
+    "build", "dist", ".dart_tool", ".idea", ".vscode", "Pods", ".gradle",
+    "target", ".pytest_cache", ".ruff_cache",
+}
+
+CODE_EXTENSIONS = {
+    ".py", ".dart", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java",
+    ".kt", ".swift", ".rb", ".php", ".c", ".cc", ".cpp", ".h", ".hpp",
+    ".cs", ".m", ".mm", ".scala", ".vue", ".svelte",
+}
+
+# A workspace with at least this many source files is "established".
+ESTABLISHED_THRESHOLD = 3
+
+# Hard caps — the whole point is bounded context (ADR-013 trade-offs).
+TREE_MAX_DEPTH = 3
+TREE_MAX_ENTRIES = 100
+DOCS_INDEX_MAX = 12
+README_EXCERPT_CHARS = 1500
+
+
+class WorkspaceMode(StrEnum):
+    GREENFIELD = "greenfield"
+    ESTABLISHED = "established"
+
+
+def _iter_tree(root: Path, max_depth: int):
+    """Yield (depth, path) breadth-ish, skipping noise dirs; deterministic order."""
+    stack: list[tuple[int, Path]] = [(0, root)]
+    while stack:
+        depth, current = stack.pop(0)
+        try:
+            entries = sorted(current.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
+        except (PermissionError, OSError):
+            continue
+        for entry in entries:
+            if entry.name.startswith(".") and entry.name not in {".gitignore"}:
+                continue
+            if entry.is_dir():
+                if entry.name in EXCLUDED_DIRS:
+                    continue
+                yield depth, entry
+                if depth + 1 < max_depth:
+                    stack.append((depth + 1, entry))
+            else:
+                yield depth, entry
+
+
+def detect_mode(project_dir: Path) -> WorkspaceMode:
+    code_files = 0
+    for _, path in _iter_tree(project_dir, TREE_MAX_DEPTH):
+        if path.is_file() and path.suffix.lower() in CODE_EXTENSIONS:
+            code_files += 1
+            if code_files >= ESTABLISHED_THRESHOLD:
+                return WorkspaceMode.ESTABLISHED
+    return WorkspaceMode.GREENFIELD
+
+
+def repo_map(project_dir: Path) -> str:
+    """A capped, indented file tree — orientation, not inventory."""
+    lines: list[str] = []
+    truncated = False
+    for depth, path in _iter_tree(project_dir, TREE_MAX_DEPTH):
+        if len(lines) >= TREE_MAX_ENTRIES:
+            truncated = True
+            break
+        suffix = "/" if path.is_dir() else ""
+        lines.append(f"{'  ' * depth}{path.name}{suffix}")
+    if truncated:
+        lines.append("… (truncated — explore further with your own tools)")
+    return "\n".join(lines)
+
+
+def _doc_title(path: Path) -> str:
+    try:
+        for line in path.read_text(errors="replace").splitlines()[:10]:
+            line = line.strip()
+            if line.startswith("#"):
+                return line.lstrip("# ").strip()
+            if line:
+                return line[:80]
+    except OSError:
+        pass
+    return "(unreadable)"
+
+
+def docs_index(project_dir: Path) -> list[tuple[str, str]]:
+    """(relative path, title) of the project's own markdown docs, capped."""
+    candidates: list[Path] = []
+    for name in ("README.md", "readme.md", "CONTRIBUTING.md", "ARCHITECTURE.md", "AGENTS.md"):
+        if (project_dir / name).is_file():
+            candidates.append(project_dir / name)
+    docs_dir = project_dir / "docs"
+    if docs_dir.is_dir():
+        candidates.extend(
+            sorted(p for p in docs_dir.rglob("*.md") if ".ai" not in p.parts)
+        )
+    index: list[tuple[str, str]] = []
+    seen_ids: set[tuple[int, int]] = set()  # dedupe by inode: case-insensitive
+    for path in candidates:  # filesystems (macOS) make README.md == readme.md
+        try:
+            stat = path.stat()
+        except OSError:
+            continue
+        file_id = (stat.st_dev, stat.st_ino)
+        if file_id in seen_ids:
+            continue
+        seen_ids.add(file_id)
+        index.append((str(path.relative_to(project_dir)), _doc_title(path)))
+        if len(index) >= DOCS_INDEX_MAX:
+            break
+    return index
+
+
+def _readme_excerpt(project_dir: Path) -> str | None:
+    for name in ("README.md", "readme.md"):
+        path = project_dir / name
+        if path.is_file():
+            text = path.read_text(errors="replace").strip()
+            if not text:
+                return None
+            if len(text) > README_EXCERPT_CHARS:
+                return text[:README_EXCERPT_CHARS] + "\n… (truncated — read the full file)"
+            return text
+    return None
+
+
+def workspace_layer(project_dir: Path) -> str:
+    """The mode-appropriate workspace section for every stage's prompt."""
+    if detect_mode(project_dir) is WorkspaceMode.GREENFIELD:
+        return (
+            "## Workspace: new project\n\n"
+            "This directory has little or no existing code. There are no conventions "
+            "to discover — propose them: state your structure, stack, and naming "
+            "choices explicitly, and call out every assumption you make."
+        )
+
+    parts = ["## Workspace: established project\n"]
+    parts.append(
+        "Existing code and conventions are authoritative here. Read before you "
+        "write: consult the documents below and neighboring source files with "
+        "your own tools before making decisions. Match what exists — naming, "
+        "structure, libraries, test patterns."
+    )
+    index = docs_index(project_dir)
+    if index:
+        listing = "\n".join(f"- `{rel}` — {title}" for rel, title in index)
+        parts.append(f"### Project documents (read the relevant ones first)\n{listing}")
+    excerpt = _readme_excerpt(project_dir)
+    if excerpt:
+        parts.append(f"### README excerpt\n{excerpt}")
+    parts.append(f"### File map (partial)\n```\n{repo_map(project_dir)}\n```")
+    return "\n\n".join(parts)

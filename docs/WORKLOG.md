@@ -115,3 +115,11 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 
 - 👤 Cleared up a misconception (stages DO explore existing codebases — each agent reads the repo itself; project.md is steering, not the sole knowledge); brainstormed existing-project onboarding improvements (ai init --generate, docs-aware templates, repo map, memory, session reuse) — queued pending field evidence.
 - 👤 Asked to publish: private GitHub repo under a better name. 🤖 Named it **baton** — the conductor's baton (deterministic, zero-token coordination) + the relay baton (artifacts handed stage to stage).
+
+## 2026-07-12 · Session 2 — Workspace Awareness (ADR-013)
+
+- 👤 Asked for different behavior on existing vs new projects — specifically: read the project's MD files before working on existing projects; skip that for new ones. Approved the "Project Awareness" proposal; requested no commit/push until his code review.
+- 🤖 Built ADR-013: `context/awareness.py` — deterministic established/greenfield detection (≥3 source files, noise dirs excluded), capped repo map (100 entries, depth 3), docs index (README/docs/*.md/CONTRIBUTING, 12 max, titles extracted) + capped README excerpt + read-first instruction; greenfield gets propose-structure guidance instead. New `$workspace` placeholder in all role templates; ContextManager computes the layer once per run. `ai run` in a non-git dir now tips that diff capture/safety checks are off.
+- 🐛 Live sanity check caught a real bug before review: macOS case-insensitive filesystem listed README.md twice (README.md + readme.md) — fixed with inode-based dedupe.
+- ✅ 134 tests green (11 new: detection heuristics, caps, dedupe, end-to-end prompt differences). Left uncommitted for user code review.
+- 👤 **Reviewed and approved**; confirmed understanding of the two-step mechanism (Python indexes the docs, the agents read the relevant ones with their own tools). ADR-013 → Accepted; committed and pushed.
