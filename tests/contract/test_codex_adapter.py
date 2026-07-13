@@ -58,3 +58,13 @@ def test_build_invocation_write_sandbox_when_role_edits() -> None:
 def test_build_invocation_resume_subcommand() -> None:
     inv = adapter.build_invocation(request(session_id="thread-42"))
     assert inv.argv[1:4] == ["exec", "resume", "thread-42"]
+
+
+def test_resume_omits_sandbox_flag() -> None:
+    """Field bug (2026-07-12): `codex exec resume` rejects -s/--sandbox
+    ("error: unexpected argument '-s' found") — verified against codex-cli
+    0.144.1's own --help for the resume subcommand. A resumed session keeps
+    the sandbox mode it was created with; only a fresh session sets it."""
+    inv = adapter.build_invocation(request(session_id="thread-42", allow_edits=True))
+    assert "-s" not in inv.argv
+    assert "--json" in inv.argv and "--skip-git-repo-check" in inv.argv  # these stay

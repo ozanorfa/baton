@@ -16,6 +16,13 @@ class PipelineConfig(BaseModel):
     model_config = _LENIENT
 
     stages: list[str] = Field(min_length=1)
+    # ADR-015: when two stages share a provider (default: planner/reviewer/
+    # publisher are all Codex), the later one resumes the earlier one's
+    # session instead of cold-starting. Cuts redundant repo re-exploration.
+    # Trade-off: the resumed stage inherits the earlier stage's transcript,
+    # a deliberate exception to ADR-006 for same-provider stages only.
+    # Per-project opt-out: pipeline: {session_chaining: false}
+    session_chaining: bool = True
 
 
 class RoleConfig(BaseModel):

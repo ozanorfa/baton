@@ -1,6 +1,6 @@
 # Architectural Decision Records — AI Coding Orchestrator
 
-**Status:** Living · 14 ADRs · updated 2026-07-12
+**Status:** Living · 16 ADRs · updated 2026-07-12
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Convention: one ADR per consequential decision. New decisions get new ADRs; reversals supersede, never rewrite history. Any future proposal for dynamic/LLM-driven orchestration **requires** an ADR here before code (risk R7 guard).
@@ -21,6 +21,8 @@ Convention: one ADR per consequential decision. New decisions get new ADRs; reve
 | [ADR-012](#adr-012) | Antigravity CLI replaces Gemini CLI as the Designer provider | Accepted |
 | [ADR-013](#adr-013) | Context adapts to workspace maturity; detection is deterministic code | Accepted |
 | [ADR-014](#adr-014) | Optional Publisher role: per-project, per-provider, prepare-only | Accepted |
+| [ADR-015](#adr-015) | Same-provider session chaining, capability- and access-aware | Accepted |
+| [ADR-016](#adr-016) | Default provider assignment spreads quota across three pools by task depth | Accepted |
 
 ---
 
@@ -264,3 +266,61 @@ Convention: one ADR per consequential decision. New decisions get new ADRs; reve
 **Trade-offs.** One more optional stage most projects will leave disabled; the artifacts are extra files to generate/read. Accepted — opt-in cost only.
 
 **Future implications.** If real usage later asks for actual commit/push automation, that is a *new, separate* ADR and an explicit trust-model escalation — never a silent capability creep on this one. The same per-project/per-provider pattern generalizes to any future optional role (Tester, Deployment, …).
+
+---
+
+## ADR-015 — Same-provider session chaining, capability- and access-aware
+
+**Status:** Accepted · 2026-07-12 · **Live-verified on real infrastructure.**
+
+**Context.** The project's founding goal is token efficiency through division of labor, but the actual mechanism for it (roadmap #1, "session persistence") had never been built: every stage cold-started, even when consecutive stages happened to share a provider (by default, Planner/Reviewer/Publisher are all Codex). The project owner directly challenged this gap after reviewing real run costs. A proposal to instead route the *entire* pipeline through one provider was raised and correctly rejected by the owner: "if we use only one provider, why use the orchestrator at all? I could type into Codex CLI directly." That objection is decisive — the value of this tool is routing different work to *different, specialized* models (proven by the stopwatch run, where Codex caught a real bug in Claude's own code); collapsing to one vendor for cost reasons would destroy the thing worth having. Session chaining is the alternative that gets the token benefit without touching which model does which job.
+
+**Decision.** Track a session id per **provider name** (not per stage) as the pipeline runs. When a stage's provider already has an open session from an earlier stage, resume it instead of cold-starting — regardless of how many stages of a *different* provider ran in between (Planner→Coder→Reviewer still chains Reviewer to Planner, skipping over Coder's unrelated Claude session). Never crosses providers — Codex cannot resume a Claude session or vice versa; that is a hard vendor boundary, not a policy choice.
+
+Two safety conditions gate every chain, both discovered as real bugs during live verification before this ADR was written:
+
+1. **`adapter.capabilities.supports_resume` must be true.** Antigravity is excluded outright (§3.3 of ARCHITECTURE.md — its `-p` mode never reports a session id).
+2. **The prior session's `allow_edits` must match the current stage's.** Live testing found `codex exec resume` **rejects `-s/--sandbox` outright** ("error: unexpected argument '-s' found") — a resumed session keeps the write-access level it was created with. Chaining a read-only stage's session into an edit-needing stage would silently leave it unable to write (or worse, silently keep old access), so the engine refuses to chain across an access-level boundary. In the default pipeline this is moot (Planner/Reviewer/Publisher are all read-only), but the guard makes the feature correct for any project that reassigns Coder to a chaining-eligible provider too.
+
+Per-project escape hatch: `pipeline: {session_chaining: false}` restores full stage independence.
+
+**The ADR-006 tension, named honestly.** ADR-006 says stages hand off artifacts, not transcripts. Session chaining is a deliberate, bounded exception to that rule for *same-provider* stages only: a resumed session's model literally retains its own prior turns. This never leaks cross-vendor (Claude still never sees Codex's reasoning or vice versa — the cross-model check that catches bugs is untouched), and role boundaries are still enforced by each stage's prompt instructions, not by context isolation. The trade-off is a minor loss of Reviewer independence *from the Planner specifically* (both being Codex) in exchange for real, measured token savings — judged acceptable and made opt-outable.
+
+**Live verification (2026-07-12, real Codex CLI, `--with-publisher` run).** `run.json` showed the identical Codex session id across Planner, Reviewer, and Publisher — proof it is one continued conversation, not three. Cached-token ratio *rose* through the chain (Planner 70% cached → Reviewer 83% → Publisher 84%), meaning each stage's fresh, full-price token cost stayed roughly flat (~15–17k) instead of re-paying for repo exploration from zero each time.
+
+**Alternatives considered.** (a) Single-provider "cheap mode" (route every role through one vendor) — rejected per the project owner's objection above; it forfeits the tool's entire reason to exist. (b) A live, back-and-forth clarification protocol between stages (Coder asks Codex a question mid-task, gets an answer, resumes) — evaluated as a separate idea in the same conversation and set aside: every round trip is a fresh invocation, cross-provider rounds have zero session to resume, and it reintroduces the runtime-routing-decision problem ADR-001/004 already rejected. Left for a future, narrowly-scoped ADR if plan-quality gaps ever justify the extra cost.
+
+**Trade-offs.** Slight loss of Reviewer independence from the Planner (same continued Codex mind). Two real CLI-compatibility bugs surfaced and were fixed as part of accepting this ADR (see below) rather than left as latent landmines.
+
+**Future implications.** The `provider_sessions` map is the natural extension point for cross-run memory (if a future memory system wants to resume the *last run's* final session for a project instead of always starting cold on run 1).
+
+### Bugs found and fixed while verifying this ADR
+
+1. **`codex exec resume` rejects `-s/--sandbox`.** `CodexAdapter.build_invocation` now omits the sandbox flag whenever resuming (see `providers/codex.py`).
+2. **Naive chaining could silently strand a stage at the wrong access level.** Fixed via the `allow_edits`-matching guard described above, with a dedicated regression test (`test_mismatched_allow_edits_never_chains`).
+
+---
+
+## ADR-016 — Default provider assignment spreads quota across three pools by task depth
+
+**Status:** Accepted · 2026-07-12 · **Confirmed with the project owner.**
+
+**Context.** The project owner clarified a real goal after ADR-015 shipped: not a *reduction* in total tokens spent, but a *spread* of the same total across independent subscription pools, so no single one (as happened once with Claude's session limit) gets exhausted alone. Illustrated as: "it was once 10,000 tokens by Claude Code, presume — now 4,000 codex, 5,000 claude, 1,000 antigravity — same total, but separated. This is OK, they're all 10,000 in total."
+
+**Decision.** Change the shipped defaults so the three providers split the pipeline by *task depth*, not arbitrarily:
+
+- **Codex holds the deep, chained pair: Planner + Reviewer.** These two genuinely benefit from ADR-015's session chaining — Reviewer needs the Planner's accumulated understanding of the repo, not just its output artifact.
+- **Claude holds Coder, alone, always.** Unchanged — the one role where model choice is load-bearing (its own quota pool, its own session, per ADR-007's trust model).
+- **Antigravity holds the two shallow, bounded jobs: Designer + Publisher.** Neither benefits much from chaining anyway (each is a single-purpose, bounded task — sketch a UI, draft a commit message), so losing cross-vendor chaining costs little, while moving them off Codex's pool entirely frees that pool for the deep work.
+
+Publisher's default provider changes from `codex` to `antigravity` (Designer was already `antigravity`). Both remain independently overridable per project — ADR-014's "independent of the coder's provider by design" now reads more precisely as "independent of every other role's provider."
+
+**Trade-offs, stated plainly.**
+1. **Publisher loses session chaining** (ADR-015 only ever applied within a provider) — it becomes a cold Antigravity call instead of a cheap, ~84%-cached continuation of Reviewer's Codex session. In raw token terms this is a wash or slightly worse; the point is which *pool* pays, not the total.
+2. **Publisher loses token/cost visibility.** Antigravity's `-p` mode reports no usage data at all (already true and accepted for Designer). `ai runs show` will display `—` for Publisher's tokens even though real work happened.
+
+Both are accepted explicitly: the goal is quota-pool diversity, not per-stage cost minimization, and the owner confirmed this trade-off in advance.
+
+**Alternatives considered.** (a) Leave Publisher on Codex, document Antigravity as an opt-in recipe only — rejected: the owner's stated preference is for the spread to be the default experience, not something every project has to opt into by hand. (b) Spread Reviewer to Antigravity instead of Publisher — rejected: Reviewer benefits materially from chaining with the Planner (shared repo understanding); Publisher does not, making it the correct one to move.
+
+**Future implications.** If a fourth provider is ever added, the same principle applies: assign it to whichever role is shallowest/most bounded, keeping the chained Planner→Reviewer pair together and Coder untouched, unless real usage shows otherwise.

@@ -163,7 +163,11 @@ Prompt payloads are passed via **stdin, not argv** (shell-escaping and length sa
 
 ### 3.3 Session management
 
-**MVP:** every invocation is one-shot headless. Context continuity between stages comes from **artifacts, not sessions** — the Coder reads `plan.md`, not the Planner's conversation.
+**Cross-provider:** every invocation is one-shot headless. Context continuity between *different-vendor* stages comes from **artifacts, not sessions** — the Coder (Claude) reads `plan.md`, not the Planner's (Codex) conversation. This never changes — it is a hard vendor boundary, not a policy.
+
+**Same-provider (ADR-015, shipped):** when consecutive stages share a provider — by default, Planner and Reviewer are both Codex — the engine resumes the earlier stage's session instead of cold-starting, gated by two safety checks: the adapter must report `supports_resume`, and the prior session's `allow_edits` must match the current stage's (some CLIs fix sandbox/write-access at session creation and reject changing it on resume — verified against `codex exec resume`). Per-project opt-out: `pipeline: {session_chaining: false}`. Live-verified: a real run showed one continuous Codex session id across Planner→Reviewer, with the cached-token ratio rising through the chain (70% → 83%) — each stage's fresh, full-price cost stayed roughly flat instead of re-paying for repo exploration.
+
+**Quota spread by design (ADR-016):** Designer and Publisher default to Antigravity — a third, separate pool from Codex (Planner/Reviewer) and Claude (Coder) — because both are shallow, bounded, single-purpose jobs that gain little from chaining anyway. Same total work; no single subscription absorbs it all.
 
 The seam for post-MVP session persistence exists from day one: adapters record `session_id` in `run.json` when the CLI returns one, and `Capabilities.supports_resume` marks who can use it. Post-MVP, the engine passes the prior `session_id` back (`claude -p --resume <id>`, `codex exec resume`), cutting repeated project context — the largest token win on the roadmap. tmux, when it arrives, is a **TmuxTransport for observability** (watch a live pane); parsing always comes from the headless JSON path, never from scraping panes (see DECISIONS.md ADR-002).
 

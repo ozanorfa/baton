@@ -83,6 +83,7 @@ def run(
         manager, transport,
         prompt_builder=context.build,
         event_sink=progress.handle,
+        session_chaining=loaded.config.pipeline.session_chaining,
     )
     state = engine.execute(request, resolved)
 

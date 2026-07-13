@@ -84,7 +84,7 @@ Failure-path UX (clear resume instructions after fail-stop), `ai runs list/show`
 **Demo:** kill a provider mid-run → clean failure report → `ai resume` continues from the failed stage.
 
 ### Post-MVP roadmap (ordered, not scheduled)
-1. **Session persistence** — reuse provider sessions across stages/runs (`claude --resume`, `codex exec resume`) to cut repeated-context tokens. The largest token win after minimal context.
+1. ~~**Session persistence**~~ — **shipped 2026-07-12 as ADR-015** (same-provider chaining within a run; live-verified cached-token ratio rising 70%→84% through the chain). Cross-run session reuse (resuming a project's *last* run) remains open for the future memory system.
 2. **tmux observability layer** — optional live view of provider processes (borrowing CAO's patterns); never the parsing mechanism.
 3. **New roles** — Tester first (highest value: closes the loop with actual verification), then Documentation, Security, Performance, Deployment.
 4. **Retries & escalation** — policy-driven (config), still deterministic.
