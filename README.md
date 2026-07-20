@@ -68,6 +68,7 @@ The Coder stage **edits your repository unattended** (scoped to the project dire
 | [MVP.md](docs/MVP.md) | The first full version, stage by stage |
 | [MANUAL_TESTING.md](docs/MANUAL_TESTING.md) | Hands-on test commands per milestone |
 | [WORKLOG.md](docs/WORKLOG.md) | Session-by-session history |
+| [IDEAS.md](docs/IDEAS.md) | Evaluated-but-not-yet-built ideas (free providers, repowise, token reducers) |
 
 ## Development
 
