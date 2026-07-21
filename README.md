@@ -6,7 +6,7 @@ A **local-first CLI** that turns multiple AI coding assistants (Claude Code, Cod
 ai "Add Face ID support to the Flutter application"
 ```
 
-…runs **Planner** (Codex) → **Designer** (Antigravity, optional) → **Coder** (Claude Code) → **Reviewer** (Codex), forwards each stage's output to the next automatically, preserves every artifact on disk, and prints an execution report with real token counts.
+…runs **Planner** (Codex) → **Designer** (Antigravity, optional) → **Coder** (Claude Code) → **Reviewer** (Codex) → **Publisher** (opencode, optional), forwards each stage's output to the next automatically, preserves every artifact on disk, and prints an execution report with real token counts.
 
 **Not another agent framework:** routing is plain Python from YAML config — no supervisor LLM, no dynamic delegation, zero tokens spent on coordination.
 
@@ -18,6 +18,7 @@ ai "Add Face ID support to the Flutter application"
 
 - macOS, Python ≥3.12, [uv](https://docs.astral.sh/uv/)
 - The provider CLIs, installed and authenticated: `claude` (Claude Code), `codex` (Codex CLI), `agy` (Antigravity CLI)
+- Optional: `opencode` (free client — the default Publisher provider; point it at a free-tier model). Not needed unless you enable the Publisher stage.
 
 ## Install & quickstart
 
@@ -64,13 +65,13 @@ The Coder stage **edits your repository unattended** (scoped to the project dire
 | [HOW_TO_USE.md](docs/HOW_TO_USE.md) · [🇹🇷 Türkçe](docs/HOW_TO_USE.tr.md) | **Start here** — plain-language user guide |
 | [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | Vision, goals, milestones, risks |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers, adapter contract, context system, verified CLI behavior |
-| [DECISIONS.md](docs/DECISIONS.md) | 15 ADRs — why everything is the way it is |
+| [DECISIONS.md](docs/DECISIONS.md) | 20 ADRs — why everything is the way it is |
 | [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | Repo layout + runtime footprint |
 | [TASKS.md](docs/TASKS.md) | 35-task build plan with acceptance criteria |
 | [MVP.md](docs/MVP.md) | The first full version, stage by stage |
 | [MANUAL_TESTING.md](docs/MANUAL_TESTING.md) | Hands-on test commands per milestone |
 | [WORKLOG.md](docs/WORKLOG.md) | Session-by-session history |
-| [IDEAS.md](docs/IDEAS.md) | Evaluated-but-not-yet-built ideas (free providers, repowise, token reducers) |
+| [IDEAS.md](docs/IDEAS.md) | Evaluated ideas — opencode & the zero-LLM floor shipped (ADR-017/018); repowise/MCP context reducer still parked |
 
 ## Development
 
