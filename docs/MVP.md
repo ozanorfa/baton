@@ -47,7 +47,7 @@ roles:
 
 **Session chaining (ADR-015).** When consecutive stages share a provider — Planner and Reviewer are both Codex by default — the later stage resumes the earlier one's session instead of starting cold, cutting redundant repo re-exploration. Never crosses providers (Coder/Claude is always a fresh session); never changes the read-only/write-access level a session was created with. Opt out per project: `pipeline: {session_chaining: false}`.
 
-**Quota spread (ADR-016).** Designer and Publisher default to Antigravity, a third pool separate from Codex and Claude — both are shallow, single-purpose jobs that don't need chaining, so moving them off Codex's quota frees it for the Planner/Reviewer pair without changing total work done.
+**Quota spread (ADR-016, refined by ADR-017).** The Designer defaults to Antigravity; the Publisher — the shallowest job — defaults to **opencode**, a free client (ADR-017), with a zero-LLM `deterministic` fallback that drafts the commit message from `git diff --stat` (ADR-018). Both are shallow, single-purpose jobs that don't need chaining, so keeping them off the paid Codex/Claude pools frees those for the Planner/Reviewer/Coder work without changing total work done.
 
 **Stage 4 — Reviewer (Codex CLI).** Receives: `plan.md` + `changes.md` + the git diff + reviewer role template. Produces `artifacts/review.md` — findings and improvement suggestions, explicitly *not* rewritten code (role boundary, spec §5). The Reviewer's verdict feeds the report; in the MVP it does **not** gate or loop back to the Coder — the human decides what to do with findings.
 
@@ -104,7 +104,7 @@ Token columns show **measured values only** (Claude's JSON reports them; Codex/A
     └── *.stdout / *.stderr per stage
 ```
 
-Plus the actual code changes in the repo, uncommitted, ready for `git diff` / your editor. **The orchestrator never commits** — reviewing and committing is the human's job in the MVP.
+Plus the actual code changes in the repo, uncommitted, ready for `git diff` / your editor. **No pipeline stage ever commits** — reviewing and committing is the human's job. (Post-MVP, the explicit, user-invoked `ai publish --commit/--push` command adds the one git step, on your command — ADR-020.)
 
 ## 5. When Something Fails
 
