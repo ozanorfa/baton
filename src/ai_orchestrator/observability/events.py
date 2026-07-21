@@ -19,6 +19,7 @@ RUN_REVISED = "run_revised"
 STAGE_STARTED = "stage_started"
 PROVIDER_INVOKED = "provider_invoked"
 STAGE_SUCCEEDED = "stage_succeeded"
+STAGE_NO_CHANGES = "stage_no_changes"  # ADR-021: edit-stage declared a legitimate no-op
 STAGE_FAILED = "stage_failed"
 STAGE_SKIPPED = "stage_skipped"
 RUN_FINISHED = "run_finished"

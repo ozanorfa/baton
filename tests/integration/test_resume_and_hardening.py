@@ -165,6 +165,37 @@ def test_timeout_becomes_clean_stage_failure(project, fake_registry) -> None:
     assert state["stages"][1]["status"] == "failed"
 
 
+def test_coder_declared_no_op_succeeds(project, fake_registry) -> None:
+    """ADR-021: a coder that changes nothing but declares no_changes_needed is a
+    valid outcome, not the silent permission-block failure."""
+    request = (
+        "add a license header if missing "
+        "[[output@coder:CHANGE_STATUS: no_changes_needed — header already present]] "
+        "[[output@reviewer:**Verdict** — APPROVE]]"
+    )
+    result = runner.invoke(app, ["run", request], env={"COLUMNS": "220"})
+    assert result.exit_code == 0
+    run_id = only_run_id(project)
+    state = json.loads((project / ".ai" / "runs" / run_id / "run.json").read_text())
+    coder = next(s for s in state["stages"] if s["name"] == "coder")
+    assert coder["status"] == "succeeded"  # no-op accepted, not failed
+    # nothing changed → no diff.patch artifact
+    assert not (project / ".ai" / "runs" / run_id / "artifacts" / "diff.patch").exists()
+
+
+def test_coder_silent_no_change_still_fails(project, fake_registry) -> None:
+    """Safety net preserved (ADR-007): zero change WITHOUT the marker still fails,
+    so a silent permission block is never mistaken for a success."""
+    request = "do something real [[output@coder:I did nothing and forgot the marker]]"
+    result = runner.invoke(app, ["run", request], env={"COLUMNS": "220"})
+    assert result.exit_code == 1
+    run_id = only_run_id(project)
+    state = json.loads((project / ".ai" / "runs" / run_id / "run.json").read_text())
+    coder = next(s for s in state["stages"] if s["name"] == "coder")
+    assert coder["status"] == "failed"
+    assert "no workspace changes" in coder["error"]
+
+
 class InterruptingTransport:
     def run(self, invocation):
         raise KeyboardInterrupt

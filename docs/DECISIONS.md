@@ -1,6 +1,6 @@
 # Architectural Decision Records — AI Coding Orchestrator
 
-**Status:** Living · 20 ADRs · updated 2026-07-21
+**Status:** Living · 21 ADRs · updated 2026-07-21
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Convention: one ADR per consequential decision. New decisions get new ADRs; reversals supersede, never rewrite history. Any future proposal for dynamic/LLM-driven orchestration **requires** an ADR here before code (risk R7 guard).
@@ -411,3 +411,19 @@ It honors the pure-adapter contract (ARCHITECTURE §3.1) by delegating the one s
 **Trade-offs.** (a) `git add -A` can stage unrelated working-tree changes — mitigated by showing the file list before the confirmation (the owner chose this over "tracked-only" or "no auto-stage"). (b) Reusing the latest run's `commit_message.md` can be stale if the tree changed since that run — mitigated because the draft is always shown before committing and `-m` overrides it. (c) The commit message keeps only the commit section when the draft also embeds a "PR description" heading (a simple split, with the whole text as fallback).
 
 **Alternatives considered.** Letting the Publisher role commit when enabled (rejected — breaks ADR-014 and the owner's "no automatic git" requirement). `--push` without confirmation (rejected — the owner is git-cautious; confirmation is the default, `--yes` opts out).
+
+---
+
+## ADR-021 — A declared no-op is a success, not a silent-permission-block failure
+
+**Status:** Accepted · 2026-07-21
+
+**Context.** ADR-007's safety net: because a permission-blocked headless run reports success at the protocol level (claude.py `permission_block.json`), the engine treats an edit-stage that returns success **but changes nothing** as a failure — the workspace is the only honest witness. This correctly catches silent blocks, but it also mislabels a **legitimate no-op**: "add a license header if missing" when the header is already there is a real, correct outcome with zero changes, yet it was failing the run.
+
+**Decision.** Distinguish the two with an explicit, low-ceremony signal. The Coder template (`prompts/coder.md`) instructs: if no change is genuinely needed, make no edits and put exactly `CHANGE_STATUS: no_changes_needed` as the first line of the summary. The engine (`core/engine.py`), on zero workspace change, checks `result.text` for that marker (`NO_CHANGES_MARKER`): present → the stage **succeeds** with an empty diff and a `stage_no_changes` event; absent → the existing failure fires unchanged.
+
+**Why it's safe — no regression is possible.** Absent marker + zero change behaves **exactly as today** (failure), so the permission-block detection is fully preserved. The marker only ever *relaxes a false negative*. If the model forgets to emit it on a true no-op, the result is the current behavior (a false failure) — never a false success. So a silent permission block can never be mistaken for a no-op: the block produces no marker.
+
+**Trade-offs.** (a) The marker is a prompt convention, so it shares the fragility of any model-emitted token — mitigated entirely by the fail-safe direction (forgetting it fails safe). (b) A downstream stage (Reviewer) then sees no `diff.patch`; the contract admits it but `inputs_section` simply omits an absent artifact, so the Reviewer reviews the "nothing changed" situation cleanly.
+
+**Alternatives considered.** (a) A structured `CHANGE_STATUS:` enum with `changed`/`no_changes_needed`/`blocked` (the original suggestion) — rejected as over-built: only the no-op case needs rescuing, and a `blocked` self-report can't be trusted (a blocked provider won't reliably say so). (b) Always trust protocol success and drop the workspace check — rejected: it throws away the only real permission-block detector.

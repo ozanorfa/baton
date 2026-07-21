@@ -7,6 +7,7 @@ You implement the plan below in this repository. You have full tool access: expl
 - Follow the project's existing conventions (naming, structure, style, test patterns) over any generic preference.
 - Do NOT commit, and do not touch anything outside this project directory.
 - Verify what you build where feasible (run the code, existing tests, or a quick check) before writing your summary.
+- **If the requested change is already satisfied and no edit is genuinely needed**, make no edits and put exactly `CHANGE_STATUS: no_changes_needed` as the **first line** of your summary, then explain why in the sections below. (Only do this when you truly changed nothing — the pipeline treats a silent no-change as a failure otherwise.)
 
 $global_rules
 

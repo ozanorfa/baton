@@ -31,6 +31,12 @@ from ai_orchestrator.transport.base import Transport
 
 PromptBuilder = Callable[[StageSpec, str, dict[str, str]], str]
 
+# ADR-021: a legitimate no-op. An edit-stage that makes no workspace change AND
+# emits this marker in its summary is a valid "nothing needed" outcome, not the
+# silent permission-block failure. Absent marker + zero change still fails — so
+# this only ever relaxes a false negative, never masks a real block.
+NO_CHANGES_MARKER = "CHANGE_STATUS: no_changes_needed"
+
 
 class ResumeError(Exception):
     """Resume is impossible or ambiguous; message says why."""
@@ -303,21 +309,29 @@ class PipelineEngine:
             if stage.allow_edits:
                 snapshot = snapshot_changes(self.run_manager.project_dir)
                 if snapshot is not None and not snapshot.changed:
-                    # Protocol said success but nothing changed — the silent
-                    # permission-block signature (ADR-007; claude fixture
-                    # permission_block.json). Only the workspace can tell.
-                    record.status = StageStatus.FAILED
-                    record.error = (
-                        f"{stage.spec.name!r} reported success but no workspace changes "
-                        "were detected. Likely causes: a permission block inside the "
-                        "provider, or the stage decided no changes were needed. Inspect "
-                        f"its output artifact ({stage.spec.output}) and raw logs."
-                    )
-                    state.status = RunStatus.FAILED
-                    self.run_manager.save(state)
-                    log.emit(ev.STAGE_FAILED, stage=stage.spec.name, error=record.error)
-                    failed = True
-                    break
+                    if NO_CHANGES_MARKER in result.text:
+                        # A declared no-op (ADR-021): the stage explicitly said no
+                        # change was needed. Distinct from the silent permission
+                        # block below, which produces zero changes WITHOUT the
+                        # marker. Falls through to SUCCEEDED with an empty diff.
+                        log.emit(ev.STAGE_NO_CHANGES, stage=stage.spec.name)
+                    else:
+                        # Protocol said success but nothing changed — the silent
+                        # permission-block signature (ADR-007; claude fixture
+                        # permission_block.json). Only the workspace can tell.
+                        record.status = StageStatus.FAILED
+                        record.error = (
+                            f"{stage.spec.name!r} reported success but no workspace changes "
+                            "were detected. Likely causes: a permission block inside the "
+                            "provider, or the stage decided no changes were needed (in "
+                            f"which case it should emit '{NO_CHANGES_MARKER}'). Inspect "
+                            f"its output artifact ({stage.spec.output}) and raw logs."
+                        )
+                        state.status = RunStatus.FAILED
+                        self.run_manager.save(state)
+                        log.emit(ev.STAGE_FAILED, stage=stage.spec.name, error=record.error)
+                        failed = True
+                        break
                 if snapshot is not None and snapshot.patch:
                     self.run_manager.save_artifact(state, "diff.patch", snapshot.patch)
                     artifacts["diff.patch"] = snapshot.patch

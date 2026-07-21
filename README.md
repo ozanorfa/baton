@@ -65,7 +65,7 @@ The Coder stage **edits your repository unattended** (scoped to the project dire
 | [HOW_TO_USE.md](docs/HOW_TO_USE.md) · [🇹🇷 Türkçe](docs/HOW_TO_USE.tr.md) | **Start here** — plain-language user guide |
 | [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | Vision, goals, milestones, risks |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers, adapter contract, context system, verified CLI behavior |
-| [DECISIONS.md](docs/DECISIONS.md) | 20 ADRs — why everything is the way it is |
+| [DECISIONS.md](docs/DECISIONS.md) | 21 ADRs — why everything is the way it is |
 | [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | Repo layout + runtime footprint |
 | [TASKS.md](docs/TASKS.md) | 35-task build plan with acceptance criteria |
 | [MVP.md](docs/MVP.md) | The first full version, stage by stage |
