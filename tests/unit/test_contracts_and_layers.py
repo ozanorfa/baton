@@ -15,15 +15,21 @@ def test_contract_table_matches_architecture_doc() -> None:
     assert contract_for("planner").inputs == ()
     assert contract_for("designer").inputs == ("plan.md",)
     assert contract_for("coder").inputs == ("plan.md", "design.md")
-    assert contract_for("reviewer").inputs == ("plan.md", "changes.md", "diff.patch")
+    assert contract_for("tester").inputs == ("plan.md", "changes.md")
+    assert contract_for("tester").output == "test_report.md"
+    assert contract_for("reviewer").inputs == (
+        "plan.md", "changes.md", "diff.patch", "test_report.md"
+    )
     assert contract_for("publisher").inputs == ("changes.md", "diff.patch", "review.md")
-    assert [c.allow_edits for c in CONTRACTS.values()] == [False, False, True, False, False]
+    assert [c.allow_edits for c in CONTRACTS.values()] == [
+        False, False, True, False, False, False
+    ]
 
 
 def test_unknown_role_gets_generic_chain_contract() -> None:
-    c = contract_for("tester", previous_output="review.md")
+    c = contract_for("auditor", previous_output="review.md")
     assert c.inputs == ("review.md",)
-    assert c.output == "tester.md"
+    assert c.output == "auditor.md"
     assert not c.allow_edits
     assert c.template == "_generic.md"
 

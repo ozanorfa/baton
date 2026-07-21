@@ -14,7 +14,9 @@ def load_defaults() -> dict:
 
 def test_defaults_yaml_is_valid() -> None:
     config = AppConfig.model_validate(load_defaults())
-    assert config.pipeline.stages == ["planner", "designer", "coder", "reviewer", "publisher"]
+    assert config.pipeline.stages == [
+        "planner", "designer", "coder", "tester", "reviewer", "publisher"
+    ]
     assert config.roles["coder"].provider == "claude"
     assert config.roles["designer"].enabled is False
     assert config.roles["publisher"].enabled is False  # opt-in (ADR-014)
@@ -31,8 +33,8 @@ def test_bad_value_fails_with_key_in_message() -> None:
 
 def test_stage_without_role_fails() -> None:
     data = load_defaults()
-    data["pipeline"]["stages"].append("tester")
-    with pytest.raises(ValidationError, match="'tester' has no entry under 'roles'"):
+    data["pipeline"]["stages"].append("auditor")
+    with pytest.raises(ValidationError, match="'auditor' has no entry under 'roles'"):
         AppConfig.model_validate(data)
 
 

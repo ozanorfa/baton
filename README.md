@@ -6,7 +6,7 @@ A **local-first CLI** that turns multiple AI coding assistants (Claude Code, Cod
 ai "Add Face ID support to the Flutter application"
 ```
 
-…runs **Planner** (Codex) → **Designer** (Antigravity, optional) → **Coder** (Claude Code) → **Reviewer** (Codex) → **Publisher** (opencode, optional), forwards each stage's output to the next automatically, preserves every artifact on disk, and prints an execution report with real token counts.
+…runs **Planner** (Codex) → **Designer** (Antigravity, optional) → **Coder** (Claude Code) → **Tester** (zero-LLM, optional) → **Reviewer** (Codex) → **Publisher** (opencode, optional), forwards each stage's output to the next automatically, preserves every artifact on disk, and prints an execution report with real token counts.
 
 **Not another agent framework:** routing is plain Python from YAML config — no supervisor LLM, no dynamic delegation, zero tokens spent on coordination.
 
@@ -36,7 +36,7 @@ ai "do something useful"           # run the pipeline
 
 | Command | What it does |
 |---|---|
-| `ai "<request>"` | Run the full pipeline (`--with-designer` for the UI stage, `--with-publisher` to draft a commit message + PR description, `--fix-loop` to auto-fix once on a NEEDS WORK verdict — ADR-023) |
+| `ai "<request>"` | Run the full pipeline (`--with-designer` UI stage · `--with-tester` runs your tests, zero-LLM · `--with-publisher` drafts a commit message · `--fix-loop` auto-fixes once on NEEDS WORK) |
 | `ai revise "<correction>"` | Iterate on the **last** run without starting over — the Coder resumes its own session and applies the correction, then the Reviewer re-checks (ADR-019) |
 | `ai review` | Send the current working-tree diff to the Reviewer — check your own changes with a different model, no pipeline, read-only (ADR-022) |
 | `ai publish` | Preview a drafted commit message; `--commit`/`--push` commit (and push) — the only command that runs git, and only when you ask (ADR-020) |
@@ -66,7 +66,7 @@ The Coder stage **edits your repository unattended** (scoped to the project dire
 | [HOW_TO_USE.md](docs/HOW_TO_USE.md) · [🇹🇷 Türkçe](docs/HOW_TO_USE.tr.md) | **Start here** — plain-language user guide |
 | [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | Vision, goals, milestones, risks |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers, adapter contract, context system, verified CLI behavior |
-| [DECISIONS.md](docs/DECISIONS.md) | 23 ADRs — why everything is the way it is |
+| [DECISIONS.md](docs/DECISIONS.md) | 24 ADRs — why everything is the way it is |
 | [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | Repo layout + runtime footprint |
 | [TASKS.md](docs/TASKS.md) | 35-task build plan with acceptance criteria |
 | [MVP.md](docs/MVP.md) | The first full version, stage by stage |

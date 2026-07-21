@@ -33,6 +33,9 @@ def revise(
     with_designer: bool = typer.Option(
         False, "--with-designer", help="Keep the Designer stage enabled (if the run used it)."
     ),
+    with_tester: bool = typer.Option(
+        False, "--with-tester", help="Keep the Tester stage enabled (if the run used it)."
+    ),
     with_publisher: bool = typer.Option(
         False, "--with-publisher", help="Keep the Publisher stage enabled (if the run used it)."
     ),
@@ -56,6 +59,8 @@ def revise(
     overrides: dict[str, object] = {}
     if with_designer:
         overrides["roles.designer.enabled"] = True
+    if with_tester:
+        overrides["roles.tester.enabled"] = True
     if with_publisher:
         overrides["roles.publisher.enabled"] = True
     try:

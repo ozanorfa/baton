@@ -20,6 +20,7 @@ def full_fake_project(tmp_path: Path, monkeypatch) -> Path:
     project = tmp_path / "proj4"
     (project / ".ai" / "prompts").mkdir(parents=True)
     (project / ".ai" / "config.yaml").write_text(
+        "pipeline:\n  stages: [planner, designer, coder, reviewer]\n"
         "roles:\n"
         "  planner: {provider: fake}\n"
         "  designer: {provider: fake, enabled: true}\n"

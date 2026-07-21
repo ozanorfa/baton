@@ -43,29 +43,32 @@ def make_registry(adapter_cls=StubAdapter) -> ProviderRegistry:
 
 def test_build_stage_specs_from_default_pipeline() -> None:
     specs = build_stage_specs(make_config())
-    assert [s.name for s in specs] == ["planner", "designer", "coder", "reviewer", "publisher"]
+    assert [s.name for s in specs] == [
+        "planner", "designer", "coder", "tester", "reviewer", "publisher"
+    ]
     assert specs[1].optional  # designer disabled by default
-    assert specs[4].optional  # publisher disabled by default (ADR-014)
+    assert specs[3].optional  # tester disabled by default (ADR-024)
+    assert specs[5].optional  # publisher disabled by default (ADR-014)
     assert specs[2].inputs == ["plan.md", "design.md"]
-    assert specs[3].output == "review.md"
-    assert specs[4].inputs == ["changes.md", "diff.patch", "review.md"]
+    assert specs[4].output == "review.md"
+    assert specs[5].inputs == ["changes.md", "diff.patch", "review.md"]
 
 
 def test_unknown_role_gets_generic_chain_spec() -> None:
     config = make_config()
-    config.pipeline.stages.append("tester")
-    config.roles["tester"] = config.roles["planner"]
+    config.pipeline.stages.append("auditor")
+    config.roles["auditor"] = config.roles["planner"]
     specs = build_stage_specs(config)
-    tester = specs[-1]
-    assert tester.output == "tester.md"
-    assert tester.inputs == ["commit_message.md"]  # consumes the previous stage's artifact
+    auditor = specs[-1]
+    assert auditor.output == "auditor.md"
+    assert auditor.inputs == ["commit_message.md"]  # consumes the previous stage's artifact
 
 
 def test_resolve_shares_one_adapter_per_provider() -> None:
     engine = RoutingEngine(make_config(), make_registry())
     resolved = engine.resolve(build_stage_specs(make_config()), transport=None)
     adapters = {id(r.adapter) for r in resolved}
-    assert len(adapters) == 1  # all five roles → same provider → same instance
+    assert len(adapters) == 1  # all roles → same provider → same instance
     assert resolved[2].allow_edits and not resolved[0].allow_edits
     assert resolved[2].timeout_s == 600
 

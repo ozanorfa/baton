@@ -26,6 +26,10 @@ def resume(
         False, "--with-designer",
         help="Keep the Designer stage enabled (pass again if the original run used it).",
     ),
+    with_tester: bool = typer.Option(
+        False, "--with-tester",
+        help="Keep the Tester stage enabled (pass again if the original run used it).",
+    ),
     with_publisher: bool = typer.Option(
         False, "--with-publisher",
         help="Keep the Publisher stage enabled (pass again if the original run used it).",
@@ -43,6 +47,8 @@ def resume(
     overrides: dict[str, object] = {}
     if with_designer:
         overrides["roles.designer.enabled"] = True
+    if with_tester:
+        overrides["roles.tester.enabled"] = True
     if with_publisher:
         overrides["roles.publisher.enabled"] = True
     try:

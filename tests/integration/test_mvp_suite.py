@@ -24,6 +24,7 @@ def mvp_project(tmp_path: Path, monkeypatch) -> Path:
     project = tmp_path / "proj"
     (project / ".ai").mkdir(parents=True)
     (project / ".ai" / "config.yaml").write_text(
+        "pipeline:\n  stages: [planner, designer, coder, reviewer, publisher]\n"
         "roles:\n"
         "  planner: {provider: fake}\n"
         "  designer: {provider: fake, enabled: true}\n"

@@ -31,9 +31,14 @@ CONTRACTS: dict[str, RoleContract] = {
         role="coder", inputs=("plan.md", "design.md"), output="changes.md",
         allow_edits=True, template="coder.md",
     ),
+    "tester": RoleContract(
+        role="tester", inputs=("plan.md", "changes.md"), output="test_report.md",
+        allow_edits=False, template="tester.md",
+    ),
     "reviewer": RoleContract(
-        role="reviewer", inputs=("plan.md", "changes.md", "diff.patch"), output="review.md",
-        allow_edits=False, template="reviewer.md",
+        role="reviewer",
+        inputs=("plan.md", "changes.md", "diff.patch", "test_report.md"),
+        output="review.md", allow_edits=False, template="reviewer.md",
     ),
     "publisher": RoleContract(
         role="publisher", inputs=("changes.md", "diff.patch", "review.md"),

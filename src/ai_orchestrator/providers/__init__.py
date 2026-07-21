@@ -9,6 +9,7 @@ def load_all():
         codex,
         deterministic,
         opencode,
+        testrunner,
     )
     from ai_orchestrator.providers.registry import registry
 

@@ -64,7 +64,7 @@ The heart of the system, and deliberately boring: a sequential interpreter over 
 ```python
 @dataclass(frozen=True)
 class StageSpec:
-    name: str            # "planner", "designer", "coder", "reviewer"
+    name: str            # "planner", "designer", "coder", "tester", "reviewer", "publisher"
     role: str            # role key → prompt template + input contract
     optional: bool       # e.g. designer: skipped unless enabled
     inputs: list[str]    # artifact names consumed, e.g. ["plan"]
@@ -192,7 +192,7 @@ CLI flags  >  env vars (AI_ORCH_*)  >  ./.ai/config.yaml  >  ~/.config/ai-orches
 ```yaml
 # .ai/config.yaml (project)
 pipeline:
-  stages: [planner, designer, coder, reviewer]   # order is normative
+  stages: [planner, designer, coder, tester, reviewer, publisher]   # order is normative
 
 roles:
   planner:  { provider: codex }

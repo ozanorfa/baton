@@ -300,3 +300,16 @@ ai --fix-loop "implement something with a deliberately tricky requirement"
 
 What to expect: the pipeline runs; if the reviewer verdict is `NEEDS WORK`, you'll see `⟳ reviewer flagged blockers — running one fix pass…`, then the Coder re-runs (resuming its own session, now with the review findings) and the Reviewer re-checks — a second summary prints. It's the automatic cousin of `ai revise`; the same run-id is reused (check `ai runs list`). It never loops twice, even if the second verdict is still `NEEDS WORK` (bounded by construction). `APPROVE`/`APPROVE WITH NOTES` never trigger it. Free trigger-logic check: `uv run pytest tests/integration/test_fix_loop.py`.
 
+## Tester stage (ADR-024) — run your tests, zero-LLM
+
+Off by default. Enable per run; it runs the project's test command after the Coder and hands the result to the Reviewer. **Zero tokens** — it just runs a command.
+
+```bash
+# auto-detected command (pyproject.toml → pytest, package.json → npm test, …):
+ai --with-tester "add a feature"
+# or pin it in .ai/config.yaml:
+#   providers: {testrunner: {command: "uv run pytest"}}
+```
+
+What to expect: after the Coder, a `tester` stage runs; `.ai/runs/<id>/artifacts/test_report.md` holds `PASSED`/`FAILED` + the output tail, and the Reviewer's prompt now includes it. **Report-and-continue**: failing tests do *not* stop the run — the tester stage still succeeds, and the Reviewer factors the failure into its verdict (`NEEDS WORK`), which `--fix-loop` (ADR-023) can then auto-fix. Only a missing/undetectable command or a timeout fails the stage. Free check: `uv run pytest tests/contract/test_testrunner_adapter.py tests/integration/test_tester.py`.
+

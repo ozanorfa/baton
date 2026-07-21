@@ -2,7 +2,7 @@
 # Override per user (~/.config/ai-orchestrator/config.yaml) or per project (.ai/config.yaml).
 
 pipeline:
-  stages: [planner, designer, coder, reviewer, publisher]
+  stages: [planner, designer, coder, tester, reviewer, publisher]
   # ADR-015: consecutive stages on the SAME provider (by default: planner
   # and reviewer are both codex) resume each other's session instead of
   # cold-starting, cutting redundant repo re-exploration. Never crosses
@@ -28,6 +28,9 @@ roles:
     enabled: false # optional stage, off by default
   coder:
     provider: claude
+  tester:
+    provider: testrunner # zero-LLM: runs the project's tests (ADR-024)
+    enabled: false # optional stage, off by default — enable with --with-tester
   reviewer:
     provider: codex
   publisher:
@@ -54,6 +57,9 @@ providers:
   deterministic:
     command: git # zero-LLM publisher floor (ADR-018): commit message from `git diff --stat`
     timeout_s: 60 # no model, no quota; select per project: roles: {publisher: {provider: deterministic}}
+  testrunner:
+    command: auto # zero-LLM tester (ADR-024): auto-detect the test command (pytest/npm test/…)
+    timeout_s: 600 # override per project: providers: {testrunner: {command: "uv run pytest"}}
 
 context:
   project_profile: .ai/project.md

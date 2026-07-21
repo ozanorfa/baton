@@ -1,6 +1,6 @@
 # Architectural Decision Records — AI Coding Orchestrator
 
-**Status:** Living · 23 ADRs · updated 2026-07-21
+**Status:** Living · 24 ADRs · updated 2026-07-21
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Convention: one ADR per consequential decision. New decisions get new ADRs; reversals supersede, never rewrite history. Any future proposal for dynamic/LLM-driven orchestration **requires** an ADR here before code (risk R7 guard).
@@ -467,3 +467,21 @@ It honors the pure-adapter contract (ARCHITECTURE §3.1) by delegating the one s
 **Trade-offs.** (a) Amends ADR-008/MVP's "no retries, no loop-back" — deliberately, and narrowly (one bounded pass, opt-in). (b) With the Publisher enabled, the fix pass re-runs from the Coder, so the Publisher re-drafts against the fixed code; the pre-fix draft is superseded (minor waste, Publisher is off by default). (c) Exit code is unchanged — a NEEDS WORK run's status is still SUCCEEDED (the verdict is content, not a stage failure), so the final verdict is shown in the summary, not encoded in the exit code.
 
 **Alternatives considered.** (a) Loop until clean / N iterations — rejected: unbounded token risk and against the owner's cost-consciousness; one pass catches the common "close but blocked" case. (b) Trigger on any non-`APPROVE` (incl. `APPROVE WITH NOTES`) — rejected: notes are explicitly non-blocking, so a fix turn there usually wastes the priciest stages. (c) Implement in the engine — rejected: it would make the linear core conditional; the CLI-level reuse of `revise` keeps the engine pure and applies the loop only to fresh `ai run` (not `resume`/`revise`, where the user already iterates by hand).
+
+---
+
+## ADR-024 — A zero-LLM Tester role: run the project's tests, report the result
+
+**Status:** Accepted · 2026-07-21 · **Confirmed with the project owner (auto-detect + override, report-and-continue).**
+
+**Context.** The pipeline had no ground truth — the Reviewer *reads* the diff and may run a check, but nothing deterministically runs the project's own test suite. Adding a Tester is the roadmap's "new role" done under the project's discipline: **add a role only when it earns its keep.** Running tests earns it — running them is deterministic (**zero tokens**), and the signal is real: broken code shows before the Reviewer even looks.
+
+**Decision.** Add an optional `tester` role, off by default, positioned `Coder → Tester → Reviewer`, backed by a new zero-LLM `testrunner` provider (`providers/testrunner.py`, modeled on ADR-018's `deterministic`). It ignores the prompt and delegates to the transport, running the project's test command in the workdir.
+
+- **Test command (owner choice: auto-detect + override).** `providers.testrunner.command: auto` detects from stack markers (`pyproject.toml`→`pytest`, `package.json`→`npm test`, `go.mod`→`go test ./...`, `Cargo.toml`→`cargo test`, `pubspec.yaml`→`flutter test`, …); an explicit `command` overrides. Undetectable + unset → the stage fails with a clear "set `providers.testrunner.command`" message (a config error, distinct from a test failure).
+- **Report-and-continue (owner choice).** Running the tests and getting failures is still a *successful test run*, so a FAILED result is a **successful stage** whose `test_report.md` says FAILED. The Reviewer's contract gains `test_report.md` as an input, so the verdict reflects the tests — a failure → `NEEDS WORK` → (with `--fix-loop`, ADR-023) an automatic fix. Only a missing command or a timeout fails the stage itself. This composes the Tester, Reviewer, and fix-loop into one signal chain rather than a hard gate.
+- Enable per run with `ai run --with-tester` (mirrored on `resume`/`revise`), or per project (`roles: {tester: {enabled: true}}`).
+
+**Trade-offs.** (a) `testrunner`'s health check can't verify the command up front (it resolves against the run's workdir, unknown at preflight) — it returns healthy and the real check happens at run time. (b) Auto-detected commands are conventional guesses (e.g. `pytest` vs `uv run pytest`); the override exists for anything non-standard. (c) Adding `tester` to the default pipeline means an extra `○ tester skipped` row when it's off — consistent with the existing designer/publisher rows.
+
+**Alternatives considered.** (a) Fail-stop on test failure (a gate) — rejected by the owner in favor of report-and-continue, which feeds the Reviewer/fix-loop instead of dead-ending the run. (b) Explicit-config-only (no detection) — rejected: auto-detect gives zero-config for common stacks, and the override covers the rest. (c) An LLM-backed tester that figures out how to run tests — rejected as wasteful; a deterministic command runner is cheaper and more reliable (the `tester.md` template exists only if someone deliberately binds an LLM provider to the role).

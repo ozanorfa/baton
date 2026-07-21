@@ -45,6 +45,10 @@ def run(
     with_designer: bool = typer.Option(
         False, "--with-designer", help="Enable the optional Designer stage for this run."
     ),
+    with_tester: bool = typer.Option(
+        False, "--with-tester",
+        help="Enable the optional Tester stage (runs the project's tests, zero-LLM — ADR-024).",
+    ),
     with_publisher: bool = typer.Option(
         False, "--with-publisher",
         help="Enable the optional Publisher stage (drafts commit message + PR description; "
@@ -61,6 +65,8 @@ def run(
     overrides: dict[str, object] = {}
     if with_designer:
         overrides["roles.designer.enabled"] = True
+    if with_tester:
+        overrides["roles.tester.enabled"] = True
     if with_publisher:
         overrides["roles.publisher.enabled"] = True
     if fix_loop:
