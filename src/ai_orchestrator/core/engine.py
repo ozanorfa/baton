@@ -113,6 +113,66 @@ class PipelineEngine:
         )
         return self._run(state, resolved, artifacts=artifacts, start=start, log=log)
 
+    def revise(
+        self,
+        state: RunState,
+        resolved: list[ResolvedStage],
+        correction: str,
+        from_stage: str | None = None,
+    ) -> RunState:
+        """Continue a COMPLETED run with a correction, without starting over (ADR-019).
+
+        The correction is appended to the run's request so it reaches every
+        re-run stage (the Coder does not see review.md by contract, so the
+        request layer is the reliable channel). Sessions from the prior run are
+        carried forward per provider, so same-provider stages — including the
+        re-run Coder — resume rather than cold-start: the Coder remembers its
+        own prior work and treats the correction as the next turn.
+        """
+        names = [r.spec.name for r in resolved]
+        if from_stage is not None:
+            if from_stage not in names:
+                raise ResumeError(f"unknown stage {from_stage!r}; stages: {names}")
+            start = names.index(from_stage)
+        else:
+            # Default: redo from the Coder — keep the plan, re-implement + re-review.
+            start = next((i for i, r in enumerate(resolved) if r.spec.role == "coder"), 0)
+
+        # Capture prior sessions from ALL succeeded stages BEFORE the tail reset,
+        # so a re-run stage can resume its own session (see docstring).
+        specs_by_name = {r.spec.name: r for r in resolved}
+        carried: dict[str, tuple[str, bool]] = {}
+        for rec in state.stages:
+            rstage = specs_by_name.get(rec.name)
+            if rec.status is StageStatus.SUCCEEDED and rec.provider and rec.session_id and rstage:
+                carried[rec.provider] = (rec.session_id, rstage.allow_edits)
+
+        state.request = f"{state.request}\n\n## Correction (revise)\n{correction}"
+
+        for i in range(start, len(state.stages)):
+            old = state.stages[i]
+            state.stages[i] = StageResult(name=old.name, role=old.role)
+        state.status = RunStatus.RUNNING
+        self.run_manager.save(state)
+
+        artifacts: dict[str, str] = {}
+        artifacts_dir = self.run_manager.artifacts_dir(state.run_id)
+        for path in sorted(artifacts_dir.iterdir()) if artifacts_dir.is_dir() else []:
+            if path.is_file():
+                artifacts[path.name] = path.read_text()
+
+        log = EventLog(self.run_manager.logs_dir(state.run_id), sink=self.event_sink)
+        log.emit(
+            ev.RUN_REVISED,
+            run_id=state.run_id,
+            from_stage=state.stages[start].name,
+            correction=correction,
+            reused_artifacts=sorted(artifacts),
+        )
+        return self._run(
+            state, resolved, artifacts=artifacts, start=start, log=log, carry_sessions=carried,
+        )
+
     def _run(
         self,
         state: RunState,
@@ -120,6 +180,7 @@ class PipelineEngine:
         artifacts: dict[str, str],
         start: int,
         log: EventLog,
+        carry_sessions: dict[str, tuple[str, bool]] | None = None,
     ) -> RunState:
         request = state.request
         failed = False
@@ -135,7 +196,12 @@ class PipelineEngine:
         # on `-s/--sandbox`). Chaining into a stage with different write
         # needs would silently keep the OLD access level, so we only chain
         # when allow_edits matches — never a silent capability change.
-        provider_sessions: dict[str, tuple[str, bool]] = {}
+        # `revise` carries the whole prior run's sessions forward (not just the
+        # stages before `start`), so a re-run stage can resume its OWN session —
+        # e.g. the Coder picks up its prior Claude session and treats the
+        # correction as the next turn. The [:start] loop below may still refine
+        # these from the untouched head stages.
+        provider_sessions: dict[str, tuple[str, bool]] = dict(carry_sessions or {})
         specs_by_name = {r.spec.name: r for r in resolved}
         for record_i in state.stages[:start]:
             succeeded = record_i.status is StageStatus.SUCCEEDED

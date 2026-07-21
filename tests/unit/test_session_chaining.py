@@ -180,6 +180,60 @@ def test_mismatched_allow_edits_never_chains(manager) -> None:
     assert codex.received_session_ids == [None, None]  # never chained — access levels differ
 
 
+def test_revise_coder_resumes_own_session_and_reviewer_rechains(manager) -> None:
+    """ADR-019: after a full run, `revise` re-runs from the Coder. The Coder must
+    resume its OWN prior session (the correction is the next turn), and the
+    Reviewer must still resume the Planner's codex session. Planner is not re-run."""
+    codex = RecordingAdapter(
+        "codex",
+        [
+            AgentResult(success=True, text="PLAN", session_id="codex-1"),
+            AgentResult(success=True, text="REVIEW", session_id="codex-2"),
+        ],
+    )
+    claude = RecordingAdapter(
+        "claude", [AgentResult(success=True, text="CODE", session_id="claude-1")]
+    )
+    stages = [
+        make_stage("planner", codex),
+        make_stage("coder", claude, allow_edits=True),
+        make_stage("reviewer", codex),
+    ]
+    engine = PipelineEngine(manager, IndexEchoTransport())
+    state = engine.execute("req", stages)
+    assert claude.received_session_ids == [None]
+    assert codex.received_session_ids == [None, "codex-1"]
+
+    codex.results.append(AgentResult(success=True, text="REVIEW2", session_id="codex-3"))
+    claude.results.append(AgentResult(success=True, text="CODE2", session_id="claude-2"))
+    engine.revise(state, stages, "make the button blue")
+
+    # Coder re-ran resuming its OWN session; Reviewer re-chained to Planner; Planner not re-run.
+    assert claude.received_session_ids == [None, "claude-1"]
+    assert codex.received_session_ids == [None, "codex-1", "codex-1"]
+
+
+def test_revise_appends_correction_to_request(manager) -> None:
+    """The correction is injected into the run's request so every re-run stage
+    sees it (the Coder does not receive review.md by contract)."""
+    codex = RecordingAdapter(
+        "codex", [AgentResult(success=True, text="PLAN", session_id="codex-1")]
+    )
+    claude = RecordingAdapter(
+        "claude", [AgentResult(success=True, text="CODE", session_id="claude-1")]
+    )
+    stages = [make_stage("planner", codex), make_stage("coder", claude, allow_edits=True)]
+    engine = PipelineEngine(manager, IndexEchoTransport())
+    state = engine.execute("build a thing", stages)
+
+    claude.results.append(AgentResult(success=True, text="CODE2", session_id="claude-2"))
+    state = engine.revise(state, stages, "use a dark theme")
+
+    assert "build a thing" in state.request
+    assert "use a dark theme" in state.request
+    assert claude.received_session_ids == [None, "claude-1"]  # coder resumed itself
+
+
 def test_resume_rebuilds_chain_from_succeeded_history(manager) -> None:
     """Planner succeeds (codex), Reviewer fails; on resume, Reviewer (also
     codex) must still resume Planner's session even though Planner isn't

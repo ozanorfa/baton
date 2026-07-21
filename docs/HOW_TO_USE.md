@@ -78,7 +78,7 @@ A run typically takes 1–5 minutes and touches real files in your repository �
   - `prompts/` — the *exact* text each AI was given (useful if a result seems off)
   - `logs/` — raw output per stage, for debugging
 
-**The tool never commits or pushes anything.** Reviewing and committing stays entirely your job. See §9.
+**No pipeline run ever commits or pushes** — reviewing stays your job. Committing is too, unless you explicitly run `ai publish --commit`/`--push` yourself (§8.1). See §9.
 
 ## 7. Understanding the cost/quota number
 
@@ -91,6 +91,13 @@ totals: tokens 400,123/8,500 · measured cost $0.85*
 **If you're on a subscription** (Claude Pro/Max, ChatGPT Plus) — that dollar figure is **not a bill**. It's the API-equivalent value of the work, shown for reference; what actually happens is your plan's included usage quota goes down a bit, the same as any other conversation with that tool. You only pay real money if you're specifically using pay-per-token API keys.
 
 A full run typically "costs" $0.20–1.50 of quota-equivalent — mostly fixed overhead (each AI re-familiarizing itself with your project), which barely grows with how big the actual task is. So this tool is not the right hammer for one-line changes — use `ai ask` instead (§8) for anything trivial.
+
+### The Publisher runs on a free client — a caveat
+
+The optional Publisher stage (and `ai ask --role publisher`) is wired to **opencode**, a free command-line client, to keep this shallow "draft a commit message from the diff" work off your paid plans entirely. opencode is a free *client*, but the model still comes from somewhere — you point it at a free tier (an [OpenRouter](https://openrouter.ai) `:free` model, a Google AI Studio free-tier key, or an opencode promo model) via opencode's own `opencode auth`. Two things to know:
+
+- Free tiers are **rate-limited** and typically **may train on the data you send them**. That's fine for a commit message; it's why the Publisher only ever sees the *diff and the plan*, never gets pointed at your whole codebase — and why the code-reading stages (Coder, Reviewer) are never routed here.
+- If you'd rather not use a free tier at all, override the Publisher's provider per project (e.g. `roles: {publisher: {provider: codex}}` in `.ai/config.yaml`).
 
 ## 8. Everyday commands
 
@@ -106,10 +113,26 @@ A full run typically "costs" $0.20–1.50 of quota-equivalent — mostly fixed o
 | `ai runs list` | See every past run in this project: status, cost, verdict |
 | `ai runs show <run-id>` | See one run's detail |
 | `ai resume <run-id>` | Continue a failed run from where it stopped — earlier successful stages are never redone or repaid |
+| `ai revise "<correction>"` | Iterate on the **last** run without starting over — the Coder picks up its own session and applies your correction, then the Reviewer re-checks (see §8.1) |
+| `ai publish` | Show a drafted commit message (no git). Add `--commit` to commit, `--push` to commit + push — the only command that touches git, and only when you ask (see §8.1) |
+
+## 8.1 The "correct it, then ship it" flow
+
+The pipeline runs once and stops — but you rarely get everything right on the first pass. Two commands close that loop so you can work conversationally:
+
+```bash
+ai "add a settings screen"          # 1. run it
+git diff                            # 2. review what the Coder did
+ai revise "make the header sticky"  # 3. not quite right? correct it — same run, no restart
+                                    #    (the Coder remembers its own work; --from planner re-plans)
+ai publish --push                   # 4. happy? commit everything and push (asks you to confirm first)
+```
+
+`ai revise` continues the **last** run: it reuses the plan and re-runs from the Coder, which resumes its own session and treats your correction as the next turn — then the Reviewer looks again. Repeat as many times as you like. When you're satisfied, `ai publish` drafts the commit message and — only with `--commit`/`--push`, and only after you confirm — actually commits (`git add -A`) and pushes.
 
 ## 9. What this tool will never do (read this once)
 
-- **It never runs `git commit`, `git push`, or touches GitHub in any way, in any mode.** Not by default, not with any flag, not ever. Even the optional Publisher stage only *writes a text draft* for you to read — it has no ability to run git commands.
+- **No pipeline stage ever runs git.** The pipeline never commits, pushes, or touches GitHub on its own — not by default, not with any flag. Even the optional Publisher stage only *writes a text draft*. The **one** way git gets run is when **you** type `ai publish --commit`/`--push` yourself — a separate, explicit command that shows you exactly what it will commit and asks you to confirm first (§8.1). Nothing reaches your history without you asking for it, each time.
 - **The Coder stage edits your files without asking permission each time** (that's the whole point — otherwise you'd have to approve every change by hand). The safety net: start from a clean `git status` (the tool warns you if you don't), review the diff before committing, and let the Reviewer stage's findings guide you.
 - If that trust level doesn't fit a particular project, use `ai ask` instead — it only answers, it never edits anything.
 

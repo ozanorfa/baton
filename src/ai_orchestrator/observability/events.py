@@ -15,6 +15,7 @@ LOG_FILENAME = "orchestrator.jsonl"
 # Canonical event names (free-form extras allowed, these are the core protocol).
 RUN_STARTED = "run_started"
 RUN_RESUMED = "run_resumed"
+RUN_REVISED = "run_revised"
 STAGE_STARTED = "stage_started"
 PROVIDER_INVOKED = "provider_invoked"
 STAGE_SUCCEEDED = "stage_succeeded"

@@ -78,7 +78,7 @@ Bir çalıştırma genelde 1-5 dakika sürer ve deponda gerçek dosyalara dokunu
   - `prompts/` — her AI'ya *tam olarak* verilen metin (bir sonuç tuhaf görünürse işine yarar)
   - `logs/` — hata ayıklama için her aşamanın ham çıktısı
 
-**Araç hiçbir zaman commit veya push yapmaz.** İnceleme ve commit atma tamamen senin işin olarak kalır — bkz. §9.
+**Hiçbir pipeline çalıştırması commit veya push atmaz** — inceleme senin işin. Commit de öyle; ancak sen açıkça `ai publish --commit`/`--push` çalıştırırsan olur (§8.1). Bkz. §9.
 
 ## 7. Maliyet/kota rakamını anlamak
 
@@ -91,6 +91,13 @@ totals: tokens 400,123/8,500 · measured cost $0.85*
 **Abonelik kullanıyorsan** (Claude Pro/Max, ChatGPT Plus) — o dolar rakamı **bir fatura değildir**. Yapılan işin API-eşdeğeri değeridir, bilgi amaçlı gösterilir; gerçekte olan şey, planına dahil kullanım kotanın biraz azalmasıdır — o araçla yapacağın herhangi bir sohbet gibi. Gerçek para sadece token-başına-ödeme yapan API anahtarları kullanıyorsan öder.
 
 Tam bir çalıştırma genelde 0,20–1,50 dolarlık kota-eşdeğeri "maliyet" gösterir — çoğunlukla sabit bir ek yüktür (her AI'nın projeni yeniden tanıması), gerçek işin büyüklüğüyle pek artmaz. Yani bu araç tek satırlık değişiklikler için doğru seçim değildir — küçük şeyler için `ai ask` kullan (§8).
+
+### Yayıncı (Publisher) ücretsiz bir istemcide çalışır — bir uyarı
+
+Opsiyonel Yayıncı aşaması (ve `ai ask --role publisher`), bu sığ "diff'ten bir commit mesajı taslağı çıkar" işini ücretli planlarından tamamen uzak tutmak için **opencode** adlı ücretsiz bir komut satırı istemcisine bağlanmıştır. opencode ücretsiz bir *istemcidir*, ama model yine de bir yerden gelir — onu opencode'un kendi `opencode auth` komutuyla bir ücretsiz katmana yönlendirirsin (bir [OpenRouter](https://openrouter.ai) `:free` modeli, bir Google AI Studio ücretsiz-katman anahtarı ya da bir opencode promosyon modeli). Bilmen gereken iki şey:
+
+- Ücretsiz katmanlar **hız-sınırlıdır** ve genellikle **gönderdiğin veriyle model eğitebilirler**. Bir commit mesajı için bu sorun değildir; Yayıncı'nın yalnızca *diff'i ve planı* görmesinin, hiçbir zaman tüm kod tabanına yönlendirilmemesinin — ve kod okuyan aşamaların (Kodlayıcı, İnceleyici) buraya asla yönlendirilmemesinin sebebi budur.
+- Ücretsiz katman kullanmak istemiyorsan, Yayıncı'nın sağlayıcısını proje bazında değiştir (ör. `.ai/config.yaml` içinde `roles: {publisher: {provider: codex}}`).
 
 ## 8. Günlük kullanılan komutlar
 
@@ -106,10 +113,26 @@ Tam bir çalıştırma genelde 0,20–1,50 dolarlık kota-eşdeğeri "maliyet" g
 | `ai runs list` | Bu projedeki geçmiş tüm çalıştırmaları listeler: durum, maliyet, karar |
 | `ai runs show <run-id>` | Bir çalıştırmanın detayını gösterir |
 | `ai resume <run-id>` | Başarısız olan bir çalıştırmayı kaldığı yerden devam ettirir — daha önce başarılı olan aşamalar asla tekrar yapılmaz veya tekrar ödenmez |
+| `ai revise "<düzeltme>"` | **Son** çalıştırma üzerinde sıfırdan başlamadan iterasyon yapar — Coder kendi oturumunu sürdürüp düzeltmeni uygular, sonra Reviewer tekrar bakar (bkz. §8.1) |
+| `ai publish` | Taslak commit mesajını gösterir (git yok). `--commit` ile commit'ler, `--push` ile commit + push yapar — git'e dokunan tek komut, o da yalnızca sen isteyince (bkz. §8.1) |
+
+## 8.1 "Düzelt, sonra gönder" akışı
+
+Pipeline bir kez çalışır ve durur — ama ilk seferde her şey nadiren tam istediğin gibi olur. İki komut bu döngüyü kapatır, böylece karşılıklı (sohbet gibi) çalışabilirsin:
+
+```bash
+ai "ayarlar ekranı ekle"            # 1. çalıştır
+git diff                            # 2. Coder ne yaptı, incele
+ai revise "başlığı sabitle"         # 3. tam olmadı mı? düzelt — aynı çalışma, sıfırdan başlamaz
+                                    #    (Coder kendi işini hatırlar; --from planner ile planı yenile)
+ai publish --push                   # 4. beğendin mi? her şeyi commit'le ve push et (önce onay ister)
+```
+
+`ai revise` **son** çalıştırmayı sürdürür: planı korur ve Coder'dan yeniden koşar; Coder kendi oturumunu sürdürüp düzeltmeni bir sonraki tur gibi ele alır — sonra Reviewer tekrar bakar. İstediğin kadar tekrarla. Memnun kaldığında `ai publish` commit mesajını taslaklar ve — yalnızca `--commit`/`--push` ile ve sen onayladıktan sonra — gerçekten commit'ler (`git add -A`) ve push'lar.
 
 ## 9. Bu aracın asla yapmayacağı şeyler (bunu bir kez oku, yeter)
 
-- **Hiçbir zaman `git commit`, `git push` çalıştırmaz veya GitHub'a herhangi bir şekilde dokunmaz.** Ne varsayılan olarak, ne herhangi bir bayrakla (flag), ne de hiçbir şekilde. İsteğe bağlı Publisher aşaması bile sadece senin okuman için *bir metin taslağı yazar* — git komutu çalıştırma yeteneği yoktur.
+- **Hiçbir pipeline aşaması git çalıştırmaz.** Pipeline kendiliğinden asla commit/push atmaz veya GitHub'a dokunmaz — ne varsayılan olarak, ne bir bayrakla. İsteğe bağlı Publisher aşaması bile sadece *bir metin taslağı yazar*. Git'in çalışmasının **tek** yolu, **senin** `ai publish --commit`/`--push` yazmandır — sana neyi commit'leyeceğini tam olarak gösteren ve önce onay isteyen ayrı, açık bir komut (§8.1). Sen her seferinde istemeden hiçbir şey geçmişine girmez.
 - **Coder aşaması, her seferinde izin sormadan dosyalarını düzenler** (asıl amaç budur — yoksa her değişikliği elle onaylaman gerekirdi). Güvenlik ağı: temiz bir `git status` ile başla (araç temiz değilse uyarır), commit atmadan önce diff'i incele ve Reviewer aşamasının bulgularının seni yönlendirmesine izin ver.
 - Bu güven seviyesi belirli bir proje için uygun değilse, bunun yerine `ai ask` kullan — sadece cevap verir, hiçbir şeyi düzenlemez.
 

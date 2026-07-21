@@ -7,6 +7,8 @@ def load_all():
         antigravity,
         claude,
         codex,
+        deterministic,
+        opencode,
     )
     from ai_orchestrator.providers.registry import registry
 

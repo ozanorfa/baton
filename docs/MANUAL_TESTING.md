@@ -240,3 +240,40 @@ for s in d['stages']: print(s['name'], s['provider'], s['session_id'])"
 For the token effect: grep each stage's raw stdout log for `"usage"` and compare `cached_input_tokens` against `input_tokens` — the cached ratio should *rise* through the chain (each later stage's genuinely new/fresh cost should stay roughly flat rather than growing).
 
 Opt out for a project that wants stages fully independent: `.ai/config.yaml` → `pipeline: {session_chaining: false}`.
+
+## Interactive iteration (ADR-019/020) — `ai revise` and `ai publish`
+
+The "run → correct → ship" loop. This is the conversational layer: iterate on a run without starting over, then commit on your own command.
+
+**Free (no tokens):** the logic in isolation.
+
+```bash
+uv run pytest tests/unit/test_session_chaining.py tests/integration/test_revise_cli.py tests/integration/test_publish.py
+```
+
+**`ai revise` — real test, any git repo:**
+
+```bash
+ai "add a small feature"                 # 1. run the pipeline
+git diff                                 # 2. review what the Coder did
+ai revise "change X to work differently" # 3. correct it — SAME run, no restart
+```
+
+Then verify it continued rather than restarted:
+- `ai runs list` shows **still one run** (no new run-id) — `revise` reuses the last one.
+- In `run.json`, the coder's `session_id` is **unchanged** across the revise — the Coder resumed its own session (it remembers its prior work); Planner→Reviewer keep their shared Codex session id.
+- `.ai/runs/<id>/prompts/02-coder.md` now contains your correction text (it's injected into the request so the Coder sees it).
+- `--from planner` re-runs from the top (re-plans); default is from the Coder.
+
+**`ai publish` — the only command that runs git, and only when you ask:**
+
+```bash
+ai publish                    # preview only — prints the drafted commit message, touches nothing
+ai publish --commit           # git add -A && git commit (shows the file list, asks to confirm)
+ai publish --push             # ...and git push
+ai publish -m "fix: x" --push # skip drafting, use your own message
+ai publish --push --yes       # skip the confirmation prompt
+```
+
+Verify the guarantee yourself: `git log --oneline` before/after a plain `ai publish` (no flags) — **no new commit**. Then `ai publish --commit` and confirm — exactly one new commit, `git status` clean. Message source precedence: `-m` > the last run's `commit_message.md` (if you ran `--with-publisher`) > a fresh draft (the Publisher's provider, falling back to the deterministic `git diff` message).
+

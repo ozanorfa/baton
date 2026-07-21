@@ -62,6 +62,11 @@ class RunManager:
             return []
         return sorted(p.name for p in self.runs_dir.iterdir() if (p / RUN_FILE).is_file())
 
+    def latest_run_id(self) -> str | None:
+        """The most recent run id (ids sort ascending by timestamp), or None."""
+        ids = self.list_run_ids()
+        return ids[-1] if ids else None
+
     # -- persistence -------------------------------------------------------
 
     def save(self, state: RunState) -> None:

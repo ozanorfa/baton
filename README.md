@@ -12,7 +12,7 @@ ai "Add Face ID support to the Flutter application"
 
 ## Status
 
-**All planned milestones complete (M0–M5, 2026-07-12).** MVP acceptance passed on a real Flutter app (Face ID feature, reviewer verdict APPROVE WITH NOTES); hardening shipped (`ai resume`, `ai runs`, Ctrl-C safety), workspace awareness landed (ADR-013: established projects get a docs index + read-first instruction; greenfield get propose-structure guidance), an optional Publisher role (ADR-014: drafts a commit message + PR description on a provider of your choice, independent of the coder — never runs git itself), and same-provider session chaining (ADR-015: consecutive same-vendor stages resume each other's session instead of cold-starting — live-verified to cut redundant repo re-exploration without changing which model does which job). Next: the remaining post-MVP roadmap (tmux observability, new roles, MCP, memory — session persistence is now done). See [docs/TASKS.md](docs/TASKS.md) for progress and [docs/WORKLOG.md](docs/WORKLOG.md) for history.
+**All planned milestones complete (M0–M5, 2026-07-12).** MVP acceptance passed on a real Flutter app (Face ID feature, reviewer verdict APPROVE WITH NOTES); hardening shipped (`ai resume`, `ai runs`, Ctrl-C safety), workspace awareness landed (ADR-013: established projects get a docs index + read-first instruction; greenfield get propose-structure guidance), an optional Publisher role (ADR-014: drafts a commit message + PR description on a provider of your choice, independent of the coder — never runs git itself), and same-provider session chaining (ADR-015: consecutive same-vendor stages resume each other's session instead of cold-starting — live-verified to cut redundant repo re-exploration without changing which model does which job). Since then: quota-spread defaults now put the shallow Publisher on a free client (ADR-017: opencode) with a zero-LLM commit-message floor (ADR-018: `deterministic`); and an interactive loop landed — `ai revise` iterates on the last run with the Coder resuming its own session (ADR-019), and `ai publish --commit/--push` is the one user-invoked git step (ADR-020). Next: the remaining post-MVP roadmap (tmux observability, new roles, MCP + repowise context reducer, memory). See [docs/TASKS.md](docs/TASKS.md) for progress and [docs/WORKLOG.md](docs/WORKLOG.md) for history.
 
 ## Prerequisites
 
@@ -36,6 +36,8 @@ ai "do something useful"           # run the pipeline
 | Command | What it does |
 |---|---|
 | `ai "<request>"` | Run the full pipeline (`--with-designer` for the UI stage, `--with-publisher` to draft a commit message + PR description) |
+| `ai revise "<correction>"` | Iterate on the **last** run without starting over — the Coder resumes its own session and applies the correction, then the Reviewer re-checks (ADR-019) |
+| `ai publish` | Preview a drafted commit message; `--commit`/`--push` commit (and push) — the only command that runs git, and only when you ask (ADR-020) |
 | `ai resume <run-id>` | Continue a failed run from the failed stage — completed stages are never re-paid |
 | `ai runs list` / `ai runs show <id>` | Run history: status, per-stage glyphs, cost, verdict |
 | `ai ask --role coder "<q>"` | One cheap single-role call, no pipeline |
@@ -51,9 +53,9 @@ More: [docs/MANUAL_TESTING.md](docs/MANUAL_TESTING.md) — every command you can
 
 ## ⚠ Trust model
 
-The Coder stage **edits your repository unattended** (scoped to the project directory). Safety net: run from a clean git tree (warned otherwise), every change is diffable, the Reviewer reports on the actual diff, and the tool never commits. Details: [docs/MVP.md](docs/MVP.md) §7, [docs/DECISIONS.md](docs/DECISIONS.md) ADR-007.
+The Coder stage **edits your repository unattended** (scoped to the project directory). Safety net: run from a clean git tree (warned otherwise), every change is diffable, the Reviewer reports on the actual diff, and no pipeline stage ever commits. Details: [docs/MVP.md](docs/MVP.md) §7, [docs/DECISIONS.md](docs/DECISIONS.md) ADR-007.
 
-**The orchestrator never runs `git commit`, `git push`, or any GitHub/remote operation — for any role, in any mode, ever.** This is not a default that can be silently escalated by config or a flag. The optional Publisher stage (`--with-publisher`, off by default — see below) only *drafts* a commit message and PR description as a text file for you to read and use; it has no code path that touches git or a remote. See ADR-014.
+**No pipeline stage ever runs `git commit`, `git push`, or any GitHub/remote operation — for any role, in any mode.** This cannot be silently escalated by config or a flag. The optional Publisher stage (`--with-publisher`, off by default) only *drafts* a commit message and PR description as a text file (ADR-014). The **one** command that runs git is `ai publish --commit`/`--push` — a separate, **user-invoked** step (never a role) that shows exactly what it will commit and asks you to confirm first (ADR-020). Nothing reaches your history unless you explicitly ask for it, each time.
 
 ## Documentation
 

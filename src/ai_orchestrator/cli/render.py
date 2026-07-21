@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 
 from ai_orchestrator.config.loader import LoadedConfig
@@ -65,6 +66,26 @@ def render_usage_line(result: AgentResult) -> None:
         console.print("  ".join(parts), style="dim")
     if usage is not None and usage.cost_usd is not None:
         console.print(f"* {COST_NOTE}", style="dim")
+
+
+def render_commit_draft(message: str, source: str) -> None:
+    """Show the commit message that `ai publish` would use, in a panel."""
+    console.print(Panel(message.strip(), title="commit message", subtitle=source, expand=False))
+
+
+def render_publish_plan(changed: list[str], will_push: bool) -> None:
+    """Show what a publish would stage/commit before asking for confirmation."""
+    if not changed:
+        console.print("[yellow]nothing to commit — working tree is clean.[/yellow]")
+        return
+    console.print(f"[bold]will commit {len(changed)} change(s):[/bold]")
+    for line in changed:
+        console.print(f"  {line}", style="dim")
+    console.print(
+        "[dim]→ git add -A · git commit"
+        + (" · git push" if will_push else " (no push)")
+        + "[/dim]"
+    )
 
 
 def render_run_header(request: str, resolved) -> None:

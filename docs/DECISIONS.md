@@ -324,3 +324,90 @@ Both are accepted explicitly: the goal is quota-pool diversity, not per-stage co
 **Alternatives considered.** (a) Leave Publisher on Codex, document Antigravity as an opt-in recipe only — rejected: the owner's stated preference is for the spread to be the default experience, not something every project has to opt into by hand. (b) Spread Reviewer to Antigravity instead of Publisher — rejected: Reviewer benefits materially from chaining with the Planner (shared repo understanding); Publisher does not, making it the correct one to move.
 
 **Future implications.** If a fourth provider is ever added, the same principle applies: assign it to whichever role is shallowest/most bounded, keeping the chained Planner→Reviewer pair together and Coder untouched, unless real usage shows otherwise.
+
+---
+
+## ADR-017 — Publisher runs on opencode (a free-tier client), confined to shallow text
+
+**Status:** Accepted · 2026-07-21 · **Confirmed with the project owner.**
+
+**Context.** ADR-016 spread quota across three *paid* subscription pools, but the pipeline's shallowest job — Publisher (draft a commit message + PR description from the diff), and the `ai ask --role publisher` escape hatch — still consumed a paid pool for work that plainly doesn't need a frontier model. `docs/IDEAS.md` evaluated free clients (opencode, aider) and picked opencode: `opencode run` is non-interactive and never touches git on its own, so ADR-014 holds by construction; aider was rejected (it edits code and auto-commits).
+
+**Decision.** Add an `opencode` provider adapter (`src/ai_orchestrator/providers/opencode.py`, a near-mirror of `antigravity.py`) and change Publisher's default provider from `antigravity` to `opencode`. This takes the shallowest role off the paid pools entirely. `ai ask` inherits this automatically — it derives its provider from the named role (`--role publisher`), so no change to `ask.py` was needed.
+
+**The load-bearing guardrail — shallow text only.** opencode is a free *client*; the model comes from a user-configured **free tier** (OpenRouter `:free`, Google AI Studio free-tier key, opencode promo models). Those tiers are rate-limited and typically **may train on submitted data**. That is acceptable for a commit message but not for proprietary source, so opencode is wired to Publisher and `ai ask` only — **never Coder or Reviewer**, which read the codebase. The model is never pinned by the orchestrator (`model: null`); the user points opencode at a backend via `opencode auth`.
+
+**Verified against opencode 1.18.4.**
+- Prompt rides in argv (variadic positional `run [message..]`), passed after a `--` separator so a dash-leading prompt is never parsed as a flag — a documented ADR-010 exception shared with antigravity. shell=False everywhere.
+- Plain-text answer on stdout; stderr is log noise, ignored on exit 0. No token usage on stdout in run mode → `reports_tokens=False`, Usage stays honest-None (risk R2), matching antigravity's known blind spot.
+- Session id not surfaced on stdout in default format → `supports_resume=False`.
+- `--auto` (tool auto-approve) and `--share` (public session upload) are **never** passed. The roles opencode serves are `allow_edits=False` by contract, so edit permissions are never auto-approved: `edits_files=False` holds in practice, not just by declaration.
+
+**Trade-offs, stated plainly.**
+1. **Same visibility loss as ADR-016's antigravity move** — no token/cost numbers for Publisher. Already accepted for the shallow roles.
+2. **Depends on the user configuring a free backend.** If none is set up, `ai doctor` still shows opencode healthy (the binary is present) but a real Publisher run fails until a model is authorized. Documented in `HOW_TO_USE.md` §7.
+3. **Free-tier data-training risk** — mitigated structurally by the shallow-text-only guardrail, not just by advice.
+
+**Alternatives considered.** (a) aider — rejected (edits code, auto-commits, fights ADR-014). (b) A local LLM / Ollama — ruled out by the owner. (c) Keep Publisher on antigravity — rejected: it still spends a subscription pool on the cheapest work, which opencode removes entirely.
+
+**Escape hatch.** Fully overridable per project — a team uneasy about free tiers sets `roles: {publisher: {provider: codex}}` in `.ai/config.yaml` and gets the old behavior back.
+
+---
+
+## ADR-018 — A zero-LLM Publisher floor: conventional-commit from the diffstat
+
+**Status:** Accepted · 2026-07-21
+
+**Context.** ADR-017 moved the Publisher onto a free tier, but free tiers are rate-limited and need a configured backend. For a trivial diff, or when the free tier is throttled, even that is more than the job needs. `docs/IDEAS.md` parked a "floor": generate the commit message deterministically from the diff — no model at all.
+
+**Decision.** Add a `deterministic` provider (`src/ai_orchestrator/providers/deterministic.py`) that produces a conventional-commit message from `git diff HEAD --stat`. It is **not** a default; select it per project: `roles: {publisher: {provider: deterministic}}`.
+
+It honors the pure-adapter contract (ARCHITECTURE §3.1) by delegating the one side effect to the transport: `build_invocation` returns the `git diff HEAD --stat` command; `parse` transforms the resulting stat. The transform (`message_from_diffstat`) is a **pure function**, unit-tested directly on stat fixtures with no git and no subprocess — the same testability property every other adapter has.
+
+**What it infers, and what it refuses to.** Deterministic means it never invents intent it cannot know:
+- **type** — `docs` when every path is docs/`*.md`, `test` when every path is a test path, else `chore`. No `feat`/`fix` guessing.
+- **scope** — the common top-level directory, but only when *all* changed files share one (a repo-root file like `README.md` collapses it to no scope, avoiding a misleading label).
+- **body** — the raw `N files changed, …` summary line plus the file list.
+
+**Trade-offs, stated plainly.**
+1. **`git diff HEAD` does not see brand-new untracked files.** A frontier Publisher would. This is the explicit cost of zero-LLM; documented in the module docstring. (Verified live: a run over this session's working tree listed the 6 tracked/modified files and omitted the untracked new adapters — expected.)
+2. **The message is structural, not narrative** — it says *what* changed, not *why*. That is the definition of a floor; use ADR-017's opencode Publisher or a paid provider when the "why" matters.
+
+**Alternatives considered.** (a) An automatic fallback — the engine catches a Publisher provider failure and retries with `deterministic`. Deferred: it needs engine retry plumbing; the per-project provider selection ships the value now with no orchestration change. (b) Parsing the diff out of the assembled prompt instead of running git — rejected as fragile; running `git diff` in the workdir is self-contained and doesn't depend on artifact plumbing.
+
+---
+
+## ADR-019 — `ai revise`: session-preserving iteration instead of a chat mode
+
+**Status:** Accepted · 2026-07-21 · **Confirmed with the project owner.**
+
+**Context.** The owner wanted baton to feel less like a one-shot relay and more conversational — "make a correction, don't start over, then say push it." A full interactive `ai chat` mode was **rejected**: it would rebuild Claude Code (weakly) on top of the CLIs, require a coordinating supervisor layer (spending tokens on coordination, against ADR-001), and dissolve baton's deterministic identity and its one differentiator (multi-model relay + quota spread). The insight instead: **the conversational layer already exists — it is Claude Code driving baton**; what was missing was iterating on a run without a cold restart. This is also the manual cousin of the still-parked "fix-loop" idea, and a direct answer to the "handoff, not a team" reflection in the worklog (2026-07-13).
+
+**Decision.** Add `ai revise "<correction>"`. It takes the last run (or `--run <id>`), re-runs from the **Coder by default** (`--from <stage>` overrides, e.g. `planner`), keeps the same run-id, and reuses on-disk artifacts. Two mechanisms make it feel like a continued conversation rather than a redo:
+
+1. **The Coder resumes its own prior session.** A new `PipelineEngine.revise` captures every succeeded stage's `session_id` *before* the tail reset and passes them to `_run` via a new `carry_sessions` seed. Because Claude Code's adapter is `supports_resume=True` (claude.py), the re-run Coder resumes its own Claude session and treats the correction as the next turn — it remembers what it did. Same-provider chaining still holds for the rest (the Reviewer re-chains to the Planner's Codex session). The existing `allow_edits`-matching guard (ADR-015) is unchanged, so a carried session is only reused when write-access levels match.
+2. **The correction reaches every re-run stage via the request layer.** `state.request` (not frozen) is appended with the correction. This matters because the Coder's contract does *not* admit `review.md` (contracts.py) — the request layer is the one channel that reliably reaches it.
+
+**Trade-offs.** (a) Corrections accumulate in `state.request` across successive `revise` calls — deliberate (full history), at the cost of a growing request string. (b) `revise` targets a *completed* run from the Coder; a genuinely failed run is still `ai resume`'s job (resume continues from the failed stage). (c) The default reruns Coder→Reviewer, not the Planner — a plan-level correction needs `--from planner`.
+
+**Alternatives considered.** Full `ai chat` (rejected, above). A brand-new run per correction (rejected — loses the Coder's session memory and the "don't start over" goal). Extending `resume` with a correction param (rejected — resume's semantics are "continue a failed run from where it stopped"; overloading it would blur two distinct operations).
+
+---
+
+## ADR-020 — `ai publish`: the one deliberate, user-triggered exception to "no git"
+
+**Status:** Accepted · 2026-07-21 · **Confirmed with the project owner.**
+
+**Context.** ADR-014 guarantees **no pipeline role ever runs git** — the Publisher only *drafts*. But the owner's workflow ends with "development done, now commit and push," and they were explicit they do **not** want git actions happening automatically at any pipeline stage. So the git write belongs in a separate, explicitly-invoked command — never in a role.
+
+**Decision.** Add `ai publish`. Without a flag it **only previews** the drafted commit message (never touches git). `--commit` runs `git add -A && git commit`; `--push` also `git push`. The write is guarded and confirmed:
+
+- **Message source precedence:** `-m` verbatim > the latest run's `commit_message.md` (if present) > a fresh draft. The fresh draft invokes the Publisher role's configured provider (opencode by default) and **falls back to the `deterministic` floor** (ADR-018) if that provider is unavailable or fails.
+- **What is committed:** `git add -A` (everything — new and modified), matching "commit my work." The full file list is shown and a `typer.confirm` is required first (`--yes` skips it).
+- **The only git-writing code in the project.** It mirrors the read-only guarded-`subprocess.run` idiom already used by `run.py`'s dirty-tree check; every failure mode (not a repo, nothing to commit, commit/push failure) is surfaced, never raised.
+
+**Why ADR-014 stays intact.** The drafting (LLM/deterministic) and the git write are separate steps, and the write lives in a *user-invoked command*, not a pipeline stage. No role gained git access; a human explicitly asks for the commit each time.
+
+**Trade-offs.** (a) `git add -A` can stage unrelated working-tree changes — mitigated by showing the file list before the confirmation (the owner chose this over "tracked-only" or "no auto-stage"). (b) Reusing the latest run's `commit_message.md` can be stale if the tree changed since that run — mitigated because the draft is always shown before committing and `-m` overrides it. (c) The commit message keeps only the commit section when the draft also embeds a "PR description" heading (a simple split, with the whole text as fallback).
+
+**Alternatives considered.** Letting the Publisher role commit when enabled (rejected — breaks ADR-014 and the owner's "no automatic git" requirement). `--push` without confirmation (rejected — the owner is git-cautious; confirmation is the default, `--yes` opts out).

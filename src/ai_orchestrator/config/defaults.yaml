@@ -11,9 +11,10 @@ pipeline:
   session_chaining: true
 
 # Quota spread by design (ADR-016): the deep, chained pair (planner+reviewer)
-# sits on codex; claude is always alone on coder; the two shallow, bounded
-# jobs (designer, publisher) share antigravity. Same total work, spread
-# across three separate subscription pools instead of concentrated on one.
+# sits on codex; claude is always alone on coder; the designer runs on
+# antigravity. The publisher — the shallowest job (drafting text from a diff) —
+# runs on opencode pointed at a free tier (ADR-017), taking it off the paid
+# pools entirely. Same total work, spread across separate pools.
 roles:
   planner:
     provider: codex
@@ -25,7 +26,7 @@ roles:
   reviewer:
     provider: codex
   publisher:
-    provider: antigravity # quota-spread pair with designer (ADR-016); independent
+    provider: opencode # free-tier client for shallow text (ADR-017); independent
     # of the coder's provider by design (ADR-014) — override freely per project
     enabled: false # optional stage, off by default — prepares commit/PR drafts only,
     # never runs git itself. Enable per project: roles: {publisher: {enabled: true}}
@@ -41,6 +42,13 @@ providers:
   antigravity:
     command: agy # Gemini CLI retired for personal accounts 2026-06-18 (ADR-012)
     timeout_s: 600
+  opencode:
+    command: opencode
+    model: null # e.g. "openrouter/<:free model>"; point at a backend via `opencode auth`
+    timeout_s: 600 # free client — model comes from a user-configured free tier (ADR-017)
+  deterministic:
+    command: git # zero-LLM publisher floor (ADR-018): commit message from `git diff --stat`
+    timeout_s: 60 # no model, no quota; select per project: roles: {publisher: {provider: deterministic}}
 
 context:
   project_profile: .ai/project.md
