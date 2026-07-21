@@ -277,3 +277,15 @@ ai publish --push --yes       # skip the confirmation prompt
 
 Verify the guarantee yourself: `git log --oneline` before/after a plain `ai publish` (no flags) — **no new commit**. Then `ai publish --commit` and confirm — exactly one new commit, `git status` clean. Message source precedence: `-m` > the last run's `commit_message.md` (if you ran `--with-publisher`) > a fresh draft (the Publisher's provider, falling back to the deterministic `git diff` message).
 
+## `ai review` (ADR-022) — a second opinion on your own diff
+
+Review the current working-tree changes with the Reviewer's model, pipeline-free and read-only:
+
+```bash
+# edit some files (yours or a run's output), then:
+ai review                      # verdict + findings over the current diff
+ai review -m "focus on error handling and edge cases"
+```
+
+Read-only by design: it captures the diff (`snapshot_changes`, untracked included), assembles the real `reviewer.md` context around it, and prints the verdict — it **commits nothing, edits nothing, saves no run**. Clean tree → "nothing to review"; non-git dir → exit 2. Costs one Reviewer call (cheaper than a full pipeline). Free logic check: `uv run pytest tests/integration/test_review.py`.
+

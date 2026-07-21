@@ -1,6 +1,6 @@
 # Architectural Decision Records — AI Coding Orchestrator
 
-**Status:** Living · 21 ADRs · updated 2026-07-21
+**Status:** Living · 22 ADRs · updated 2026-07-21
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Convention: one ADR per consequential decision. New decisions get new ADRs; reversals supersede, never rewrite history. Any future proposal for dynamic/LLM-driven orchestration **requires** an ADR here before code (risk R7 guard).
@@ -427,3 +427,23 @@ It honors the pure-adapter contract (ARCHITECTURE §3.1) by delegating the one s
 **Trade-offs.** (a) The marker is a prompt convention, so it shares the fragility of any model-emitted token — mitigated entirely by the fail-safe direction (forgetting it fails safe). (b) A downstream stage (Reviewer) then sees no `diff.patch`; the contract admits it but `inputs_section` simply omits an absent artifact, so the Reviewer reviews the "nothing changed" situation cleanly.
 
 **Alternatives considered.** (a) A structured `CHANGE_STATUS:` enum with `changed`/`no_changes_needed`/`blocked` (the original suggestion) — rejected as over-built: only the no-op case needs rescuing, and a `blocked` self-report can't be trusted (a blocked provider won't reliably say so). (b) Always trust protocol success and drop the workspace check — rejected: it throws away the only real permission-block detector.
+
+---
+
+## ADR-022 — `ai review`: the Reviewer on demand, over the current diff
+
+**Status:** Accepted · 2026-07-21
+
+**Context.** The Reviewer only ran as a pipeline stage. But its value — a second, different-vendor model checking a diff against intent — is useful on its own: to review your **own** hand-written changes, or to re-check a run's output with fresh eyes, without paying for a whole Planner→Coder→Reviewer pass. `ai ask --role reviewer` almost does it, but it sends a bare prompt with no diff and no reviewer context.
+
+**Decision.** Add `ai review`. It captures the current working-tree diff and runs the Reviewer's configured provider over it, pipeline-free. It composes entirely from existing pieces — no new engine or context machinery:
+
+- **Diff capture:** `snapshot_changes()` (`core/workspace.py`), the same read-only, untracked-inclusive git snapshot the pipeline uses. `None` → not a repo → exit 2; unchanged → "nothing to review" → exit 0.
+- **Context:** `ContextManager.build()` with a synthetic reviewer `StageSpec` (`inputs=["diff.patch"]`) and `artifacts={"diff.patch": patch}`, so the real `reviewer.md` template + layers assemble exactly as in a pipeline run, with the captured diff as the one admitted input. `-m/--message` supplies an optional focus (e.g. "security").
+- **Invocation:** the `ai ask` pattern — resolve the `reviewer` role's provider, build the adapter, `invoke(...)`, print the verdict + usage line.
+
+**Boundaries.** Read-only by construction: the Reviewer contract is `allow_edits=False`, and the command persists nothing (no run dir, no artifacts) — it never commits, edits, or mutates state. It is *not* a pipeline stage, so ADR-004/008 (one deterministic relay, no dynamic delegation) are untouched.
+
+**Trade-offs.** (a) Scope is the working tree only — reviewing a staged set or a branch-vs-branch range is deliberately out of scope for now (add a ref argument later if wanted). (b) It re-drafts the reviewer prompt from scratch each call (no session reuse); acceptable for an on-demand one-shot.
+
+**Alternatives considered.** Overloading `ai ask` with auto-diff-capture (rejected — muddies ask's "one bare prompt to a role" contract; a named command is clearer and discoverable). A full second pipeline mode (rejected — far more than a single read-only reviewer call needs).

@@ -114,6 +114,7 @@ Opsiyonel Yayıncı aşaması (ve `ai ask --role publisher`), bu sığ "diff'ten
 | `ai runs show <run-id>` | Bir çalıştırmanın detayını gösterir |
 | `ai resume <run-id>` | Başarısız olan bir çalıştırmayı kaldığı yerden devam ettirir — daha önce başarılı olan aşamalar asla tekrar yapılmaz veya tekrar ödenmez |
 | `ai revise "<düzeltme>"` | **Son** çalıştırma üzerinde sıfırdan başlamadan iterasyon yapar — Coder kendi oturumunu sürdürüp düzeltmeni uygular, sonra Reviewer tekrar bakar (bkz. §8.1) |
+| `ai review` | Mevcut (commit'lenmemiş) değişikliklerini ikinci bir görüş için Reviewer'a gönderir — pipeline yok, hiçbir şeyi değiştirmez. `-m "şuna odaklan"` ile yönlendir |
 | `ai publish` | Taslak commit mesajını gösterir (git yok). `--commit` ile commit'ler, `--push` ile commit + push yapar — git'e dokunan tek komut, o da yalnızca sen isteyince (bkz. §8.1) |
 
 ## 8.1 "Düzelt, sonra gönder" akışı

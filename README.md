@@ -38,6 +38,7 @@ ai "do something useful"           # run the pipeline
 |---|---|
 | `ai "<request>"` | Run the full pipeline (`--with-designer` for the UI stage, `--with-publisher` to draft a commit message + PR description) |
 | `ai revise "<correction>"` | Iterate on the **last** run without starting over — the Coder resumes its own session and applies the correction, then the Reviewer re-checks (ADR-019) |
+| `ai review` | Send the current working-tree diff to the Reviewer — check your own changes with a different model, no pipeline, read-only (ADR-022) |
 | `ai publish` | Preview a drafted commit message; `--commit`/`--push` commit (and push) — the only command that runs git, and only when you ask (ADR-020) |
 | `ai resume <run-id>` | Continue a failed run from the failed stage — completed stages are never re-paid |
 | `ai runs list` / `ai runs show <id>` | Run history: status, per-stage glyphs, cost, verdict |
@@ -65,7 +66,7 @@ The Coder stage **edits your repository unattended** (scoped to the project dire
 | [HOW_TO_USE.md](docs/HOW_TO_USE.md) · [🇹🇷 Türkçe](docs/HOW_TO_USE.tr.md) | **Start here** — plain-language user guide |
 | [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | Vision, goals, milestones, risks |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers, adapter contract, context system, verified CLI behavior |
-| [DECISIONS.md](docs/DECISIONS.md) | 21 ADRs — why everything is the way it is |
+| [DECISIONS.md](docs/DECISIONS.md) | 22 ADRs — why everything is the way it is |
 | [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | Repo layout + runtime footprint |
 | [TASKS.md](docs/TASKS.md) | 35-task build plan with acceptance criteria |
 | [MVP.md](docs/MVP.md) | The first full version, stage by stage |

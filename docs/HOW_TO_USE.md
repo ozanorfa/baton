@@ -114,6 +114,7 @@ The optional Publisher stage (and `ai ask --role publisher`) is wired to **openc
 | `ai runs show <run-id>` | See one run's detail |
 | `ai resume <run-id>` | Continue a failed run from where it stopped — earlier successful stages are never redone or repaid |
 | `ai revise "<correction>"` | Iterate on the **last** run without starting over — the Coder picks up its own session and applies your correction, then the Reviewer re-checks (see §8.1) |
+| `ai review` | Send your current uncommitted changes to the Reviewer for a second opinion — no pipeline, changes nothing. `-m "focus on X"` to steer it |
 | `ai publish` | Show a drafted commit message (no git). Add `--commit` to commit, `--push` to commit + push — the only command that touches git, and only when you ask (see §8.1) |
 
 ## 8.1 The "correct it, then ship it" flow

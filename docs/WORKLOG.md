@@ -205,3 +205,10 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 - ✅ **176 passed** (was 174; +2 integration: marked no-op → coder succeeds & no diff.patch; unmarked zero-change → coder still fails). ruff clean.
 - 📝 ADR-021 in DECISIONS.md; ADR count 20→21 (DECISIONS header + README). Still deferred: Adım 3 (`ai review`, ADR-022).
 
+## 2026-07-21 · `ai review` — the Reviewer on demand (ADR-022)
+
+- 👤 After sharing the repo with a manager: "you can continue" → proceeded to the last deferred item.
+- 🤖 **ADR-022 — `ai review`.** A pipeline-free, read-only command that sends the current working-tree diff to the Reviewer's model — to check your own hand-written changes, or re-examine a run's output, without a full Planner→Coder→Reviewer pass. Composed entirely from existing pieces: `snapshot_changes()` for the diff (untracked included), `ContextManager.build()` with a synthetic reviewer `StageSpec` (`inputs=["diff.patch"]`) so the real `reviewer.md` context assembles as in a pipeline, then the `ai ask` invoke pattern on the reviewer role's provider. `-m` steers focus (e.g. security). No run dir, no artifacts, `allow_edits=False` — commits/edits nothing.
+- ✅ **179 passed** (was 176; +3 integration: verdict printed & tree untouched; clean tree → "nothing to review"; non-git → exit 2). ruff clean (fixed one E501 in the new command).
+- 📝 ADR-022 in DECISIONS.md; ADR count 21→22; `ai review` added to README + HOW_TO_USE (+ `.tr.md`) command tables + a MANUAL_TESTING recipe. This completes the 3-item plan (doc-drift · no-op≠failure · `ai review`); the roadmap's repowise/MCP context reducer and memory remain parked.
+

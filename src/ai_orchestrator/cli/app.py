@@ -15,6 +15,7 @@ from ai_orchestrator.cli.commands.doctor import doctor
 from ai_orchestrator.cli.commands.init import init
 from ai_orchestrator.cli.commands.publish import publish
 from ai_orchestrator.cli.commands.resume import resume
+from ai_orchestrator.cli.commands.review import review
 from ai_orchestrator.cli.commands.revise import revise
 from ai_orchestrator.cli.commands.run import run
 from ai_orchestrator.cli.commands.runs import runs_app
@@ -33,9 +34,12 @@ app.command()(init)
 app.add_typer(runs_app, name="runs")
 app.command()(resume)
 app.command()(revise)
+app.command()(review)
 app.command()(publish)
 
-_COMMANDS = {"run", "ask", "doctor", "config", "init", "runs", "resume", "revise", "publish"}
+_COMMANDS = {
+    "run", "ask", "doctor", "config", "init", "runs", "resume", "revise", "review", "publish",
+}
 
 
 def _version_callback(value: bool) -> None:
