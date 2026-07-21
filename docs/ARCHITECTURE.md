@@ -1,6 +1,6 @@
 # Architecture — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-11 · fully implemented, M0–M5 (adapter table below reflects *verified* CLI behavior, not assumptions)
+**Status:** Living · updated 2026-07-21 · fully implemented, M0–M5 + post-MVP (ADR-017–020: opencode/deterministic providers, `ai revise`, `ai publish`) — adapter table below reflects *verified* CLI behavior, not assumptions
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 ---
