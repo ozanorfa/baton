@@ -16,14 +16,20 @@ def setup_project(tmp_path: Path, monkeypatch, config_text: str) -> None:
 
 
 def test_doctor_healthy_with_fake_commands(tmp_path: Path, monkeypatch) -> None:
-    # /usr/bin/true exits 0 for any argv → every health check passes
+    # /usr/bin/true exits 0 for any argv → every health check passes. doctor
+    # checks EVERY configured provider, so all of them must resolve to a working
+    # binary — not just the three used by the default enabled roles (else this
+    # fails on a machine without opencode installed, e.g. CI).
     setup_project(
         tmp_path,
         monkeypatch,
         "providers:\n"
         "  claude: {command: /usr/bin/true}\n"
         "  codex: {command: /usr/bin/true}\n"
-        "  antigravity: {command: /usr/bin/true}\n",
+        "  antigravity: {command: /usr/bin/true}\n"
+        "  opencode: {command: /usr/bin/true}\n"
+        "  deterministic: {command: /usr/bin/true}\n"
+        "  testrunner: {command: /usr/bin/true}\n",
     )
     result = runner.invoke(app, ["doctor"], env={"COLUMNS": "200"})
     assert result.exit_code == 0
