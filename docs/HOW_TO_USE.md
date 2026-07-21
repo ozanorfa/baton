@@ -131,6 +131,8 @@ ai publish --push                   # 4. happy? commit everything and push (asks
 
 `ai revise` continues the **last** run: it reuses the plan and re-runs from the Coder, which resumes its own session and treats your correction as the next turn — then the Reviewer looks again. Repeat as many times as you like. When you're satisfied, `ai publish` drafts the commit message and — only with `--commit`/`--push`, and only after you confirm — actually commits (`git add -A`) and pushes.
 
+**Want that first correction to happen automatically?** Add `--fix-loop` to the run: if the Reviewer's verdict comes back `NEEDS WORK` (a blocking problem), the tool runs **one** automatic fix pass — the same "re-run the Coder with the findings" that `ai revise` does by hand — then stops. It's off by default (that extra pass costs quota); turn it on per run with `ai --fix-loop "..."`, or per project with `pipeline: {fix_loop: true}` in `.ai/config.yaml`.
+
 ## 9. What this tool will never do (read this once)
 
 - **No pipeline stage ever runs git.** The pipeline never commits, pushes, or touches GitHub on its own — not by default, not with any flag. Even the optional Publisher stage only *writes a text draft*. The **one** way git gets run is when **you** type `ai publish --commit`/`--push` yourself — a separate, explicit command that shows you exactly what it will commit and asks you to confirm first (§8.1). Nothing reaches your history without you asking for it, each time.

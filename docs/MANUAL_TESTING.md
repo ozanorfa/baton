@@ -289,3 +289,14 @@ ai review -m "focus on error handling and edge cases"
 
 Read-only by design: it captures the diff (`snapshot_changes`, untracked included), assembles the real `reviewer.md` context around it, and prints the verdict — it **commits nothing, edits nothing, saves no run**. Clean tree → "nothing to review"; non-git dir → exit 2. Costs one Reviewer call (cheaper than a full pipeline). Free logic check: `uv run pytest tests/integration/test_review.py`.
 
+## fix-loop (ADR-023) — auto-fix once on a NEEDS WORK verdict
+
+Off by default. Opt in per run or per project; it runs **exactly one** automatic fix pass when the Reviewer returns `NEEDS WORK`, then stops.
+
+```bash
+ai --fix-loop "implement something with a deliberately tricky requirement"
+# or, always-on for a project: .ai/config.yaml → pipeline: {fix_loop: true}
+```
+
+What to expect: the pipeline runs; if the reviewer verdict is `NEEDS WORK`, you'll see `⟳ reviewer flagged blockers — running one fix pass…`, then the Coder re-runs (resuming its own session, now with the review findings) and the Reviewer re-checks — a second summary prints. It's the automatic cousin of `ai revise`; the same run-id is reused (check `ai runs list`). It never loops twice, even if the second verdict is still `NEEDS WORK` (bounded by construction). `APPROVE`/`APPROVE WITH NOTES` never trigger it. Free trigger-logic check: `uv run pytest tests/integration/test_fix_loop.py`.
+

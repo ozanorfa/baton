@@ -9,6 +9,11 @@ pipeline:
   # providers. Disable per project if you want stages fully independent:
   # pipeline: {session_chaining: false}
   session_chaining: true
+  # ADR-023: on a NEEDS WORK verdict, run exactly one automatic fix pass (re-run
+  # the Coder with the review findings, then re-review, then stop). Off by
+  # default — it spends an extra Coder+Reviewer turn. Opt in here or with
+  # `ai run --fix-loop`. The manual cousin is `ai revise`.
+  fix_loop: false
 
 # Quota spread by design (ADR-016): the deep, chained pair (planner+reviewer)
 # sits on codex; claude is always alone on coder; the designer runs on

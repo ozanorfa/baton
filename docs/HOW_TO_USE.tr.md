@@ -131,6 +131,8 @@ ai publish --push                   # 4. beğendin mi? her şeyi commit'le ve pu
 
 `ai revise` **son** çalıştırmayı sürdürür: planı korur ve Coder'dan yeniden koşar; Coder kendi oturumunu sürdürüp düzeltmeni bir sonraki tur gibi ele alır — sonra Reviewer tekrar bakar. İstediğin kadar tekrarla. Memnun kaldığında `ai publish` commit mesajını taslaklar ve — yalnızca `--commit`/`--push` ile ve sen onayladıktan sonra — gerçekten commit'ler (`git add -A`) ve push'lar.
 
+**O ilk düzeltmenin otomatik olmasını mı istersin?** Çalıştırmaya `--fix-loop` ekle: Reviewer'ın kararı `NEEDS WORK` (bloklayan bir sorun) dönerse, araç **bir** otomatik düzeltme turu atar — `ai revise`'ın elle yaptığı "Coder'ı bulgularla yeniden koştur"un aynısı — sonra durur. Varsayılan kapalı (o ekstra tur kota harcar); çalıştırma başına `ai --fix-loop "..."` ile ya da proje başına `.ai/config.yaml`'de `pipeline: {fix_loop: true}` ile aç.
+
 ## 9. Bu aracın asla yapmayacağı şeyler (bunu bir kez oku, yeter)
 
 - **Hiçbir pipeline aşaması git çalıştırmaz.** Pipeline kendiliğinden asla commit/push atmaz veya GitHub'a dokunmaz — ne varsayılan olarak, ne bir bayrakla. İsteğe bağlı Publisher aşaması bile sadece *bir metin taslağı yazar*. Git'in çalışmasının **tek** yolu, **senin** `ai publish --commit`/`--push` yazmandır — sana neyi commit'leyeceğini tam olarak gösteren ve önce onay isteyen ayrı, açık bir komut (§8.1). Sen her seferinde istemeden hiçbir şey geçmişine girmez.

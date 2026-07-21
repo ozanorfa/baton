@@ -50,6 +50,11 @@ def run(
         help="Enable the optional Publisher stage (drafts commit message + PR description; "
         "never runs git itself — ADR-014).",
     ),
+    fix_loop: bool = typer.Option(
+        False, "--fix-loop",
+        help="On a NEEDS WORK verdict, run one automatic fix pass (re-run the Coder with "
+        "the review findings, then re-review) — ADR-023.",
+    ),
 ) -> None:
     """Run the configured pipeline on a request."""
     project_dir = Path.cwd()
@@ -58,6 +63,8 @@ def run(
         overrides["roles.designer.enabled"] = True
     if with_publisher:
         overrides["roles.publisher.enabled"] = True
+    if fix_loop:
+        overrides["pipeline.fix_loop"] = True
 
     try:
         loaded = load_config(project_dir, overrides=overrides)
@@ -89,5 +96,25 @@ def run(
 
     report = save_report(state, manager)
     render.render_run_summary(state, manager.run_dir(state.run_id), report)
+
+    # fix-loop (ADR-023): one automatic fix pass on a blocking verdict. Exactly
+    # one — the second verdict is never re-checked, so it can't loop.
+    if (
+        loaded.config.pipeline.fix_loop
+        and state.status is RunStatus.SUCCEEDED
+        and report.verdict == "NEEDS WORK"
+    ):
+        review = manager.load_artifact(state, "review.md")
+        correction = (
+            "The reviewer returned NEEDS WORK (blocking findings). Address them, "
+            "then stop:\n\n" + review
+        )
+        render.console.print(
+            "[yellow]⟳ reviewer flagged blockers — running one fix pass (--fix-loop)…[/yellow]"
+        )
+        state = engine.revise(state, resolved, correction)
+        report = save_report(state, manager)
+        render.render_run_summary(state, manager.run_dir(state.run_id), report)
+
     if state.status is not RunStatus.SUCCEEDED:
         raise typer.Exit(code=1)

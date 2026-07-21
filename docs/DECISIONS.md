@@ -1,6 +1,6 @@
 # Architectural Decision Records — AI Coding Orchestrator
 
-**Status:** Living · 22 ADRs · updated 2026-07-21
+**Status:** Living · 23 ADRs · updated 2026-07-21
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Convention: one ADR per consequential decision. New decisions get new ADRs; reversals supersede, never rewrite history. Any future proposal for dynamic/LLM-driven orchestration **requires** an ADR here before code (risk R7 guard).
@@ -447,3 +447,23 @@ It honors the pure-adapter contract (ARCHITECTURE §3.1) by delegating the one s
 **Trade-offs.** (a) Scope is the working tree only — reviewing a staged set or a branch-vs-branch range is deliberately out of scope for now (add a ref argument later if wanted). (b) It re-drafts the reviewer prompt from scratch each call (no session reuse); acceptable for an on-demand one-shot.
 
 **Alternatives considered.** Overloading `ai ask` with auto-diff-capture (rejected — muddies ask's "one bare prompt to a role" contract; a named command is clearer and discoverable). A full second pipeline mode (rejected — far more than a single read-only reviewer call needs).
+
+---
+
+## ADR-023 — A bounded fix-loop: one automatic pass on a NEEDS WORK verdict
+
+**Status:** Accepted · 2026-07-21 · **Confirmed with the project owner (default off, NEEDS WORK only).**
+
+**Context.** The MVP pipeline is one pass: a `NEEDS WORK` verdict (a blocking finding) just lands in `review.md` and stops — the human decides (MVP.md, ADR-008 "no retries"). This is the gap the project circled longest: the "loop engineering" name and the "not like my dreams" reflection (worklog 2026-07-13) both pointed here, backed by real evidence — charm_website's run `2026-07-12_1140_0a83` produced a genuine, unactioned NEEDS WORK blocker. With `ai revise` shipped (ADR-019), the machinery to close the loop already exists.
+
+**Decision.** Add an opt-in **fix-loop**: when the Reviewer returns `NEEDS WORK`, run exactly one automatic fix pass and stop. It reuses ADR-019 wholesale — the loop is "auto-`revise` once, with the review findings as the correction." Implemented in `cli/commands/run.py` after `execute()`, not in the engine, so the "deliberately boring" core (ADR-004/008) stays a linear interpreter:
+
+- Trigger: `pipeline.fix_loop` on **and** run succeeded **and** `report.verdict == "NEEDS WORK"` (reused `reporter.py` `VERDICT_PATTERN`). `APPROVE WITH NOTES` is non-blocking by definition — never triggers.
+- Action: load `review.md`, build a correction ("The reviewer returned NEEDS WORK … Address them, then stop:\n\n<findings>"), call `engine.revise(state, resolved, correction)` (re-runs from the Coder, which resumes its own session and treats the findings as the next turn; the Reviewer re-chains to verify).
+- **Exactly one pass.** The second verdict is never re-checked, so it structurally cannot loop again — bounded by construction, no iteration counter needed.
+
+**Settings (owner-confirmed).** Off by default — an extra Coder+Reviewer turn (the priciest stages) shouldn't be spent without asking. Opt in per run (`ai run --fix-loop`) or per project (`pipeline: {fix_loop: true}`). Triggers on `NEEDS WORK` only.
+
+**Trade-offs.** (a) Amends ADR-008/MVP's "no retries, no loop-back" — deliberately, and narrowly (one bounded pass, opt-in). (b) With the Publisher enabled, the fix pass re-runs from the Coder, so the Publisher re-drafts against the fixed code; the pre-fix draft is superseded (minor waste, Publisher is off by default). (c) Exit code is unchanged — a NEEDS WORK run's status is still SUCCEEDED (the verdict is content, not a stage failure), so the final verdict is shown in the summary, not encoded in the exit code.
+
+**Alternatives considered.** (a) Loop until clean / N iterations — rejected: unbounded token risk and against the owner's cost-consciousness; one pass catches the common "close but blocked" case. (b) Trigger on any non-`APPROVE` (incl. `APPROVE WITH NOTES`) — rejected: notes are explicitly non-blocking, so a fix turn there usually wastes the priciest stages. (c) Implement in the engine — rejected: it would make the linear core conditional; the CLI-level reuse of `revise` keeps the engine pure and applies the loop only to fresh `ai run` (not `resume`/`revise`, where the user already iterates by hand).

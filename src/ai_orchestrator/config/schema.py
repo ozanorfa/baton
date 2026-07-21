@@ -23,6 +23,11 @@ class PipelineConfig(BaseModel):
     # a deliberate exception to ADR-006 for same-provider stages only.
     # Per-project opt-out: pipeline: {session_chaining: false}
     session_chaining: bool = True
+    # ADR-023: when the Reviewer returns NEEDS WORK (a blocking finding), run
+    # exactly one automatic fix pass — re-run the Coder with the review findings,
+    # then re-review, then stop. Off by default (an extra Coder+Reviewer turn
+    # costs quota); opt in per project or with `ai run --fix-loop`.
+    fix_loop: bool = False
 
 
 class RoleConfig(BaseModel):

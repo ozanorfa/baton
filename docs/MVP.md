@@ -49,7 +49,7 @@ roles:
 
 **Quota spread (ADR-016, refined by ADR-017).** The Designer defaults to Antigravity; the Publisher — the shallowest job — defaults to **opencode**, a free client (ADR-017), with a zero-LLM `deterministic` fallback that drafts the commit message from `git diff --stat` (ADR-018). Both are shallow, single-purpose jobs that don't need chaining, so keeping them off the paid Codex/Claude pools frees those for the Planner/Reviewer/Coder work without changing total work done.
 
-**Stage 4 — Reviewer (Codex CLI).** Receives: `plan.md` + `changes.md` + the git diff + reviewer role template. Produces `artifacts/review.md` — findings and improvement suggestions, explicitly *not* rewritten code (role boundary, spec §5). The Reviewer's verdict feeds the report; in the MVP it does **not** gate or loop back to the Coder — the human decides what to do with findings.
+**Stage 4 — Reviewer (Codex CLI).** Receives: `plan.md` + `changes.md` + the git diff + reviewer role template. Produces `artifacts/review.md` — findings and improvement suggestions, explicitly *not* rewritten code (role boundary, spec §5). The Reviewer's verdict feeds the report; in the MVP it does **not** gate or loop back to the Coder — the human decides what to do with findings. (Post-MVP, opt-in: `ai run --fix-loop` runs exactly one automatic fix pass on a `NEEDS WORK` verdict — ADR-023.)
 
 **Stage 5 — Report (free, no tokens).** `report.json` + Rich terminal summary.
 
