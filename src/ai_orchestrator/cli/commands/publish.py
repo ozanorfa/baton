@@ -7,6 +7,7 @@ separate steps, and no pipeline role ever touches git. Without --commit/--push
 it only previews the draft. --commit commits (git add -A); --push commits + pushes.
 """
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -49,6 +50,23 @@ def _commit_section(text: str) -> str:
     return text[: line_start if line_start != -1 else idx].strip()
 
 
+_CC_SUBJECT = re.compile(
+    r"^(feat|fix|docs|chore|refactor|test|style|perf|build|ci|revert)(\([^)]*\))?!?:\s", re.I
+)
+
+
+def _strip_preamble(text: str) -> str:
+    """Drop conversational preamble a chatty free-tier model prepends before the
+    real message (e.g. 'Let me check the working tree.' then the actual commit).
+    Anchors on the first Conventional-Commits subject line; if none is found,
+    returns the text unchanged — it never mangles a message it can't parse."""
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if _CC_SUBJECT.match(line.strip()):
+            return "\n".join(lines[i:]).strip()
+    return text.strip()
+
+
 def _deterministic_draft(project_dir: Path) -> tuple[str | None, str]:
     from ai_orchestrator.providers.deterministic import DeterministicAdapter
 
@@ -88,7 +106,7 @@ def _fresh_draft(project_dir: Path) -> tuple[str | None, str]:
     )
     result = invoke(adapter, HeadlessTransport(), request)
     if result.success and result.text.strip():
-        return result.text, f"{role_cfg.provider} (drafted)"
+        return _strip_preamble(result.text), f"{role_cfg.provider} (drafted)"
     return _deterministic_draft(project_dir)
 
 

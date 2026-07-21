@@ -212,3 +212,10 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 - ✅ **179 passed** (was 176; +3 integration: verdict printed & tree untouched; clean tree → "nothing to review"; non-git → exit 2). ruff clean (fixed one E501 in the new command).
 - 📝 ADR-022 in DECISIONS.md; ADR count 21→22; `ai review` added to README + HOW_TO_USE (+ `.tr.md`) command tables + a MANUAL_TESTING recipe. This completes the 3-item plan (doc-drift · no-op≠failure · `ai review`); the roadmap's repowise/MCP context reducer and memory remain parked.
 
+## 2026-07-21 · Polish: strip chatty preamble from `ai publish` drafts
+
+- 👤 Live-tested `ai review` (worked great — codex ran read-only smoke checks on the calc, APPROVE WITH NOTES, changed nothing) and earlier `ai publish` had shown a real wart: opencode's free-tier model prepended "Let me check the current changes in the working tree." before the actual `feat:` line. Asked me to pick the next steps; I proposed a quick polish then the fix-loop. → do the polish first.
+- 🤖 **Preamble stripping (refines ADR-020).** Added `_strip_preamble` to `cli/commands/publish.py`: the fresh draft is cleaned by anchoring on the first Conventional-Commits subject line (`feat|fix|docs|chore|…`) and dropping anything before it; if no such line exists it returns the text unchanged (never mangles). Applied to the provider draft in `_fresh_draft`, so both the preview and the commit are clean. The deterministic floor already starts with `chore:` so it's untouched.
+- ✅ **186 passed** (was 179; +7 unit tests on `_strip_preamble`/`_commit_section`). ruff clean. Verified on the exact observed output → "Let me check…" line removed, leaving `feat: add CLI calculator…`.
+- 📝 Extended ADR-020's trade-offs with the preamble-cleaning note. Next (proposed): the fix-loop — the automated cousin of `ai revise`.
+
