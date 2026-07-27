@@ -63,3 +63,4 @@ providers:
 
 context:
   project_profile: .ai/project.md
+  health: false # opt-in: inject repowise code-health hotspots into stage prompts (ADR-025)

@@ -1,6 +1,6 @@
 # Architectural Decision Records — AI Coding Orchestrator
 
-**Status:** Living · 24 ADRs · updated 2026-07-21
+**Status:** Living · 25 ADRs · updated 2026-07-27
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Convention: one ADR per consequential decision. New decisions get new ADRs; reversals supersede, never rewrite history. Any future proposal for dynamic/LLM-driven orchestration **requires** an ADR here before code (risk R7 guard).
@@ -485,3 +485,23 @@ It honors the pure-adapter contract (ARCHITECTURE §3.1) by delegating the one s
 **Trade-offs.** (a) `testrunner`'s health check can't verify the command up front (it resolves against the run's workdir, unknown at preflight) — it returns healthy and the real check happens at run time. (b) Auto-detected commands are conventional guesses (e.g. `pytest` vs `uv run pytest`); the override exists for anything non-standard. (c) Adding `tester` to the default pipeline means an extra `○ tester skipped` row when it's off — consistent with the existing designer/publisher rows.
 
 **Alternatives considered.** (a) Fail-stop on test failure (a gate) — rejected by the owner in favor of report-and-continue, which feeds the Reviewer/fix-loop instead of dead-ending the run. (b) Explicit-config-only (no detection) — rejected: auto-detect gives zero-config for common stacks, and the override covers the rest. (c) An LLM-backed tester that figures out how to run tests — rejected as wasteful; a deterministic command runner is cheaper and more reliable (the `tester.md` template exists only if someone deliberately binds an LLM provider to the role).
+
+## ADR-025 — Optional repowise code-health context: hotspots in every stage prompt
+
+**Status:** Accepted · 2026-07-27 · **Validated live before shipping** (robustness sweep + a reviewer A/B + a full end-to-end run — see WORKLOG 2026-07-27).
+
+**Context.** The roadmap's long-parked "repowise as a context source" item (IDEAS.md item 2). The rich repowise interface is MCP-shaped and stays blocked on a future MCP client, but a **live probe (repowise 0.34.0)** established that its `health` subcommand is a clean fit for baton's existing subprocess-and-stdout provider pattern: it runs **in-process (no LLM, no network), needs no `repowise init`**, emits `--format json`, and — unlike `init` — writes nothing to machine-wide config (the `init` footgun that registered global MCP hooks in `~/.claude`, WORKLOG 2026-07-23, does **not** apply). The question this ADR answers is whether feeding that data to the models actually helps.
+
+**Decision.** Add an optional context layer (`context/health.py`) that shells out to `repowise health --format json` and injects a bounded slice — KPI headline (file count, average health, worst performer) + the ≤5 worst-scoring files (score, cyclomatic complexity, nesting, test presence) — into the workspace section of **every** stage prompt, so the Planner plans around hotspots, the Coder avoids piling complexity onto them, and the Reviewer scrutinizes changes that touch them.
+
+- **Opt-in, default OFF** (like the Tester and fix-loop). Enable per run with `ai run --health` or per project with `context: {health: true}`. Off by default because it adds ~4 s and needs a third-party binary.
+- **Never a hard dependency, never breaks a run.** If the `repowise` binary is absent, or the call errors/times out/returns unparseable output, `health_section` returns `""` and the prompt is byte-identical to before. Established projects only (greenfield has no history to score); computed **once per run**, not per stage (it rides the `ContextManager`'s cached workspace layer).
+- **Baton runs `health` itself** — no manual user setup, matching the owner's "the orchestrator should do it on its own." It **never** runs `repowise init` (machine-wide writes + token spend; a human-triggered, one-time step, always).
+- **No litter.** `health` writes a ~1 MB `.repowise/` index; baton removes it **iff this call created it** — a pre-existing, user-owned `.repowise/` is never touched.
+- **Bounded output, not a dump.** The raw JSON is ~25k tokens on a 113-file repo; only the fixed KPI block + top-5 worst files are injected (the rest is `WORST_FILES_MAX`-capped), so the added token cost is ~1k, measured.
+
+**Evidence (why it ships).** A reviewer A/B on baton's own worst hotspot (`engine.py`, health 2.4/10) with a planted-bug diff, run through the real Reviewer (codex), 2× each arm: both arms caught the primary bug and returned the same verdict, but **both** health-informed runs also caught a secondary smell (`record.error = None`) that **neither** control run did — at ~1k extra tokens. A modest but consistent quality gain on the *hardest* case (a strong reviewer with full repo access); the value is a reliable nudge, not a verdict-flipper — hence opt-in.
+
+**Trade-offs.** (a) Value is real but modest, and depends on repowise's static markers (complexity/nesting/dead-code), not semantic understanding — the deep repowise value remains MCP-gated and out of scope here. (b) The ~4 s + a transient `.repowise/` write are why it is off by default. (c) `health`'s numbers are only as current as the working tree at run start (a starting map, like the rest of the workspace layer — ADR-013).
+
+**Alternatives considered.** (a) Gate on a pre-existing user-created `.repowise/` (an earlier IDEAS.md sketch) — rejected once the probe showed `health` needs no `init` and creates its own index: baton can just run it, so requiring manual user setup added friction for no benefit. (b) The full repowise MCP tool interface (`get_context`/`get_risk`/…) — still blocked on baton acquiring an MCP client (ARCHITECTURE §7.2, "Future"); a separate, larger roadmap item. (c) On by default — rejected: a third-party binary, ~4 s, and a repo write should be a deliberate opt-in, consistent with every other optional stage/feature.

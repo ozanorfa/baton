@@ -9,6 +9,8 @@ agents are pointed at doors, the furniture stays where it is (risk R4).
 from enum import StrEnum
 from pathlib import Path
 
+from ai_orchestrator.context.health import health_section
+
 # Directories that are tooling/VCS noise, never project source.
 EXCLUDED_DIRS = {
     ".git", ".ai", ".github", "node_modules", ".venv", "venv", "__pycache__",
@@ -172,8 +174,12 @@ def _readme_excerpt(project_dir: Path) -> str | None:
     return None
 
 
-def workspace_layer(project_dir: Path) -> str:
-    """The mode-appropriate workspace section for every stage's prompt."""
+def workspace_layer(project_dir: Path, include_health: bool = False) -> str:
+    """The mode-appropriate workspace section for every stage's prompt.
+
+    `include_health` (opt-in, ADR-025) appends a repowise code-health hotspot
+    slice for established projects — greenfield has no history to score.
+    """
     if detect_mode(project_dir) is WorkspaceMode.GREENFIELD:
         return (
             "## Workspace: new project\n\n"
@@ -197,4 +203,8 @@ def workspace_layer(project_dir: Path) -> str:
     if excerpt:
         parts.append(f"### README excerpt\n{excerpt}")
     parts.append(f"### File map (partial)\n```\n{repo_map(project_dir)}\n```")
+    if include_health:
+        section = health_section(project_dir)
+        if section:
+            parts.append(section)
     return "\n\n".join(parts)

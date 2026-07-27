@@ -89,7 +89,11 @@ def revise(
         raise typer.Exit(code=2)
 
     render.console.print(f"[bold]revising[/bold] {run_id}: {correction}")
-    context = ContextManager(project_dir, loaded.config.context.project_profile)
+    context = ContextManager(
+        project_dir,
+        loaded.config.context.project_profile,
+        include_health=loaded.config.context.health,
+    )
     progress = render.ProgressRenderer()
     engine = PipelineEngine(
         manager, transport, prompt_builder=context.build, event_sink=progress.handle,

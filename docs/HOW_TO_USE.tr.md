@@ -107,6 +107,7 @@ Opsiyonel Yayıncı aşaması (ve `ai ask --role publisher`), bu sığ "diff'ten
 | `ai --with-designer "<istek>"` | Bu çalıştırma için Designer (UI/UX planlama) aşamasını da çalıştırır |
 | `ai --with-tester "<istek>"` | Coder'dan sonra projenin testlerini de çalıştırır (sıfır token) ve sonucu Reviewer'a verir — komutu `providers: {testrunner: {command: "..."}}` ile ver ya da otomatik tespite bırak |
 | `ai --with-publisher "<istek>"` | Bir commit mesajı + PR açıklaması da taslak olarak hazırlar (asla git komutu çalıştırmaz — bkz. §9) |
+| `ai --health "<istek>"` | Her aşamaya, projedeki hangi dosyaların kod-sağlığı açısından riskli (karmaşıklık/iç içe geçme) olduğunu bildirir; böylece oralara dikkatli dokunurlar. `repowise` aracının kurulu olması gerekir; ~4sn ve geçici bir index ekler — varsayılan kapalı (ADR-025) |
 | `ai ask --role coder "<soru>"` | Tek bir AI'ya ucuz, tek seferlik bir çağrı — pipeline yok, artifact yok. Küçük sorular veya minik düzeltmeler için ideal |
 | `ai doctor` | Tüm sağlayıcıların kurulu ve giriş yapılmış olduğunu kontrol eder |
 | `ai init` | Bir projede `.ai/`'ı kurar (tekrar çalıştırmak güvenlidir; senin düzenlemelerinin üzerine asla yazmaz) |

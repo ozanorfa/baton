@@ -59,6 +59,11 @@ def run(
         help="On a NEEDS WORK verdict, run one automatic fix pass (re-run the Coder with "
         "the review findings, then re-review) — ADR-023.",
     ),
+    health: bool = typer.Option(
+        False, "--health",
+        help="Inject repowise code-health hotspots into every stage prompt (needs the "
+        "`repowise` binary; adds ~4s, writes a temporary .repowise/ index) — ADR-025.",
+    ),
 ) -> None:
     """Run the configured pipeline on a request."""
     project_dir = Path.cwd()
@@ -71,6 +76,8 @@ def run(
         overrides["roles.publisher.enabled"] = True
     if fix_loop:
         overrides["pipeline.fix_loop"] = True
+    if health:
+        overrides["context.health"] = True
 
     try:
         loaded = load_config(project_dir, overrides=overrides)
@@ -90,7 +97,11 @@ def run(
     render.render_run_header(request, resolved)
 
     manager = RunManager(project_dir)
-    context = ContextManager(project_dir, loaded.config.context.project_profile)
+    context = ContextManager(
+        project_dir,
+        loaded.config.context.project_profile,
+        include_health=loaded.config.context.health,
+    )
     progress = render.ProgressRenderer()
     engine = PipelineEngine(
         manager, transport,

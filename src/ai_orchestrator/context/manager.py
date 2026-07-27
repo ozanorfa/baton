@@ -20,13 +20,19 @@ from ai_orchestrator.core.models import StageSpec
 
 
 class ContextManager:
-    def __init__(self, project_dir: Path, profile_relpath: str = ".ai/project.md"):
+    def __init__(
+        self,
+        project_dir: Path,
+        profile_relpath: str = ".ai/project.md",
+        include_health: bool = False,
+    ):
         self.project_dir = project_dir
         self.profile_relpath = profile_relpath
         # Computed once per run, not per stage — the workspace doesn't change
         # between stages (the coder's edits notwithstanding; orientation is
-        # a starting map, not a live view).
-        self._workspace = workspace_layer(project_dir)
+        # a starting map, not a live view). This is also why the opt-in repowise
+        # health probe runs at most once per run, not once per stage.
+        self._workspace = workspace_layer(project_dir, include_health=include_health)
 
     def build(self, spec: StageSpec, request: str, artifacts: dict[str, str]) -> str:
         contract = contract_for(spec.role)  # template/boundaries by role

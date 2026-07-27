@@ -313,3 +313,17 @@ ai --with-tester "add a feature"
 
 What to expect: after the Coder, a `tester` stage runs; `.ai/runs/<id>/artifacts/test_report.md` holds `PASSED`/`FAILED` + the output tail, and the Reviewer's prompt now includes it. **Report-and-continue**: failing tests do *not* stop the run — the tester stage still succeeds, and the Reviewer factors the failure into its verdict (`NEEDS WORK`), which `--fix-loop` (ADR-023) can then auto-fix. Only a missing/undetectable command or a timeout fails the stage. Free check: `uv run pytest tests/contract/test_testrunner_adapter.py tests/integration/test_tester.py`.
 
+## Code-health context (ADR-025) — hotspots in every stage prompt
+
+Off by default. Needs the `repowise` tool installed (`pipx install repowise`). Enable per run; baton runs `repowise health` itself (no manual setup) and injects the worst-scoring files into every stage's prompt so they tread carefully there. On an **established** project only.
+
+```bash
+ai --health "refactor the busiest module"
+# or pin it in .ai/config.yaml:
+#   context: {health: true}
+```
+
+What to expect: each stage's prompt (see `.ai/runs/<id>/prompts/*`) gains a **"Code-health hotspots"** section listing the ≤5 worst files with complexity/nesting. The transient `.repowise/` index baton creates is **removed after the run** (a `.repowise/` you made yourself with `repowise init` is left untouched). If `repowise` isn't installed, the flag is a silent no-op — the run is byte-identical to a plain run, never an error. Free checks: `uv run pytest tests/unit/test_health.py`; and to see the injected slice without spending tokens: `python -c "from pathlib import Path; from ai_orchestrator.context.health import health_section; print(health_section(Path('.')))"` (run via `uv run`).
+
+**Caution:** baton only ever runs `repowise health` (in-process, no network, no LLM, no config writes). It never runs `repowise init` — that command registers machine-wide MCP hooks in `~/.claude`. If you set repowise up yourself, that's your one-time step, not baton's.
+

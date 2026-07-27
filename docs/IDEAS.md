@@ -17,7 +17,9 @@ Graduated out of this holding pen. Implemented as `src/ai_orchestrator/providers
 
 **The "free" caveat (important):** opencode is a free *client*; the model still comes from somewhere. Non-local free options: OpenRouter `:free` models, Google AI Studio free-tier API key (the API — separate from the dead personal Gemini CLI, may still work), occasional promo models in opencode. All rate-limited, and free tiers typically may train on submitted data — fine for commit messages, think twice before pointing at proprietary code. (Handled in ADR-017 by confining opencode to shallow text.)
 
-### 2. Repowise as a context source (token *reducer*, not a provider)
+### 2. Repowise as a context source — ✅ PARTIALLY SHIPPED 2026-07-27 (ADR-025)
+
+> **The non-MCP `health` path shipped** as an optional code-health context layer (`context/health.py`, `--health` / `context.health`, off by default) — see **[DECISIONS.md → ADR-025](DECISIONS.md)** and the 2026-07-27 probe/A/B notes below. **Still parked:** the rich MCP tool interface (`get_context`/`get_risk`/…), which stays blocked on baton acquiring an MCP client. The evaluation notes below are kept for the record.
 
 <https://github.com/repowise-dev/repowise> — codebase-intelligence MCP server + CLI (tree-sitter dependency graph, git analytics, health scores, auto-generated wiki). AGPL-3.0; index-only mode needs **zero LLM calls/keys**.
 
@@ -55,4 +57,4 @@ Graduated. Implemented as the `deterministic` provider (`src/ai_orchestrator/pro
 
 1. ~~opencode adapter + route Publisher/`ask` to it~~ — ✅ SHIPPED (ADR-017).
 2. ~~Zero-LLM fallback (tiny, pure Python)~~ — ✅ SHIPPED (ADR-018).
-3. Repowise integration — **re-evaluated 2026-07-23, live-probed 2026-07-27**: the full MCP-tool interface is still blocked on baton getting an MCP client (its own separate roadmap item). The non-MCP path is now **confirmed buildable via `repowise health`** (in-process, no network/LLM, config-safe, `--format json|md`), gated on a pre-existing `.repowise/`. Two constraints found in the probe: `health` *writes* `.repowise/` (~1 MB) so it's not read-only, and its JSON is ~25k tokens on a 113-file repo so baton must inject a summarized KPI slice, not the raw dump. `status`/`search` are unusable without `init` (crash). Ready to scope; not started. See probe notes above.
+3. Repowise integration — **✅ non-MCP `health` path SHIPPED 2026-07-27 (ADR-025)**: after the live probe, built as an optional code-health context layer (`--health`, default off) — baton runs `repowise health` itself and injects a bounded hotspot slice into every stage prompt; validated by a reviewer A/B (a consistent extra catch at ~1k tokens). Baton creates and then removes the transient `.repowise/` it writes; never runs `init`. **Still parked:** the MCP tool interface (`get_context`/…), blocked on baton getting an MCP client — its own separate roadmap item.

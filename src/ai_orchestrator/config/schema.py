@@ -49,6 +49,10 @@ class ContextConfig(BaseModel):
     model_config = _LENIENT
 
     project_profile: str = ".ai/project.md"
+    # Opt-in repowise code-health hotspots in every stage prompt (ADR-025).
+    # Off by default: adds ~4s and writes a temporary .repowise/ index; needs
+    # the `repowise` binary (absent → silently skipped, never a hard dependency).
+    health: bool = False
 
 
 class AppConfig(BaseModel):

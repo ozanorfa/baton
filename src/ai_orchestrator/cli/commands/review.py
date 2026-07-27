@@ -58,7 +58,11 @@ def review(
 
     # Assemble the Reviewer's normal context (reviewer.md template + layers),
     # feeding the captured diff as its one admitted input.
-    context = ContextManager(project_dir, loaded.config.context.project_profile)
+    context = ContextManager(
+        project_dir,
+        loaded.config.context.project_profile,
+        include_health=loaded.config.context.health,
+    )
     spec = StageSpec(name="reviewer", role="reviewer", inputs=["diff.patch"], output="review.md")
     request = message or "Review the current working-tree changes."
     prompt = context.build(spec, request, {"diff.patch": snapshot.patch})

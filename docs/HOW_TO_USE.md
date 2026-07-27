@@ -107,6 +107,7 @@ The optional Publisher stage (and `ai ask --role publisher`) is wired to **openc
 | `ai --with-designer "<request>"` | Also run the Designer stage (UI/UX planning) for this one run |
 | `ai --with-tester "<request>"` | Also run your project's tests after the Coder (zero tokens) and hand the result to the Reviewer — set the command with `providers: {testrunner: {command: "..."}}`, or let it auto-detect |
 | `ai --with-publisher "<request>"` | Also draft a commit message + PR description (never runs git itself — see §9) |
+| `ai --health "<request>"` | Tell every stage which existing files are code-health hotspots (complexity/nesting), so they tread carefully there. Needs the `repowise` tool installed; adds ~4s and a temporary index — off by default (ADR-025) |
 | `ai ask --role coder "<question>"` | One cheap, one-shot call to a single AI — no pipeline, no artifacts. Good for small questions or tiny edits |
 | `ai doctor` | Check that all providers are installed and logged in |
 | `ai init` | Set up `.ai/` in a project (safe to run again; never overwrites your edits) |
