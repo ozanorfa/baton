@@ -41,8 +41,10 @@ def test_render_lists_only_unhealthy_files() -> None:
 
 def test_render_includes_headline_and_metrics() -> None:
     out = H.render_health(SAMPLE)
-    assert "113 files analyzed" in out
-    assert "average health 8.8/10" in out
+    # The headline counts SOURCE files only — repowise's own file_count includes
+    # markdown/YAML, which made the numbers read healthier than the code (ADR-025
+    # amendment, 2026-07-28).
+    assert "source files analyzed" in out
     assert "max complexity 26" in out
     assert "no tests" in out  # render.py has_test_file is False
 
@@ -152,3 +154,70 @@ def test_run_health_cleans_up_after_success(tmp_path: Path, monkeypatch) -> None
     monkeypatch.setattr(H.subprocess, "run", _fake_run)
     H._run_health(tmp_path)
     assert not (tmp_path / H._INDEX_DIR).exists()
+
+
+# ── ADR-025 amendment (2026-07-28): a single bad dimension is enough ─────────
+
+def test_high_complexity_is_flagged_even_with_a_healthy_score() -> None:
+    """The real-world miss: score-only gating stayed silent on a ccn-27 file.
+
+    Live case (skii_game, a Flutter project): `snow_world.dart` scored 8.15 —
+    above the 8.0 cutoff — with cyclomatic complexity 27 and no tests, so baton
+    injected nothing at all. The composite score averaged the problem away.
+    """
+    data = {
+        "kpis": {},
+        "metrics": [
+            {"file_path": "lib/world.dart", "score": 8.15, "max_ccn": 27,
+             "max_nesting": 3, "has_test_file": False, "duplication_pct": 26.0},
+            {"file_path": "lib/clean.dart", "score": 9.9, "max_ccn": 2,
+             "max_nesting": 1, "has_test_file": True},
+        ],
+    }
+    out = H.render_health(data)
+    assert "lib/world.dart" in out
+    assert "high complexity" in out
+    assert "lib/clean.dart" not in out, "a genuinely clean file is still never named"
+
+
+def test_deep_nesting_alone_is_flagged() -> None:
+    data = {"kpis": {}, "metrics": [
+        {"file_path": "a.py", "score": 9.0, "max_ccn": 3, "max_nesting": 5},
+    ]}
+    assert "deep nesting" in H.render_health(data)
+
+
+def test_duplication_alone_never_flags_a_file() -> None:
+    """A constants file reads as ~100% duplicated by construction.
+
+    Observed on `game_constants.dart` (score 9.7, 100% duplication): treating
+    that as a hotspot would evict a real one from the five-slot list.
+    """
+    data = {"kpis": {}, "metrics": [
+        {"file_path": "constants.py", "score": 9.7, "max_ccn": 1,
+         "max_nesting": 0, "duplication_pct": 100.0},
+    ]}
+    assert H.render_health(data) == ""
+
+
+def test_non_source_files_are_excluded_entirely() -> None:
+    """repowise scores markdown, YAML and baton's own .ai/ — none are code."""
+    data = {"kpis": {}, "metrics": [
+        {"file_path": "README.md", "score": 1.0, "max_ccn": 1, "max_nesting": 0},
+        {"file_path": "pubspec.yaml", "score": 1.0, "max_ccn": 1, "max_nesting": 0},
+        {"file_path": ".ai/config.yaml", "score": 1.0, "max_ccn": 1, "max_nesting": 0},
+        {"file_path": "build/gen.dart", "score": 1.0, "max_ccn": 30, "max_nesting": 9},
+    ]}
+    assert H.render_health(data) == "", "nothing here is a refactoring target"
+
+
+def test_source_files_survive_the_filter() -> None:
+    data = {"kpis": {}, "metrics": [
+        {"file_path": "lib/a.dart", "score": 3.0, "max_ccn": 20, "max_nesting": 2},
+        {"file_path": "src/b.py", "score": 4.0, "max_ccn": 5, "max_nesting": 1},
+        {"file_path": "web/c.ts", "score": 2.0, "max_ccn": 9, "max_nesting": 2},
+    ]}
+    out = H.render_health(data)
+    for path in ("lib/a.dart", "src/b.py", "web/c.ts"):
+        assert path in out
+    assert "3 source files analyzed" in out

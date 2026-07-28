@@ -35,8 +35,54 @@ HEALTH_TIMEOUT_S = 30
 # Only the worst few files earn prompt space — the full metrics array is ~25k
 # tokens on a 113-file repo (measured); the point is a bounded slice, not a dump.
 WORST_FILES_MAX = 5
-# Files at or above this health score are fine; never list them as concerns.
+
+# A file is a concern if ANY of these trips — not only the blended score.
+#
+# Why: the composite score averages dimensions, so one severe problem can hide
+# behind otherwise clean numbers. Found on a real Flutter project (2026-07-28):
+# `snow_world.dart` had **cyclomatic complexity 27**, 26% duplication and no
+# tests, yet scored 8.15 — just above the old score-only cutoff, so baton said
+# nothing at all. The original 8.0 threshold had been calibrated on one repo
+# (baton's own, whose worst file scores 2.4) and did not generalize.
 HEALTHY_SCORE = 8.0
+CCN_CONCERN = 15  # cyclomatic complexity of the worst function in the file
+NESTING_CONCERN = 4
+# Duplication is REPORTED but never triggers on its own: a constants/config file
+# reads as ~100% duplicated by construction (observed on game_constants.dart,
+# score 9.7 — flagging it would push a real hotspot out of a 5-slot list).
+DUPLICATION_CONCERN = 20.0  # percent — display threshold only
+
+# repowise scores every file it can read, including markdown, YAML and baton's
+# own .ai/ — those are never refactoring targets and they inflate the headline
+# ("24 files analyzed" for a project with 8 Dart files). Only real source counts.
+_NON_SOURCE_DIRS = (".ai/", ".repowise/", "build/", ".dart_tool/", "node_modules/")
+
+
+def _is_source(file_path: str) -> bool:
+    """True for files that are actual code — the only ones worth flagging."""
+    # Imported here, not at module level: context/awareness.py imports this
+    # module, so a module-level import back into it would be circular.
+    from ai_orchestrator.context.awareness import CODE_EXTENSIONS
+
+    if any(part in file_path for part in _NON_SOURCE_DIRS) or file_path.startswith("."):
+        return False
+    dot = file_path.rfind(".")
+    return dot != -1 and file_path[dot:].lower() in CODE_EXTENSIONS
+
+
+def _concerns(metric: dict) -> list[str]:
+    """Which dimensions make this file a hotspot; empty means it is fine."""
+    reasons: list[str] = []
+    score = metric.get("score")
+    if isinstance(score, (int, float)) and score < HEALTHY_SCORE:
+        reasons.append("low overall score")
+    ccn = metric.get("max_ccn")
+    if isinstance(ccn, int) and ccn >= CCN_CONCERN:
+        reasons.append("high complexity")
+    nesting = metric.get("max_nesting")
+    if isinstance(nesting, int) and nesting >= NESTING_CONCERN:
+        reasons.append("deep nesting")
+    return reasons
 
 
 def _run_health(project_dir: Path) -> dict | None:
@@ -85,49 +131,42 @@ def render_health(data: dict) -> str:
     Deterministic and side-effect-free so it can be unit tested against recorded
     repowise JSON without a live install.
     """
-    kpis = data.get("kpis") or {}
-    metrics = data.get("metrics") or []
-    if not kpis or not metrics:
+    metrics = [
+        m for m in (data.get("metrics") or [])
+        if isinstance(m.get("score"), (int, float)) and _is_source(m.get("file_path", ""))
+    ]
+    if not metrics:
         return ""
 
-    file_count = kpis.get("file_count")
-    avg = kpis.get("average_health")
-    worst_path = kpis.get("worst_performer_path")
-    worst_score = kpis.get("worst_performer_score")
-
-    headline_bits = []
-    if isinstance(file_count, int):
-        headline_bits.append(f"{file_count} files analyzed")
-    if isinstance(avg, (int, float)):
-        headline_bits.append(f"average health {avg:.1f}/10")
-    if worst_path and isinstance(worst_score, (int, float)):
-        headline_bits.append(f"worst: {worst_path} ({worst_score:.1f}/10)")
-    headline = " · ".join(headline_bits)
-
-    # Worst files first; only those actually below the healthy bar are worth naming.
-    ranked = sorted(
-        (m for m in metrics if isinstance(m.get("score"), (int, float))),
-        key=lambda m: m["score"],
+    # Counted over source files only — repowise's own file_count/average include
+    # markdown and config, which made the headline read far healthier than the code.
+    avg = sum(m["score"] for m in metrics) / len(metrics)
+    ranked = sorted(metrics, key=lambda m: m["score"])
+    headline = (
+        f"{len(metrics)} source files analyzed · average health {avg:.1f}/10 · "
+        f"worst: {ranked[0]['file_path']} ({ranked[0]['score']:.1f}/10)"
     )
-    concerns = [m for m in ranked if m["score"] < HEALTHY_SCORE][:WORST_FILES_MAX]
+
+    concerns = [(m, r) for m in ranked if (r := _concerns(m))][:WORST_FILES_MAX]
     if not concerns:
         return ""
 
     rows = []
-    for m in concerns:
+    for m, reasons in concerns:
         path = m.get("file_path", "?")
-        score = m.get("score")
+        detail = f"score {m['score']:.1f}/10"
         ccn = m.get("max_ccn")
         nest = m.get("max_nesting")
-        test = "no tests" if m.get("has_test_file") is False else ""
-        detail = f"score {score:.1f}/10"
+        dup = m.get("duplication_pct")
         if isinstance(ccn, int):
             detail += f", max complexity {ccn}"
         if isinstance(nest, int):
             detail += f", nesting {nest}"
-        if test:
-            detail += f", {test}"
-        rows.append(f"- `{path}` — {detail}")
+        if isinstance(dup, (int, float)) and dup >= DUPLICATION_CONCERN:
+            detail += f", {dup:.0f}% duplication"
+        if m.get("has_test_file") is False:
+            detail += ", no tests"
+        rows.append(f"- `{path}` — {detail} _({', '.join(reasons)})_")
 
     lines = [
         "### Code-health hotspots (repowise, static analysis)",

@@ -52,6 +52,7 @@ batonai "do something useful"  # run the pipeline
 | `batonai resume <run-id>` | Continue a failed run from the failed stage — completed stages are never re-paid |
 | `batonai runs list` / `batonai runs show <id>` | Run history: status, per-stage glyphs, cost, verdict |
 | `batonai ask --role coder "<q>"` | One cheap single-role call, no pipeline |
+| `batonai health` | Print the repowise code-health hotspots every stage is told about — zero tokens, no run needed |
 | `batonai doctor` / `batonai config show` / `batonai init` | Health check · effective config with sources · project setup |
 
 Exit codes: `0` success · `1` a stage failed · `2` config/usage error · `130` you cancelled the wizard.

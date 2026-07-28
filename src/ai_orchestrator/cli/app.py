@@ -16,6 +16,7 @@ from ai_orchestrator.cli import wizard
 from ai_orchestrator.cli.commands.ask import ask
 from ai_orchestrator.cli.commands.config_cmd import config_app
 from ai_orchestrator.cli.commands.doctor import doctor
+from ai_orchestrator.cli.commands.health import health
 from ai_orchestrator.cli.commands.init import init
 from ai_orchestrator.cli.commands.publish import publish
 from ai_orchestrator.cli.commands.resume import resume
@@ -33,6 +34,7 @@ app = typer.Typer(
 )
 app.add_typer(config_app, name="config")
 app.command()(doctor)
+app.command()(health)
 app.command()(ask)
 app.command()(run)
 app.command()(init)
@@ -43,7 +45,8 @@ app.command()(review)
 app.command()(publish)
 
 _COMMANDS = {
-    "run", "ask", "doctor", "config", "init", "runs", "resume", "revise", "review", "publish",
+    "run", "ask", "doctor", "config", "init", "runs", "resume", "revise", "review",
+    "publish", "health",
 }
 
 

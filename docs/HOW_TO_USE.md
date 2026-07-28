@@ -138,6 +138,7 @@ The optional Publisher stage (and `batonai ask --role publisher`) is wired to **
 | `batonai --with-publisher "<request>"` | Also draft a commit message + PR description (never runs git itself — see §9) |
 | `batonai --health "<request>"` | Tell every stage which existing files are code-health hotspots (complexity/nesting), so they tread carefully there. Needs the `repowise` tool installed; adds ~4s and a temporary index — off by default (ADR-025) |
 | `batonai ask --role coder "<question>"` | One cheap, one-shot call to a single AI — no pipeline, no artifacts. Good for small questions or tiny edits |
+| `batonai health` | Show which files baton considers code-health hotspots (the same text every stage receives). Free, no run needed — needs `repowise` installed |
 | `batonai doctor` | Check that all providers are installed and logged in |
 | `batonai init` | Set up `.ai/` in a project (safe to run again; never overwrites your edits) |
 | `batonai config show` | See the full effective configuration and where every value came from |

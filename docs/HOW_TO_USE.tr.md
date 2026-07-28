@@ -138,6 +138,7 @@ Opsiyonel Yayıncı aşaması (ve `batonai ask --role publisher`), bu sığ "dif
 | `batonai --with-publisher "<istek>"` | Bir commit mesajı + PR açıklaması da taslak olarak hazırlar (asla git komutu çalıştırmaz — bkz. §9) |
 | `batonai --health "<istek>"` | Her aşamaya, projedeki hangi dosyaların kod-sağlığı açısından riskli (karmaşıklık/iç içe geçme) olduğunu bildirir; böylece oralara dikkatli dokunurlar. `repowise` aracının kurulu olması gerekir; ~4sn ve geçici bir index ekler — varsayılan kapalı (ADR-025) |
 | `batonai ask --role coder "<soru>"` | Tek bir AI'ya ucuz, tek seferlik bir çağrı — pipeline yok, artifact yok. Küçük sorular veya minik düzeltmeler için ideal |
+| `batonai health` | Baton'un kod-sağlığı açısından riskli saydığı dosyaları gösterir (her aşamaya verilen metnin aynısı). Ücretsiz, run gerektirmez — `repowise` kurulu olmalı |
 | `batonai doctor` | Tüm sağlayıcıların kurulu ve giriş yapılmış olduğunu kontrol eder |
 | `batonai init` | Bir projede `.ai/`'ı kurar (tekrar çalıştırmak güvenlidir; senin düzenlemelerinin üzerine asla yazmaz) |
 | `batonai config show` | Geçerli tam yapılandırmayı ve her değerin nereden geldiğini gösterir |
