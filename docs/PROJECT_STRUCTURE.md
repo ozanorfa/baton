@@ -134,6 +134,8 @@ providers/
 transport/
 ├── base.py                 # Transport protocol; Invocation, TransportResult dataclasses
 └── headless.py             # subprocess.run: argv list, shell=False, prompt via stdin,
+                            #   timeout, stdout/stderr capture; plus an opt-in streaming
+                            #   path (ADR-030) — Popen + line reads, watchdog timeout
                             #   timeout, stdout/stderr capture to run dir
 ```
 

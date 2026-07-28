@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 
 from ai_orchestrator.core.models import AgentRequest, AgentResult, Capabilities, Health, Usage
-from ai_orchestrator.providers.base import ProviderAdapter
+from ai_orchestrator.providers.base import ProviderAdapter, _sanitize
 from ai_orchestrator.providers.registry import registry
 from ai_orchestrator.transport.base import Invocation, Transport, TransportResult
 
@@ -53,6 +53,35 @@ class CodexAdapter(ProviderAdapter):
             workdir=request.workdir,
             timeout_s=request.timeout_s,
         )
+
+    # Bounded on purpose (ADR-030): evidence of life and the rough shape of the
+    # work, never a transcript of the model's reasoning.
+    NOTE_MAX_CHARS = 90
+
+    def progress_note(self, line: str) -> str | None:
+        """Turn one `codex --json` event into a short note, or None.
+
+        Event shapes verified against a real captured run (2026-07-28):
+        `item.started`/`item.completed` carry either a shell `command` the model
+        is running or its short `text`.
+        """
+        line = line.strip()
+        if not line.startswith("{"):
+            return None
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(event, dict) or event.get("type") != "item.started":
+            return None  # one note per item; "completed" would double every line
+        item = event.get("item")
+        if not isinstance(item, dict):
+            return None
+        if command := item.get("command"):
+            return _sanitize(f"$ {command}", self.NOTE_MAX_CHARS)
+        if text := item.get("text"):
+            return _sanitize(str(text), self.NOTE_MAX_CHARS)
+        return None
 
     def parse(self, raw: TransportResult) -> AgentResult:
         if raw.error is not None or raw.timed_out:

@@ -259,8 +259,23 @@ class PipelineEngine:
                 allow_edits=stage.allow_edits,
                 resumed_session=resume_session_id,
             )
+            # ADR-030: a note per streamed line, emitted as an ordinary event so
+            # the renderer stays the only thing that knows about terminals.
+            def _sink(line: str, _stage=stage) -> None:
+                # Straight to the live listener, never to the durable event log:
+                # a note is ephemeral UI, and a long stage would otherwise bloat
+                # orchestrator.jsonl with hundreds of them.
+                if self.event_sink is None:
+                    return
+                if note := _stage.adapter.progress_note(line):
+                    self.event_sink(
+                        {"event": "stage_progress", "stage": _stage.spec.name, "note": note}
+                    )
+
             try:
-                raw = self.transport.run(stage.adapter.build_invocation(agent_request))
+                raw = self.transport.run(
+                    stage.adapter.build_invocation(agent_request), on_line=_sink
+                )
             except KeyboardInterrupt:
                 # Ctrl-C must leave a resumable run, not a corrupt one (T34).
                 record.status = StageStatus.FAILED

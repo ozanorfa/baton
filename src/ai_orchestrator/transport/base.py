@@ -4,9 +4,15 @@ Adapters build an Invocation; a Transport executes it. Prompts travel on
 stdin, never argv (ADR-010).
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
+
+# ADR-030: called with each stdout line while the process runs, so a caller can
+# surface progress. Optional everywhere — when it is None the transport takes
+# its original single-call path, so existing behaviour is untouched.
+LineSink = Callable[[str], None]
 
 
 @dataclass(frozen=True)
@@ -33,4 +39,6 @@ class TransportResult:
 
 
 class Transport(Protocol):
-    def run(self, invocation: Invocation) -> TransportResult: ...
+    def run(
+        self, invocation: Invocation, on_line: LineSink | None = None
+    ) -> TransportResult: ...

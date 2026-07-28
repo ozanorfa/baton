@@ -57,7 +57,7 @@ class NoResumeAdapter(RecordingAdapter):
 
 
 class IndexEchoTransport:
-    def run(self, invocation: Invocation) -> TransportResult:
+    def run(self, invocation: Invocation, on_line=None) -> TransportResult:
         return TransportResult(exit_code=0, stdout=invocation.argv[1], stderr="", duration_s=0.01)
 
 

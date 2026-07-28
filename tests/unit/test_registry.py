@@ -28,7 +28,7 @@ class DummyAdapter(ProviderAdapter):
 
 
 class FakeTransport:
-    def run(self, invocation: Invocation) -> TransportResult:
+    def run(self, invocation: Invocation, on_line=None) -> TransportResult:
         return TransportResult(
             exit_code=0, stdout=f"echo:{invocation.stdin}", stderr="", duration_s=0.01
         )

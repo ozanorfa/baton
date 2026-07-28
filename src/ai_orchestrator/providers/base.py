@@ -12,6 +12,22 @@ from ai_orchestrator.core.models import AgentRequest, AgentResult, Capabilities,
 from ai_orchestrator.transport.base import Invocation, Transport, TransportResult
 
 
+def _sanitize(text: str, limit: int) -> str | None:
+    """Make vendor output safe to print, or None if nothing readable remains.
+
+    ADR-030: a progress note is text a third-party process chose. It must not be
+    able to move the cursor, clear the screen, or smuggle Rich markup — so
+    control characters go, square brackets are neutralised, and the result is
+    truncated to one short line.
+    """
+    flat = " ".join(text.split())
+    cleaned = "".join(ch for ch in flat if ch.isprintable())
+    cleaned = cleaned.replace("[", "(").replace("]", ")")
+    if not cleaned:
+        return None
+    return cleaned[: limit - 1] + "…" if len(cleaned) > limit else cleaned
+
+
 class ProviderAdapter(ABC):
     name: ClassVar[str]
     capabilities: ClassVar[Capabilities]
@@ -27,6 +43,15 @@ class ProviderAdapter(ABC):
     @abstractmethod
     def build_invocation(self, request: AgentRequest) -> Invocation:
         """Flags in argv, prompt on stdin (ADR-010). No process is spawned here."""
+
+    def progress_note(self, line: str) -> str | None:
+        """One short human note for a raw stdout line, or None (ADR-030).
+
+        Vendor stream formats stay behind this boundary, exactly as usage
+        parsing does. The default is None, so a provider that streams nothing
+        keeps the plain spinner and no other layer learns about it.
+        """
+        return None
 
     @abstractmethod
     def parse(self, raw: TransportResult) -> AgentResult:

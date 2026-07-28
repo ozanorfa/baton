@@ -616,7 +616,7 @@ The obvious repair — have the wizard make an initial commit right after `git i
 
 ## ADR-030 — Live progress notes from the provider's own event stream
 
-**Status:** Accepted · 2026-07-28 · **Design only — not implemented.**
+**Status:** Accepted · 2026-07-28 · **Implemented 2026-07-28 for codex; claude still buffers.** The transport, the adapter hook and the renderer are done and live-verified. `claude` keeps `--output-format json` for now: moving it to `stream-json` changes the shape its parser consumes, and that parser guards the Coder — the stage that edits files. It is a separate, testable step, and until then claude simply keeps the plain spinner, which is exactly the degradation this ADR requires of a non-streaming provider.
 
 **Context.** A stage shows an animated spinner and nothing else for as long as it runs. Observed live: a Coder stage passed ten minutes on a Flutter project and the owner interrupted it, reasonably unable to tell *working* from *hung* — the run had not failed, and the plan behind it was genuinely large. The owner's framing: *"ara ara ufak loglar atabiliriz kullanıcıya, böylece bug olmadığını ve gerçekten çalıştığını anlar."*
 

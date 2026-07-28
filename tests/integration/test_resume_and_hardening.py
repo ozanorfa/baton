@@ -197,7 +197,7 @@ def test_coder_silent_no_change_still_fails(project, fake_registry) -> None:
 
 
 class InterruptingTransport:
-    def run(self, invocation):
+    def run(self, invocation, on_line=None):
         raise KeyboardInterrupt
 
 

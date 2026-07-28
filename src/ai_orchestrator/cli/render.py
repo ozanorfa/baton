@@ -116,6 +116,12 @@ class ProgressRenderer:
                 f"[bold]{stage}[/bold] ({record.get('provider')}) working…", spinner="dots"
             )
             self._status.start()
+        elif event == "stage_progress":
+            # ADR-030: replace the spinner's text rather than printing a line per
+            # note — a ten-minute stage would otherwise bury the run in scrollback.
+            if self._status is not None:
+                note = record.get("note", "")
+                self._status.update(f"[bold]{stage}[/bold] [dim]{note}[/dim]")
         elif event == "stage_succeeded":
             self._stop_spinner()
             duration = record.get("duration_s")
