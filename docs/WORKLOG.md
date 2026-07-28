@@ -399,3 +399,13 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 - 🤖 The `Transport` protocol changed, so four test doubles implementing `run(invocation)` were updated to the new signature.
 - ✅ **296 passed** (measured; +18 in `tests/unit/test_progress.py`), ruff clean.
 - **All four queued ADRs (028–031) are now implemented.** Remaining from the older roadmap: tmux observability, new roles, a persistent REPL (ADR-026 alternative b), the repowise MCP interface, memory — plus claude streaming as ADR-030's follow-up.
+
+## 2026-07-28 (cont.) · Verification pass on ADR-031 + ADR-030
+
+- 👤 "test ve kontrolleri detaylıca yaptın mı? sen yap." Correct to push back — three checks were missing, one of them load-bearing.
+- 🐛 **The framing in ADR-030's commit was misleading and is corrected here.** I wrote that "without a sink the original `subprocess.run` path is taken byte for byte", which is true of the transport in isolation but **not of a real run**: the engine always supplies a sink, so *every* provider now goes through `_run_streaming` — including claude, whose `--output-format json` returns one large blob rather than a stream. That made "does claude still parse?" the single highest-risk question of the change, and I had not asked it.
+- ✅ **Verified against real claude through the streaming path**: transport ok, output read as one line and reassembled, `parse()` succeeded, usage extracted (12,871/4 tokens) and the session id present. The Coder's contract is intact.
+- ✅ **Model pinning reaches the CLI**: `build_invocation` yields `[claude, -p, --output-format, json, --model, haiku]` and `[codex, exec, --json, …, -m, o3]`; with `model=None` neither flag appears.
+- ✅ **Renderer wiring**: a `stage_progress` event updates the spinner in place (`[bold]coder[/bold] [dim]$ sed -n 1,20p a.py[/dim]`), and a note arriving with no spinner running is a no-op rather than a crash.
+- ✅ **ADR-031 remaining paths**: `--no-models` and a non-TTY `init` both write no `providers:` block, and a second `init` reports "nothing to do" without re-asking.
+- ✅ **296 passed**, ruff clean.
