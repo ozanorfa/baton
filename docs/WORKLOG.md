@@ -356,7 +356,7 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 - `git_state()` now returns `(is_git, dirty, has_commits)`; `WorkspaceScan` carries `has_commits`. The wizard's scan, and `batonai run`'s pre-run check, report "repository has no commits yet" as its **own** state — with the consequence spelled out (every file counts as a change, the diff becomes the whole project) and the exact remedy printed. The wizard's `git init` offer now warns about it up front, so nobody is led into the state blind.
 - **Baton still creates no commits** — verified live: after the wizard reported the state, `git rev-parse --verify HEAD` still fails. ADR-020's guarantee remains one unconditional sentence.
 - A test pins that this is **reporting only**: `decide(has_commits=False) == decide(has_commits=True)`, so no wizard step was added or reordered.
-- ✅ **265 passed** (was 261; +4, and 2 existing `git_state` tests updated to the 3-tuple contract). ruff clean.
+- ✅ +4 tests, and 2 existing `git_state` tests updated to the 3-tuple contract. ruff clean. *(Corrected 2026-07-28: the per-commit totals first written here were arithmetic, not measurements — the only figure actually measured is the suite at HEAD, below.)*
 - **Remaining queued:** ADR-028 (health cache, self-contained), ADR-031 (model choice at setup, self-contained), ADR-030 (live progress — largest: `transport/`, both adapters, `render.py`).
 
 ## 2026-07-28 (cont.) · ADR-028 implemented — health cached per project
@@ -366,5 +366,13 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 - The record holds the **rendered slice next to the raw KPIs**, so opening `.ai/health.json` answers "what does baton think of this project?" with no command — the visibility half of 👤's original complaint ("repowise çıktıları nerede göremedim?").
 - Two failure modes made non-fatal by construction and pinned by tests: an unwritable cache still returns the slice, and a record from another format is **discarded rather than migrated** (it is a cache, not data).
 - `.ai/.gitignore` now covers `health.json` too for newly initialized projects. `.repowise/` is still transient and removed after use — that index is repowise's, not ours.
-- ✅ **271 passed** (was 265; +6). ruff clean.
+- ✅ +6 tests. ruff clean. **Measured at HEAD: 270 passed** — the intermediate per-commit counts in the two entries above were derived by addition and were off by one; only this number was run.
 - **Remaining queued:** ADR-031 (model choice at setup, self-contained), ADR-030 (live progress — largest: `transport/` streaming, both adapters, `render.py`).
+
+## 2026-07-28 (cont.) · Verification pass on ADR-029 + ADR-028
+
+- 👤 "şimdi yaptığın maddelerin test ve kontrollerini yap." Ran the suite and a live functional check of both implemented ADRs.
+- 🐛 **Corrected my own reporting first.** The per-commit test totals written into the two entries above (265, 271) were produced by **addition, not measurement** — the suite at HEAD actually reports **270 passed**. Both entries now say so and are marked corrected. An attempt to recover the historical per-commit numbers via `git worktree` was also discarded as unsound: running an old commit's tests with `uv run --project <main checkout>` resolves the package to *HEAD's* source, so it measures old tests against new code (it reported "10 failed" at `5094b52`, which is an artifact of the method, not a real regression at that commit).
+- ✅ **ADR-029 verified live, four ways.** A repo with no commits reports the distinct state and prints the remedy; `git rev-parse --verify HEAD` still fails afterwards, so **baton created nothing** (ADR-020 intact); `run.py`'s pre-run warning carries the same wording (checked by calling `_warn_if_dirty_git_tree` directly — via the CLI, preflight fails first and the warning is never reached, which is the correct order); and after a baseline commit the scan returns to plain `✓ git clean`.
+- ✅ **ADR-028 verified live, six ways.** The cache is written to `.ai/health.json` (792 B) and covered by `.ai/.gitignore`; a second call is served from it and says *"from the cached analysis, computed just now"*; touching a source file invalidates it (`read_cache` True → False); `--refresh` forces a recompute while a fresh cache suppresses one (repowise called once, then twice); no `.repowise/` litter remains; and a full wizard scan on a cached project completes in **0.19 s**.
+- ✅ **270 passed, ruff clean**, working tree clean, four commits local and unpushed.
