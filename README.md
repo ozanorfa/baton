@@ -52,6 +52,7 @@ batonai "do something useful"  # run the pipeline
 | `batonai resume <run-id>` | Continue a failed run from the failed stage — completed stages are never re-paid |
 | `batonai runs list` / `batonai runs show <id>` | Run history: status, per-stage glyphs, cost, verdict |
 | `batonai ask --role coder "<q>"` | One cheap single-role call, no pipeline |
+| `batonai setup` | Change which AI handles each role and which model it runs — revisable any time; the defaults stay the defaults (ADR-032) |
 | `batonai health` | Print the repowise code-health hotspots every stage is told about — zero tokens, no run needed |
 | `batonai doctor` / `batonai config show` / `batonai init` | Health check · effective config with sources · project setup |
 
@@ -76,7 +77,7 @@ The Coder stage **edits your repository unattended** (scoped to the project dire
 | [HOW_TO_USE.md](docs/HOW_TO_USE.md) · [🇹🇷 Türkçe](docs/HOW_TO_USE.tr.md) | **Start here** — plain-language user guide |
 | [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | Vision, goals, milestones, risks |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers, adapter contract, context system, verified CLI behavior |
-| [DECISIONS.md](docs/DECISIONS.md) | 31 ADRs — why everything is the way it is |
+| [DECISIONS.md](docs/DECISIONS.md) | 32 ADRs — why everything is the way it is |
 | [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | Repo layout + runtime footprint |
 | [TASKS.md](docs/TASKS.md) | 35-task build plan with acceptance criteria |
 | [MVP.md](docs/MVP.md) | The first full version, stage by stage |

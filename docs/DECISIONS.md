@@ -1,6 +1,6 @@
 # Architectural Decision Records — AI Coding Orchestrator
 
-**Status:** Living · 31 ADRs · updated 2026-07-28
+**Status:** Living · 32 ADRs · updated 2026-07-28
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Convention: one ADR per consequential decision. New decisions get new ADRs; reversals supersede, never rewrite history. Any future proposal for dynamic/LLM-driven orchestration **requires** an ADR here before code (risk R7 guard).
@@ -652,3 +652,22 @@ This is a gap in a tool whose whole claim is that routing is legible: which *pro
 **Trade-offs.** (a) Model identifiers change often and are vendor-specific; a hardcoded menu will age. Mitigation: offer a short list plus free text, and never validate against a fixed set — an unknown string is passed through to the CLI, which is the authority. (b) One more question in a setup flow ADR-026 deliberately kept short; it belongs behind the same "use defaults" fast path. (c) A pinned model can silently stop existing when a vendor retires it; the failure surfaces as a provider error at preflight, which is where provider problems already surface.
 
 **Alternatives considered.** (a) Leave it to each CLI's own config — the status quo; rejected because it makes a decision with real cost consequences invisible and non-project-scoped. (b) Pin defaults in baton's own `defaults.yaml` — rejected: it would silently override what users configured in their CLIs, and baton has no business choosing a model on their behalf. (c) Show the resolved model in `batonai doctor`/`config show` without offering a choice — worth doing regardless, but it reports the problem rather than giving the user the lever.
+
+
+## ADR-032 — `batonai setup`: the routing and model decisions stay revisable
+
+**Status:** Accepted · 2026-07-28 · **Implemented 2026-07-28.**
+
+**Context.** Two decisions dominate what a run costs and how good it is: **which provider handles which role** (ADR-016's quota-spread default — planner/reviewer on codex, coder on claude, designer on antigravity, publisher on opencode) and **which model each provider runs** (ADR-031). Both were reachable only at `init` time or by hand-editing YAML. The defaults are good, but they were chosen for one owner's plans and one machine's CLI configuration; a user on different subscriptions, or one who simply wants the Coder on codex for a project, had no supported way to say so after setup.
+
+**Decision.** Add `batonai setup`: prints the current role → provider → model assignment, then asks about each, and writes the answers into `.ai/config.yaml`. **The ADR-016 defaults are unchanged and remain the default** — this only makes them visible and revisable.
+
+- **Enter keeps everything.** A run with no changes writes nothing and says "nothing changed"; the file is not even touched.
+- **Provider names are validated, model ids are not.** A provider must be one the registry actually knows, because a typo would otherwise surface much later as a preflight failure; model identifiers are vendor-specific and change often, so an unrecognised one is passed through to the CLI, which is the authority (ADR-031).
+- **`-` clears a model pin** back to whatever that CLI is configured to use — baton's default posture, and the only way back once a model is pinned.
+- **Merges, never overwrites.** The config is parsed, the two keys are updated, and the document is written back, so a user's `pipeline`, timeouts and `enabled` flags survive. It is re-serialised from the parsed document, so **comments are lost** — the command says so before writing rather than surprising anyone.
+- Only roles with a real choice are offered: the zero-LLM tester (ADR-024) and the deterministic publisher floor (ADR-018) have no model to pick.
+
+**Trade-offs.** (a) Losing comments in a hand-annotated `.ai/config.yaml` is a genuine cost; a comment-preserving round-trip needs a different YAML library, and the warning was judged sufficient for a file baton itself generates. (b) The provider list is whatever the registry reports, so a plugin (ADR-009) appears automatically — including one that makes no sense for a given role; role/provider compatibility is not modelled, and preflight remains the check that matters.
+
+**Alternatives considered.** (a) Tell users to edit `.ai/config.yaml` — the status quo; it works, but it makes a first-class decision feel like an internal detail and gives no discoverable list of valid providers. (b) Ask everything during the wizard's setup step — rejected as scope creep on a flow ADR-026 deliberately kept to two questions; `init` now points at `batonai setup` instead. (c) A flag-driven `batonai config set roles.coder.provider=codex` — more scriptable, but it answers "how do I change it" only for someone who already knows what the options are.

@@ -160,6 +160,10 @@ def init(
         # Only when a config is actually being created: re-asking on an idempotent
         # re-run would imply an edit that never happens (existing files are kept).
         config_content += render_model_block(prompt_models(["claude", "codex"]))
+        render.console.print(
+            "\n[dim]tip: `batonai setup` changes which AI handles each role, and "
+            "any model, at any time.[/dim]"
+        )
 
     profile = STARTER_PROFILE.format(stack=detect_stack(project))
     for path, content in (

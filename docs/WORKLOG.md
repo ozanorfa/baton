@@ -409,3 +409,12 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 - ✅ **Renderer wiring**: a `stage_progress` event updates the spinner in place (`[bold]coder[/bold] [dim]$ sed -n 1,20p a.py[/dim]`), and a note arriving with no spinner running is a no-op rather than a crash.
 - ✅ **ADR-031 remaining paths**: `--no-models` and a non-TTY `init` both write no `providers:` block, and a second `init` reports "nothing to do" without re-asking.
 - ✅ **296 passed**, ruff clean.
+
+## 2026-07-28 (cont.) · `batonai setup` — routing and models stay revisable (ADR-032)
+
+- 👤 "kullanıcı özel bir komutla yeniden model seçme hakkına sahip olabilir… biz ayarladık ya Coder=Claude, Planner=Codex… bence onu da kullanıcıya soralım. Ama şu anki düzen default olarak kalsın."
+- 🤖 New `batonai setup`: prints the current role → provider → model assignment, asks about each, merges the answers into `.ai/config.yaml`. **ADR-016's defaults are untouched and stay the defaults** — this only makes them visible and revisable. `init` now points at it after a first setup.
+- Provider names **are** validated against the registry (a typo would otherwise surface much later as a preflight failure); model ids are **not**, per ADR-031 — the CLI is the authority. `-` clears a model pin back to the CLI's own setting.
+- Merges rather than overwrites: a user's `pipeline`, timeouts and `enabled` flags survive, verified live (`designer: {enabled: false}` intact after a model change). The file is re-serialised from the parsed document so comments are lost — the command says so before writing.
+- 🐛 **Two bugs found by live testing, not by the unit tests.** (1) `in_use` was built as a list comprehension over roles, so codex — shared by planner and reviewer by default — was asked about three times; the extra prompts exhausted piped input and the command aborted **before writing anything**. Fixed with a set and pinned by a test asserting each provider is asked about once. (2) The first live attempt appeared to "silently not save"; it was actually this abort, which is why the symptom looked like a merge failure. A reminder that a prompt loop's *arity* is part of its contract.
+- ✅ **308 passed**, ruff clean. ADR-032 in DECISIONS.md (31→32), README + HOW_TO_USE command tables.

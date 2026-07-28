@@ -24,6 +24,7 @@ from ai_orchestrator.cli.commands.review import review
 from ai_orchestrator.cli.commands.revise import revise
 from ai_orchestrator.cli.commands.run import run
 from ai_orchestrator.cli.commands.runs import runs_app
+from ai_orchestrator.cli.commands.setup import setup
 
 app = typer.Typer(
     name="batonai",
@@ -35,6 +36,7 @@ app = typer.Typer(
 app.add_typer(config_app, name="config")
 app.command()(doctor)
 app.command()(health)
+app.command()(setup)
 app.command()(ask)
 app.command()(run)
 app.command()(init)
@@ -46,7 +48,7 @@ app.command()(publish)
 
 _COMMANDS = {
     "run", "ask", "doctor", "config", "init", "runs", "resume", "revise", "review",
-    "publish", "health",
+    "publish", "health", "setup",
 }
 
 
