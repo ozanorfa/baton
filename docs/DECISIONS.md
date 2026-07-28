@@ -636,7 +636,7 @@ The obvious repair — have the wizard make an initial commit right after `git i
 
 ## ADR-031 — Model choice is asked at setup and pinned per project
 
-**Status:** Accepted · 2026-07-28 · **Design only — not implemented.**
+**Status:** Accepted · 2026-07-28 · **Implemented 2026-07-28.**
 
 **Context.** Baton pins no model anywhere: `providers.*.model` defaults to `null`, and the adapters pass `--model`/`-m` only when it is set. So the model in use is whatever each CLI is configured to do on its own — on the owner's machine, `codex` runs `gpt-5.6-sol` from `~/.codex/config.toml` and `claude` runs `opus` from `~/.claude/settings.json`. Neither is visible from baton, and neither was chosen for the project. The owner had to ask which models the pipeline was even using, and the answer materially explains an expensive ten-minute Coder stage.
 

@@ -173,7 +173,7 @@ def _launch() -> None:
                 _git_init(project_dir)
         elif step is Step.BATON_INIT:
             if typer.confirm("  Set up baton in this folder?", default=True):
-                init()
+                init(models=True)  # explicit: Typer defaults are OptionInfo objects
                 render.console.print()
         elif step is Step.RUN:
             assert request is not None  # ASK_REQUEST always precedes RUN

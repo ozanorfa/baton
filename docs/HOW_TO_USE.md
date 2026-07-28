@@ -140,7 +140,7 @@ The optional Publisher stage (and `batonai ask --role publisher`) is wired to **
 | `batonai ask --role coder "<question>"` | One cheap, one-shot call to a single AI — no pipeline, no artifacts. Good for small questions or tiny edits |
 | `batonai health` | Show which files baton considers code-health hotspots (the same text every stage receives). Free, no run needed — needs `repowise` installed |
 | `batonai doctor` | Check that all providers are installed and logged in |
-| `batonai init` | Set up `.ai/` in a project (safe to run again; never overwrites your edits) |
+| `batonai init` | Set up `.ai/` in a project (safe to run again; never overwrites your edits). Asks which model each provider should use — press Enter to keep whatever your CLIs already do; `--no-models` skips the question (ADR-031) |
 | `batonai config show` | See the full effective configuration and where every value came from |
 | `batonai runs list` | See every past run in this project: status, cost, verdict |
 | `batonai runs show <run-id>` | See one run's detail |
