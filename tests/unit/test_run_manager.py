@@ -79,3 +79,66 @@ def test_run_state_stage_names_match_specs(manager: RunManager) -> None:
     state = manager.create_run("req", SPECS)
     assert [s.name for s in state.stages] == ["planner", "coder"]
     assert isinstance(state, RunState)
+
+
+# ── ADR-027: generated artifacts never reach the reviewer as "coder changes" ──
+
+def _repo(tmp_path):
+    import subprocess
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    (tmp_path / "app.py").write_text("x = 1\n")
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "seed"],
+        cwd=tmp_path, check=True,
+    )
+    return tmp_path
+
+
+def test_snapshot_ignores_generated_artifacts(tmp_path):
+    """A stray __pycache__ must not read as work the coder did (ADR-027).
+
+    Live finding 2026-07-28: `batonai review` returned NEEDS WORK citing .pyc
+    files nobody authored, in a project whose .gitignore did not list them.
+    """
+    from ai_orchestrator.core.workspace import snapshot_changes
+
+    project = _repo(tmp_path)
+    (project / "__pycache__").mkdir()
+    (project / "__pycache__" / "app.cpython-312.pyc").write_bytes(b"\x00compiled")
+    (project / "node_modules").mkdir()
+    (project / "node_modules" / "dep.js").write_text("module.exports = 1\n")
+
+    snap = snapshot_changes(project)
+    assert snap is not None
+    assert snap.changed is False, "generated-only noise is not a workspace change"
+
+
+def test_snapshot_still_sees_real_edits_alongside_noise(tmp_path):
+    """The exclusion must not swallow genuine work happening in the same run."""
+    from ai_orchestrator.core.workspace import snapshot_changes
+
+    project = _repo(tmp_path)
+    (project / "__pycache__").mkdir()
+    (project / "__pycache__" / "app.cpython-312.pyc").write_bytes(b"\x00compiled")
+    (project / "app.py").write_text("x = 2  # real edit\n")
+    (project / "feature.py").write_text("def feature(): ...\n")  # real new file
+
+    snap = snapshot_changes(project)
+    assert snap is not None and snap.changed is True
+    assert "real edit" in snap.patch
+    assert "feature.py" in snap.patch
+    assert ".pyc" not in snap.patch, "noise must not reach the reviewer"
+
+
+def test_snapshot_keeps_directories_that_only_look_generated(tmp_path):
+    """`build/` is real source in some projects — it is deliberately NOT excluded."""
+    from ai_orchestrator.core.workspace import snapshot_changes
+
+    project = _repo(tmp_path)
+    (project / "build").mkdir()
+    (project / "build" / "make.py").write_text("def build(): ...\n")
+
+    snap = snapshot_changes(project)
+    assert snap is not None and snap.changed is True
+    assert "build/make.py" in snap.patch

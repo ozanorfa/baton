@@ -11,16 +11,16 @@ The MVP is milestone **M4** (tasks T01–T30): one command runs a deterministic 
 
 ```bash
 cd my-flutter-app
-ai init                                              # once per project
-ai "Add Face ID support to the Flutter application"
+batonai init                                              # once per project
+batonai "Add Face ID support to the Flutter application"
 ```
 
 Optional variations:
 
 ```bash
-ai --with-designer "Redesign the settings screen"    # enable the optional Designer stage
-ai ask --role planner "Is Riverpod or Bloc better here?"   # one-shot escape hatch, no pipeline
-ai doctor                                            # verify providers before a big run
+batonai --with-designer "Redesign the settings screen"    # enable the optional Designer stage
+batonai ask --role planner "Is Riverpod or Bloc better here?"   # one-shot escape hatch, no pipeline
+batonai doctor                                            # verify providers before a big run
 ```
 
 ## 2. What Happens, Stage by Stage
@@ -49,14 +49,14 @@ roles:
 
 **Quota spread (ADR-016, refined by ADR-017).** The Designer defaults to Antigravity; the Publisher — the shallowest job — defaults to **opencode**, a free client (ADR-017), with a zero-LLM `deterministic` fallback that drafts the commit message from `git diff --stat` (ADR-018). Both are shallow, single-purpose jobs that don't need chaining, so keeping them off the paid Codex/Claude pools frees those for the Planner/Reviewer/Coder work without changing total work done.
 
-**Stage 4 — Reviewer (Codex CLI).** Receives: `plan.md` + `changes.md` + the git diff + reviewer role template. Produces `artifacts/review.md` — findings and improvement suggestions, explicitly *not* rewritten code (role boundary, spec §5). The Reviewer's verdict feeds the report; in the MVP it does **not** gate or loop back to the Coder — the human decides what to do with findings. (Post-MVP, opt-in: `ai run --fix-loop` runs exactly one automatic fix pass on a `NEEDS WORK` verdict — ADR-023.)
+**Stage 4 — Reviewer (Codex CLI).** Receives: `plan.md` + `changes.md` + the git diff + reviewer role template. Produces `artifacts/review.md` — findings and improvement suggestions, explicitly *not* rewritten code (role boundary, spec §5). The Reviewer's verdict feeds the report; in the MVP it does **not** gate or loop back to the Coder — the human decides what to do with findings. (Post-MVP, opt-in: `batonai run --fix-loop` runs exactly one automatic fix pass on a `NEEDS WORK` verdict — ADR-023.)
 
 **Stage 5 — Report (free, no tokens).** `report.json` + Rich terminal summary.
 
 ## 3. What You See
 
 ```
-$ ai "Add Face ID support to the Flutter application"
+$ batonai "Add Face ID support to the Flutter application"
 
   Run 2026-07-11_1432_a3f9 · my-flutter-app
 
@@ -104,7 +104,7 @@ Token columns show **measured values only** (Claude's JSON reports them; Codex/A
     └── *.stdout / *.stderr per stage
 ```
 
-Plus the actual code changes in the repo, uncommitted, ready for `git diff` / your editor. **No pipeline stage ever commits** — reviewing and committing is the human's job. (Post-MVP, the explicit, user-invoked `ai publish --commit/--push` command adds the one git step, on your command — ADR-020.)
+Plus the actual code changes in the repo, uncommitted, ready for `git diff` / your editor. **No pipeline stage ever commits** — reviewing and committing is the human's job. (Post-MVP, the explicit, user-invoked `batonai publish --commit/--push` command adds the one git step, on your command — ADR-020.)
 
 ## 5. When Something Fails
 
@@ -119,11 +119,11 @@ Fail-stop (ADR-008): the run halts at the failed stage; everything already produ
   Completed artifacts preserved: plan.md
 
   Next steps:
-    ai doctor                 # check provider health
-    ai runs show 2026-07-11_1432_a3f9
+    batonai doctor                 # check provider health
+    batonai runs show 2026-07-11_1432_a3f9
 ```
 
-No retries, no fallback provider, no skipping ahead. `ai resume <run-id>` continues from the failed stage reusing `plan.md` (M5, shipped) — the failure output prints the exact command.
+No retries, no fallback provider, no skipping ahead. `batonai resume <run-id>` continues from the failed stage reusing `plan.md` (M5, shipped) — the failure output prints the exact command.
 
 ## 6. Explicitly Out of Scope (MVP)
 
@@ -138,15 +138,15 @@ Per IMPLEMENTATION_PLAN §3 — worth restating because each of these will be te
 
 ## 7. Trust Model (read before first run)
 
-The Coder stage edits your repository unattended (ADR-007). The safety net is: run from a clean git tree (warned otherwise) → every change is in `diff.patch` and `git diff` → the Reviewer reports findings on the actual diff → nothing is committed by the tool. If that trust level is wrong for your project, don't run the pipeline on it — use `ai ask` for advisory-only output.
+The Coder stage edits your repository unattended (ADR-007). The safety net is: run from a clean git tree (warned otherwise) → every change is in `diff.patch` and `git diff` → the Reviewer reports findings on the actual diff → nothing is committed by the tool. If that trust level is wrong for your project, don't run the pipeline on it — use `batonai ask` for advisory-only output.
 
 **No stage ever runs `git commit`, `git push`, or any remote/GitHub operation, in any configuration.** This holds even for the optional Publisher stage (ADR-014), which is (a) off by default in every project and (b) architecturally limited to drafting a commit-message/PR-description text artifact — it has no code path capable of mutating git state.
 
 ## 8. MVP Definition of Done
 
-- [x] `ai init` bootstraps `.ai/` per PROJECT_STRUCTURE §2.1 in a fresh Flutter repo
-- [x] `ai doctor` shows all three providers healthy
-- [x] `ai "Add Face ID support to the Flutter application"` completes planner → coder → reviewer with real providers; `--with-designer` adds the Antigravity (Gemini-model) stage *(designer inclusion verified via T25 integration tests + real agy round-trip in M1)*
+- [x] `batonai init` bootstraps `.ai/` per PROJECT_STRUCTURE §2.1 in a fresh Flutter repo
+- [x] `batonai doctor` shows all three providers healthy
+- [x] `batonai "Add Face ID support to the Flutter application"` completes planner → coder → reviewer with real providers; `--with-designer` adds the Antigravity (Gemini-model) stage *(designer inclusion verified via T25 integration tests + real agy round-trip in M1)*
 - [x] All artifacts, prompts, logs, `run.json`, `report.json` present and correct in the run dir
 - [x] Coder's real edits match `diff.patch`; nothing committed
 - [x] Terminal summary shows per-stage provider, duration, status, and measured-or-`—` tokens

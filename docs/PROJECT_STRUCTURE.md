@@ -3,7 +3,7 @@
 **Status:** Living · updated 2026-07-12 · matches the repo — all planned milestones (M0–M5) built, plus ADR-013 (workspace awareness) and ADR-014 (Publisher role)
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
-Naming: distribution package **`ai-orchestrator`**, import package **`ai_orchestrator`**, console script **`ai`** (all referenced by ADR-009's entry-point group `ai_orchestrator.providers`).
+Naming: distribution package **`ai-orchestrator`**, import package **`ai_orchestrator`**, console script **`batonai`** (all referenced by ADR-009's entry-point group `ai_orchestrator.providers`).
 
 There are two distinct layouts to understand: the **repository** (this codebase) and the **runtime footprint** (what the tool creates inside a *user's* project and home directory).
 
@@ -13,7 +13,7 @@ There are two distinct layouts to understand: the **repository** (this codebase)
 
 ```
 ai-orchestrator/
-├── pyproject.toml              # uv-managed; deps, console script `ai`, entry-point group
+├── pyproject.toml              # uv-managed; deps, console script `batonai`, entry-point group
 ├── uv.lock
 ├── README.md                   # quickstart; points into docs/
 ├── .gitignore
@@ -49,16 +49,21 @@ Each directory under `src/ai_orchestrator/` maps 1:1 to a layer or component in 
 
 ```
 cli/
-├── app.py                  # root Typer app; main() rewrites bare `ai "<request>"` → `ai run`
+├── app.py                  # root Typer app; main() rewrites bare `batonai "<request>"` → `batonai run`;
+│                           #   no-args (with a TTY) → the wizard, ADR-026
+├── scan.py                 # ADR-026: scan() observes the workspace (IO);
+│                           #   decide() maps that state → wizard steps (PURE, no LLM)
+├── wizard.py               # ADR-026: the interactive front door — prompts, then
+│                           #   hands off to the same run/revise/review/publish commands
 ├── commands/
-│   ├── run.py              # `ai run "<request>"` — the pipeline (+ --with-designer,
+│   ├── run.py              # `batonai run "<request>"` — the pipeline (+ --with-designer,
 │   │                       #   dirty-git-tree warning)
-│   ├── init.py             # `ai init` — bootstrap .ai/ in a project
-│   ├── doctor.py           # `ai doctor` — provider health checks
-│   ├── runs.py             # `ai runs list|show` — run history
-│   ├── resume.py           # `ai resume <run-id>` — continue from the failed stage
-│   ├── config_cmd.py       # `ai config show` (merged config + value sources)
-│   └── ask.py              # `ai ask --role <role> "<prompt>"` — one-shot escape hatch
+│   ├── init.py             # `batonai init` — bootstrap .ai/ in a project
+│   ├── doctor.py           # `batonai doctor` — provider health checks
+│   ├── runs.py             # `batonai runs list|show` — run history
+│   ├── resume.py           # `batonai resume <run-id>` — continue from the failed stage
+│   ├── config_cmd.py       # `batonai config show` (merged config + value sources)
+│   └── ask.py              # `batonai ask --role <role> "<prompt>"` — one-shot escape hatch
 └── render.py               # ALL Rich output: progress events, summary/report tables, errors
 ```
 
@@ -140,7 +145,7 @@ transport/
 config/
 ├── schema.py               # pydantic models: PipelineConfig, RoleConfig, ProviderConfig…
 ├── loader.py               # merge precedence: flags > env > project > user > defaults;
-│                           #   tracks the source of every value for `ai config show`
+│                           #   tracks the source of every value for `batonai config show`
 └── defaults.yaml           # built-in defaults (the lowest precedence layer)
 ```
 
@@ -176,7 +181,7 @@ tests/
                             #   entry-point mechanism (no test-only paths in src/)
 ```
 
-The fake-provider integration suite is the project's main safety net: it exercises the entire engine/run-manager/report path with zero token cost. Real-CLI smoke tests stay manual (`ai doctor` + a scripted demo), never in CI.
+The fake-provider integration suite is the project's main safety net: it exercises the entire engine/run-manager/report path with zero token cost. Real-CLI smoke tests stay manual (`batonai doctor` + a scripted demo), never in CI.
 
 ### 1.10 Dependency directions (enforced)
 
@@ -193,15 +198,15 @@ Anything pointing the other way is a bug.
 
 ---
 
-## 2. Runtime Footprint (what `ai` creates)
+## 2. Runtime Footprint (what `batonai` creates)
 
-### 2.1 In the user's project (created by `ai init` / runs)
+### 2.1 In the user's project (created by `batonai init` / runs)
 
 ```
 <user-project>/
 └── .ai/
     ├── config.yaml             # project config: pipeline stages, role→provider bindings
-    ├── project.md              # Project context layer: stack, conventions (ai init bootstraps
+    ├── project.md              # Project context layer: stack, conventions (batonai init bootstraps
     │                           #   with the stack auto-detected from marker files; user curates —
     │                           #   this file is the token budget's best friend)
     ├── prompts/                # optional per-project role template overrides
@@ -214,7 +219,7 @@ Anything pointing the other way is a bug.
             └── logs/                 # orchestrator.jsonl + raw provider stdout/stderr
 ```
 
-`ai init` also appends `.ai/runs/` to the project's `.gitignore` (runs are local history; `config.yaml` and `project.md` are meant to be committed and shared with the team).
+`batonai init` also writes `.ai/.gitignore` containing `runs/` (runs are local history; `config.yaml` and `project.md` are meant to be committed and shared with the team). **The project's root `.gitignore` is never touched** — ADR-027: baton edits only files it owns, so its own bookkeeping can never show up as part of the Coder's diff. A project set up by an older baton keeps its root-`.gitignore` entry and gains no duplicate.
 
 ### 2.2 In the user's home
 

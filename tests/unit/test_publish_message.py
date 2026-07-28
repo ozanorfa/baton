@@ -1,4 +1,4 @@
-"""Commit-message cleanup helpers for `ai publish` (ADR-020)."""
+"""Commit-message cleanup helpers for `batonai publish` (ADR-020)."""
 
 from ai_orchestrator.cli.commands.publish import _commit_section, _strip_preamble
 

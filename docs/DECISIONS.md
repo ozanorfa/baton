@@ -1,6 +1,6 @@
 # Architectural Decision Records — AI Coding Orchestrator
 
-**Status:** Living · 25 ADRs · updated 2026-07-27
+**Status:** Living · 27 ADRs · updated 2026-07-28
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Convention: one ADR per consequential decision. New decisions get new ADRs; reversals supersede, never rewrite history. Any future proposal for dynamic/LLM-driven orchestration **requires** an ADR here before code (risk R7 guard).
@@ -505,3 +505,69 @@ It honors the pure-adapter contract (ARCHITECTURE §3.1) by delegating the one s
 **Trade-offs.** (a) Value is real but modest, and depends on repowise's static markers (complexity/nesting/dead-code), not semantic understanding — the deep repowise value remains MCP-gated and out of scope here. (b) The ~4 s + a transient `.repowise/` write are why it is off by default. (c) `health`'s numbers are only as current as the working tree at run start (a starting map, like the rest of the workspace layer — ADR-013).
 
 **Alternatives considered.** (a) Gate on a pre-existing user-created `.repowise/` (an earlier IDEAS.md sketch) — rejected once the probe showed `health` needs no `init` and creates its own index: baton can just run it, so requiring manual user setup added friction for no benefit. (b) The full repowise MCP tool interface (`get_context`/`get_risk`/…) — still blocked on baton acquiring an MCP client (ARCHITECTURE §7.2, "Future"); a separate, larger roadmap item. (c) On by default — rejected: a third-party binary, ~4 s, and a repo write should be a deliberate opt-in, consistent with every other optional stage/feature.
+
+## ADR-026 — `batonai`: an interactive front door (scan → offer → run)
+
+**Status:** Accepted · 2026-07-28 · **Design only — not yet implemented** (scoped step-by-step per the owner's working style; implementation + doc rename follow as a separate step).
+
+**Context.** Every command baton ships assumes the user already holds baton's mental model. A newcomer who opens a folder and types the command gets a Typer help dump (`no_args_is_help=True`, `cli/app.py:28`) — a list of ten subcommands with no indication of which one to type first. To get to a successful run they must already know, unprompted, to: check `doctor` before trusting anything, run `init` once per project, start from a clean git tree (the run only *warns*, after the fact), and that `--health` exists at all. `init` itself is a silent file-writer: it never asks, never reports what it found, never suggests what comes next beyond one printed line.
+
+The owner's framing: *"son kullanıcı düşünemez kendi kendine önce gidip repowise çalıştırayım vs vs."* — the end user cannot be expected to reason their way to "first let me go run repowise." The tool knows how to inspect the workspace and knows what it needs; it should do that itself and *offer*, rather than wait to be commanded correctly.
+
+**Decision.** Add an interactive front door, in three parts.
+
+1. **Rename the binary `ai` → `batonai`** (`[project.scripts]`). `ai` is an unacceptably generic name for a globally-installed command; `batonai` is collision-safe and matches the project's own identity (the repo is `ozanorfa/baton`; HOW_TO_USE already titles it *"baton"*). Chosen over bare `baton` by the owner for collision-safety, accepting the extra characters.
+2. **Bare `batonai` (no arguments) launches a one-shot guided wizard**: scan the workspace → report what was found → offer the missing setup → take the request → run the pipeline → exit to the shell. It is a wizard, not a REPL; a persistent `batonai>` session is a deliberate **later** step (below) built on the same scan layer.
+3. **In the wizard path only, code-health runs automatically** — `repowise health` is invoked during the scan, its hotspots are *shown to the user* as part of the workspace report, and injected into the stage prompts for the run the wizard starts. This **amends ADR-025's default** (see below).
+
+**This does not violate ADR-004, and requires no R7 exemption.** The convention line at the top of this file requires an ADR before any dynamic/LLM-driven orchestration; this is explicitly *not* that. The wizard contains **no model call and makes no judgment**: it is a fixed decision table over directly observed facts (does the directory have files, is there a `.git`, is there an `.ai/`, is a provider binary healthy, is `repowise` on PATH). It never chooses which model does which job, never reorders stages, never rewrites config — routing stays exactly what it is today: plain Python over YAML. The wizard's entire authority is *filling in setup and flags the user would otherwise have had to type*, each one shown on screen before it happens. Determinism is preserved in the sense that matters: same workspace state + same answers ⇒ same run.
+
+**The scan → action table** (fixed, exhaustive, no inference):
+
+| observed state | wizard action |
+|---|---|
+| stdin is not a TTY (pipe, CI, `\|`) | **no wizard** — print help and exit 0; scripted use is byte-identical to today |
+| a provider bound to a needed role is unhealthy | print that `doctor` row and exit 2, before anything else runs |
+| directory is empty | greenfield: take the request first, offer `git init` + `init`; no health scan (nothing to score) |
+| non-empty, not a git repo | report that diff capture + the no-change safety net are off; offer `git init` |
+| non-empty, git, no `.ai/` | *"Set up baton in this folder?"* → run `init` (stack auto-detected) → take the request |
+| non-empty, git, `.ai/` present | ready: show the last run (age, request, verdict, pending changes) + a next-action menu |
+| established project **and** `repowise` on PATH | run `health`, display the hotspots, inject them into the run |
+
+**Consequences for ADR-025 (an amendment, stated plainly).** ADR-025 shipped health as *opt-in, default OFF*, on the reasoning that a third-party binary, ~4 s, and a repo write should be deliberate. That reasoning holds for **scripted** use and is unchanged: `batonai "<request>"` with an explicit request still requires `--health` or `context: {health: true}`, and without it the prompt stays byte-identical. What changes is that in the **interactive** path the deliberateness is satisfied differently — the user sees the scan happen, sees the hotspots on screen, and sees them named as input to the run. The cost ADR-025 was protecting against (a surprise dependency and a surprise 4 s) stops being a surprise when it is displayed. The fail-safe guarantees are untouched: no `repowise` on PATH ⇒ the health line is simply absent, never an error; the transient `.repowise/` is still removed iff baton created it; `repowise init` is still never run.
+
+**Trade-offs.**
+- **(a) The rename is a breaking change with a wide blast radius.** `ai` disappears; `uv tool install` must be re-run, and every occurrence across README, HOW_TO_USE, HOW_TO_USE.tr, MANUAL_TESTING, PROJECT_STRUCTURE and the test suite must move in the same commit as the code, or the docs describe a binary that does not exist. No alias is kept — a half-renamed tool with two working names is worse documentation than one clean name.
+- **(b) An interactive path is a second way in, and two paths can drift.** Mitigated by construction: the wizard is a thin caller that ends by invoking the *same* `run` code path with the same config object — it holds no pipeline logic of its own.
+- **(c) Prompting has failure modes a flag does not** (no TTY, Ctrl-C mid-question, a user who just hits Enter). The non-TTY row above handles the first; the wizard must treat Ctrl-C at a prompt as a clean exit 130 with nothing written, and every question must have a safe default reachable by bare Enter.
+- **(d) The wizard makes the first run slower to start** (~4 s scan) in exchange for it being the *first run that succeeds*. Judged worth it for the audience this feature exists for.
+
+**Alternatives considered.**
+- **(a) Keep `ai` as an alias alongside `batonai`.** Rejected by the owner: two names means docs must either pick one (and lie about the other) or document both (and confuse newcomers about which is canonical).
+- **(b) A persistent REPL now** (`batonai>` chaining run → revise → publish in one session). Deferred, not rejected — the owner explicitly chose "wizard now, REPL later." The scan/decision layer this ADR builds is the same layer a REPL would wrap, so nothing here is throwaway; the REPL adds session state and Ctrl-C semantics that deserve their own ADR.
+- **(c) Auto-run health in *every* path, including scripted.** Rejected: it would impose ~4 s and a repo write on CI and on users who never asked, which is exactly what ADR-025 decided against. The wizard earns the default by being visible; a script cannot.
+- **(d) Make the wizard ask a model what to do next** (e.g. "should I init here?"). Rejected on ADR-004 grounds without further discussion — every branch in the table above is answerable by looking at the filesystem, so a model call would spend tokens to learn something already known.
+
+## ADR-027 — Baton's own footprint is never mistaken for the coder's work
+
+**Status:** Accepted · 2026-07-28 · **Both halves found by a real end-to-end run, not by review** (WORKLOG 2026-07-28).
+
+**Context.** The first genuine acceptance run of the ADR-026 wizard (a real project, real providers, `APPROVE WITH NOTES`) surfaced two ways the orchestrator's own leavings get attributed to the Coder:
+
+1. **`init` edited the user's root `.gitignore`.** The wizard runs `init` and then immediately starts a run, so that edit — baton's own bookkeeping — landed in the Coder's captured diff. The live reviewer spent one of its findings on it: *"an unrelated rule ignoring `.ai/runs/` was added despite not being part of the implementation plan … adds unexplained scope."* Baton created the dirty-tree condition it otherwise warns about, and paid for it in reviewer attention.
+2. **Generated artifacts reached the reviewer.** A stray `__pycache__/*.pyc` (left by a test run) was picked up by `batonai review`, which returned **NEEDS WORK** with the `.pyc` files as a *Major* finding. Git already hides *ignored* files, so this only bites where a project's `.gitignore` is incomplete — precisely the projects least able to absorb a bogus blocking verdict.
+
+Both are the same mistake in two places: **something nobody authored is presented to a model as work someone did.** `core/workspace.py` already asserted this principle for `.ai/` ("the orchestrator's own footprint must never count as 'the coder changed something'"); it just wasn't applied consistently.
+
+**Decision.**
+
+- **`init` no longer touches the project's root `.gitignore`.** The ignore rule moves to **`.ai/.gitignore`** containing `runs/`. Git applies a `.gitignore` to its own directory and below, so the effect is identical — but the file lives inside the directory baton owns, and since `.ai/` is already excluded from diff capture, it can never appear in a run's diff. Verified with `git check-ignore`. Baton now edits only files it owns.
+  - **Backwards compatible:** a project set up by an older baton has the rule in its root `.gitignore`; `init` detects that, leaves it alone, and does not add a duplicate. Nothing is ever removed from a user's `.gitignore`.
+- **Diff capture excludes generated artifacts:** `__pycache__`, `*.pyc`, `*.pyo`, `.pytest_cache`, `.ruff_cache`, `.mypy_cache`, `node_modules`, `.DS_Store` — added to the existing `_EXCLUDE` pathspec alongside `.ai/`.
+  - **Deliberately conservative.** `build/`, `dist/` and `target/` are **not** excluded: they are real source directories in some projects, and when they *are* build output they are already gitignored (so git omits them anyway). The list holds only names that are never hand-written source in any language. A test pins this: a `build/make.py` must still show up in the diff.
+
+**Consequences.** The no-change safety net (ADR-007) gets stricter in the right direction: a stage that produces *only* generated files now correctly reads as "nothing changed" rather than passing on compiler output. That is the intended reading — a Coder whose sole effect was to populate `__pycache__` did not do the job.
+
+**Trade-offs.** (a) A project that genuinely tracks one of the excluded names (a checked-in `node_modules`, a vendored `*.pyc`) will not see changes to it reviewed. Judged acceptable: those are rare, and the alternative — bogus Major findings and flipped verdicts — was observed in the wild on the very first real run. (b) The exclusion list is static rather than read from the project's `.gitignore`; parsing gitignore semantics correctly is a much larger job, and git already handles the ignored-file case on its own.
+
+**Alternatives considered.** (a) Have the wizard warn the user that `init`'s files are now uncommitted — rejected: it explains a self-inflicted problem instead of removing it. (b) Exclude `.gitignore` from diff capture entirely — rejected: a user's genuine `.gitignore` edit is real, reviewable work. (c) Commit `init`'s files automatically — rejected outright; ADR-020 makes `batonai publish` the single user-invoked git command, and no other code path may commit.

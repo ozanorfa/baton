@@ -1,4 +1,4 @@
-"""`ai revise "<correction>"` — iterate on the last run without starting over (ADR-019).
+"""`batonai revise "<correction>"` — iterate on the last run without starting over (ADR-019).
 
 Re-runs a completed run from the Coder (by default), carrying the prior run's
 provider sessions forward so the Coder resumes its own session and treats the

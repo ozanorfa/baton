@@ -1,4 +1,4 @@
-"""T33+T34: ai resume, timeout handling, Ctrl-C safety — through the real CLI
+"""T33+T34: batonai resume, timeout handling, Ctrl-C safety — through the real CLI
 on the fake provider."""
 
 import json
@@ -57,7 +57,7 @@ def test_resume_continues_from_failed_stage(project, fake_registry) -> None:
     first = runner.invoke(app, ["run", RESUMABLE_REQUEST], env={"COLUMNS": "220"})
     assert first.exit_code == 1
     run_id = only_run_id(project)
-    assert f"ai resume {run_id}" in first.output  # failure UX advertises resume
+    assert f"batonai resume {run_id}" in first.output  # failure UX advertises resume
 
     state_before = json.loads((project / ".ai" / "runs" / run_id / "run.json").read_text())
     planner_before = state_before["stages"][0]
@@ -227,4 +227,4 @@ def test_ctrl_c_leaves_resumable_state(tmp_path: Path) -> None:
     state = manager.load_run(manager.list_run_ids()[0])
     assert state.status is RunStatus.FAILED  # persisted before propagating
     assert state.stage("planner").status is StageStatus.FAILED
-    assert "ai resume" in state.stage("planner").error
+    assert "batonai resume" in state.stage("planner").error

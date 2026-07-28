@@ -1,4 +1,4 @@
-"""`ai run "<request>"` — the pipeline. Reachable as bare `ai "<request>"`
+"""`batonai run "<request>"` — the pipeline. Reachable as bare `batonai "<request>"`
 via the argv rewrite in app.main()."""
 
 import subprocess

@@ -1,4 +1,4 @@
-"""`ai runs` — run history of the current project."""
+"""`batonai runs` — run history of the current project."""
 
 from pathlib import Path
 
@@ -27,7 +27,7 @@ def list_runs() -> None:
 
 
 @runs_app.command("show")
-def show_run(run_id: str = typer.Argument(..., help="Run id (see `ai runs list`).")) -> None:
+def show_run(run_id: str = typer.Argument(..., help="Run id (see `batonai runs list`).")) -> None:
     """Per-stage detail of one run."""
     manager = RunManager(Path.cwd())
     try:

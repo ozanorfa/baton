@@ -1,7 +1,7 @@
 """opencode CLI adapter: `opencode run -- <prompt>` (ADR-017).
 
 Wired for the pipeline's *shallow text* jobs only — Publisher (drafts a commit
-message + PR description) and `ai ask`. Never Coder/Reviewer: those see
+message + PR description) and `batonai ask`. Never Coder/Reviewer: those see
 proprietary source, and opencode's model comes from a user-configured **free
 tier** (OpenRouter `:free`, Google AI Studio free-tier key, opencode promo
 models). Those tiers are rate-limited and typically **may train on submitted

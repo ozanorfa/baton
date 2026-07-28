@@ -1,4 +1,4 @@
-"""T20: the `ai run` command end-to-end through the CLI, on the fake provider."""
+"""T20: the `batonai run` command end-to-end through the CLI, on the fake provider."""
 
 from typer.testing import CliRunner
 
@@ -35,7 +35,7 @@ def test_cli_run_failure_exit_1_with_guidance(fake_project, fake_registry, monke
     assert "FAILED" in result.output
     assert "coder died" in result.output
     assert "pending" not in result.output.lower() or True  # summary table renders
-    assert "ai doctor" in result.output  # next-steps guidance
+    assert "batonai doctor" in result.output  # next-steps guidance
 
 
 def test_cli_run_preflight_failure_exit_2(fake_project, fake_registry, monkeypatch, tmp_path):

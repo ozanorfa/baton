@@ -1,8 +1,8 @@
-"""`ai review` — send the current working-tree diff to the Reviewer (ADR-022).
+"""`batonai review` — send the current working-tree diff to the Reviewer (ADR-022).
 
 A one-shot, pipeline-free review: capture the uncommitted changes (yours or a
 prior run's), assemble the Reviewer's normal context around them, and print the
-verdict. Like `ai ask --role reviewer`, but it auto-captures the diff and builds
+verdict. Like `batonai ask --role reviewer`, but it auto-captures the diff and builds
 the proper reviewer context. The Reviewer never edits anything (allow_edits=False).
 """
 

@@ -1,7 +1,7 @@
 """The four context layers (ARCHITECTURE.md §5).
 
 Global  — orchestrator conventions, static (prompts/_global.md)
-Project — the project's profile (.ai/project.md, written by `ai init`)
+Project — the project's profile (.ai/project.md, written by `batonai init`)
 Task    — the request + contract-admitted artifacts (assembled in manager.py)
 Agent   — the role's prompt template (built-in, overridable per project)
 """
@@ -18,7 +18,7 @@ _PROMPTS = files("ai_orchestrator.prompts")
 NO_PROFILE_NOTE = (
     "## Project context\n\n"
     "(No project profile found. Infer conventions from the codebase itself; "
-    "run `ai init` in this project to provide one.)"
+    "run `batonai init` in this project to provide one.)"
 )
 
 

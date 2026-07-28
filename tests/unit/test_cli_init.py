@@ -18,7 +18,10 @@ def test_init_creates_documented_footprint(tmp_path: Path, monkeypatch) -> None:
     assert (tmp_path / ".ai" / "config.yaml").is_file()
     assert (tmp_path / ".ai" / "project.md").is_file()
     assert (tmp_path / ".ai" / "prompts").is_dir()
-    assert ".ai/runs/" in (tmp_path / ".gitignore").read_text()
+    # ADR-027: the ignore rule lives inside the directory baton owns, and the
+    # project's root .gitignore is never touched.
+    assert "runs/" in (tmp_path / ".ai" / ".gitignore").read_text()
+    assert not (tmp_path / ".gitignore").exists()
 
     # the starter config must be loadable and valid against the schema
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
@@ -36,16 +39,26 @@ def test_init_is_idempotent(tmp_path: Path, monkeypatch) -> None:
     assert result.exit_code == 0
     assert "nothing to do" in result.output
     assert (tmp_path / ".ai" / "project.md").read_text() == "MY CUSTOM PROFILE"  # never clobbered
-    assert (tmp_path / ".gitignore").read_text().count(".ai/runs/") == 1  # no duplicate entry
+    assert (tmp_path / ".ai" / ".gitignore").read_text().count("runs/") == 1  # no duplicate entry
 
 
-def test_init_appends_to_existing_gitignore(tmp_path: Path, monkeypatch) -> None:
+def test_init_leaves_the_users_root_gitignore_untouched(tmp_path: Path, monkeypatch) -> None:
+    """ADR-027: baton edits only files it owns."""
     monkeypatch.chdir(tmp_path)
     (tmp_path / ".gitignore").write_text("node_modules/\n")
     runner.invoke(app, ["init"])
-    content = (tmp_path / ".gitignore").read_text()
-    assert content.startswith("node_modules/")
-    assert ".ai/runs/" in content
+    assert (tmp_path / ".gitignore").read_text() == "node_modules/\n", "unmodified, byte for byte"
+    assert "runs/" in (tmp_path / ".ai" / ".gitignore").read_text()
+
+
+def test_init_respects_a_legacy_root_gitignore_entry(tmp_path: Path, monkeypatch) -> None:
+    """A project set up by an older baton keeps working — no duplicate rule."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".gitignore").write_text("# AI orchestrator run history (local)\n.ai/runs/\n")
+    result = runner.invoke(app, ["init"])
+    assert result.exit_code == 0
+    assert not (tmp_path / ".ai" / ".gitignore").exists(), "the existing rule already covers it"
+    assert (tmp_path / ".gitignore").read_text().count(".ai/runs/") == 1
 
 
 def test_starter_config_yaml_is_valid_yaml(tmp_path: Path, monkeypatch) -> None:

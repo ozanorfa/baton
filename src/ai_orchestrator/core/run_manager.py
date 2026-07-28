@@ -2,7 +2,7 @@
 
 All state lives on disk; run.json is rewritten atomically (temp file + rename)
 on every transition so a crash at any point leaves the previous consistent
-state intact. This is what makes `ai resume` possible (ADR-005).
+state intact. This is what makes `batonai resume` possible (ADR-005).
 """
 
 import os

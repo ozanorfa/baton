@@ -1,4 +1,4 @@
-"""`ai config` subcommands."""
+"""`batonai config` subcommands."""
 
 import typer
 

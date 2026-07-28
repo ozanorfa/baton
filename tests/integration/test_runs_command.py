@@ -1,4 +1,4 @@
-"""T31: `ai runs list` / `ai runs show` against real run directories."""
+"""T31: `batonai runs list` / `batonai runs show` against real run directories."""
 
 from pathlib import Path
 

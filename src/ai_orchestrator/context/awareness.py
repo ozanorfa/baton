@@ -30,7 +30,7 @@ CODE_EXTENSIONS = {
 # A workspace with at least this many source files is "established".
 ESTABLISHED_THRESHOLD = 3
 
-# Ecosystem marker files (shared with `ai init`'s stack detection): their
+# Ecosystem marker files (shared with `batonai init`'s stack detection): their
 # presence means a scaffold/toolchain exists → conventions exist → established,
 # even with fewer than ESTABLISHED_THRESHOLD source files.
 STACK_MARKERS: list[tuple[str, str]] = [
@@ -47,14 +47,24 @@ STACK_MARKERS: list[tuple[str, str]] = [
 ]
 
 
-def has_stack_marker(project_dir: Path) -> bool:
-    for pattern, _ in STACK_MARKERS:
+def stack_labels(project_dir: Path) -> list[str]:
+    """Labels for every ecosystem marker present, in STACK_MARKERS order.
+
+    Shared by `batonai init`'s profile skeleton and the wizard's scan (ADR-026) so
+    the two never disagree about what stack a directory is.
+    """
+    labels: list[str] = []
+    for pattern, label in STACK_MARKERS:
         if "*" in pattern:
             if next(project_dir.glob(pattern), None) is not None:
-                return True
+                labels.append(label)
         elif (project_dir / pattern).exists():
-            return True
-    return False
+            labels.append(label)
+    return labels
+
+
+def has_stack_marker(project_dir: Path) -> bool:
+    return bool(stack_labels(project_dir))
 
 # Hard caps — the whole point is bounded context (ADR-013 trade-offs).
 TREE_MAX_DEPTH = 3

@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-ai = "ai_orchestrator.cli.app:main"
+batonai = "ai_orchestrator.cli.app:main"
 
 # Provider plugins register here (ADR-009). Built-ins are registered in code;
 # this group exists for third-party adapters.

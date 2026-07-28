@@ -30,7 +30,28 @@ def _git(project_dir: Path, *args: str) -> subprocess.CompletedProcess | None:
 
 # The orchestrator's own footprint must never count as "the coder changed
 # something" — .ai/ holds run state written by this very pipeline.
-_EXCLUDE = (":(exclude).ai", ":(exclude).ai/**")
+#
+# Generated artifacts are excluded for the same reason: nobody authored them,
+# so attributing them to the coder wastes reviewer attention and can flip a
+# verdict. Git already hides *ignored* files, so this only matters where a
+# project's .gitignore is incomplete — which is exactly when it bites (a live
+# `batonai review` returned NEEDS WORK over stray `.pyc` files, 2026-07-28).
+#
+# Deliberately conservative: only names that are never hand-written source in
+# any language. `build/`, `dist/` and `target/` are NOT here — they are real
+# source directories in some projects, and when they are build output they are
+# already gitignored.
+_GENERATED = (
+    "__pycache__", "*.pyc", "*.pyo", ".pytest_cache", ".ruff_cache",
+    ".mypy_cache", "node_modules", ".DS_Store",
+)
+_EXCLUDE = (
+    ":(exclude).ai",
+    ":(exclude).ai/**",
+    *(f":(exclude,glob)**/{name}" for name in _GENERATED),
+    *(f":(exclude,glob){name}" for name in _GENERATED),
+    *(f":(exclude,glob)**/{name}/**" for name in _GENERATED),
+)
 
 
 def snapshot_changes(project_dir: Path) -> WorkspaceSnapshot | None:

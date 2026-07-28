@@ -15,8 +15,8 @@ Conventions:
 ## M0 — Foundations
 
 **T01 ✅ · Project scaffolding — 45 min**
-`uv init` with `src/` layout per PROJECT_STRUCTURE.md; `pyproject.toml` with deps (typer, rich, pydantic, pyyaml; dev: pytest, ruff), console script `ai`, empty entry-point group `ai_orchestrator.providers`; `.gitignore`; git init + first commit.
-**Done when:** `uv run ai --version` prints the version; `uv run pytest` passes (one placeholder test); `ruff check` clean.
+`uv init` with `src/` layout per PROJECT_STRUCTURE.md; `pyproject.toml` with deps (typer, rich, pydantic, pyyaml; dev: pytest, ruff), console script `batonai`, empty entry-point group `ai_orchestrator.providers`; `.gitignore`; git init + first commit.
+**Done when:** `uv run batonai --version` prints the version; `uv run pytest` passes (one placeholder test); `ruff check` clean.
 
 **T02 ✅ · Shared models — 60 min**
 `core/models.py`: `StageSpec`, `StageStatus`, `StageResult`, `RunState`, `AgentRequest`, `AgentResult`, `Usage`, `Health`, `Capabilities` as pydantic models per ARCHITECTURE §2.2/§3.1. No imports from other project modules.
@@ -30,7 +30,7 @@ Conventions:
 `config/loader.py`: merge defaults ← `~/.config/ai-orchestrator/config.yaml` ← `./.ai/config.yaml` ← env (`AI_ORCH_*`) ← CLI overrides; track the source of every value.
 **Done when:** unit tests cover each precedence pair, deep-merge of nested keys, and missing-file tolerance; every value knows its source.
 
-**T05 ✅ · `ai config show` — 45 min**
+**T05 ✅ · `batonai config show` — 45 min**
 Typer app skeleton (`cli/app.py`, `cli/commands/config_cmd.py`, `cli/render.py`): render merged config as a Rich table with a source column.
 **Done when:** running it in a dir with a project config shows project values overriding user/defaults, each annotated with its source.
 
@@ -70,13 +70,13 @@ Typer app skeleton (`cli/app.py`, `cli/commands/config_cmd.py`, `cli/render.py`)
 Registry discovers `ai_orchestrator.providers` entry points via `importlib.metadata` at startup; a broken plugin logs a warning and is skipped, never crashes startup.
 **Done when:** integration test installs a toy plugin package into the test env and resolves its adapter by name.
 
-**T14 ✅ · `ai doctor` — 60 min**
+**T14 ✅ · `batonai doctor` — 60 min**
 Health checks per adapter (binary on PATH, `--version` parse, auth probe where cheap); Rich table: provider, binary, version, auth, status.
 **Done when:** all three real CLIs report healthy on the dev machine; an uninstalled binary shows an actionable failure row instead of a crash.
 
-**T15 ✅ · `ai ask` — 60 min**
-`ai ask --role <role> "<prompt>"`: resolve role → adapter via config, one-shot invoke through the real transport, print result + usage. First end-to-end token spend.
-**Done when:** `ai ask --role planner "say hi"` round-trips through Codex CLI; result and (if reported) usage print correctly.
+**T15 ✅ · `batonai ask` — 60 min**
+`batonai ask --role <role> "<prompt>"`: resolve role → adapter via config, one-shot invoke through the real transport, print result + usage. First end-to-end token spend.
+**Done when:** `batonai ask --role planner "say hi"` round-trips through Codex CLI; result and (if reported) usage print correctly.
 
 ---
 
@@ -98,9 +98,9 @@ Health checks per adapter (binary on PATH, `--version` parse, auth probe where c
 Full engine run (planner → coder, both fake) in a temp project dir: assert run-dir layout, artifact contents, `run.json` states, JSONL event sequence, and the failure variant.
 **Done when:** the suite passes in CI-like conditions (no network, no real CLIs) in under ~5 s.
 
-**T20 ✅ · `ai "<request>"` wiring — 60 min**
+**T20 ✅ · `batonai "<request>"` wiring — 60 min**
 Root command: bare argument triggers the pipeline; dirty-git-tree warning (ADR-007); minimal live progress line per stage via `render.py`.
-**Done when:** `ai "test request"` with fake-provider config runs the pipeline from the shell; **M2 demo achieved** with real providers on a toy request (manual).
+**Done when:** `batonai "test request"` with fake-provider config runs the pipeline from the shell; **M2 demo achieved** with real providers on a toy request (manual).
 
 ---
 
@@ -118,7 +118,7 @@ Root command: bare argument triggers the pipeline; dirty-git-tree warning (ADR-0
 `context/manager.py`: `assemble(stage) → rendered prompt`; enforce contracts; persist every rendered prompt to `prompts/NN-<stage>.md` in the run dir; replace the T17 stub.
 **Done when:** integration test inspects a run dir and verifies each stage's persisted prompt contains only contract-admitted sections.
 
-**T24 ✅ · `ai init` — 60 min**
+**T24 ✅ · `batonai init` — 60 min**
 Bootstrap `.ai/`: starter `config.yaml`, `project.md` skeleton (stack/conventions prompts for the user to fill), append `.ai/runs/` to `.gitignore`; idempotent (refuses to clobber, offers diff). *Extended post-M3 on user feedback: the Stack section is pre-filled by auto-detecting marker files (pubspec.yaml, package.json, pyproject.toml, go.mod, Cargo.toml, …); skeleton examples are framework-neutral.*
 **Done when:** running in a fresh dir creates the documented footprint (PROJECT_STRUCTURE §2.1); second run is a no-op; **M3 demo achieved** — prompts in a real run visibly differ per role contract.
 
@@ -147,14 +147,14 @@ Fake-provider end-to-end of the full four-stage pipeline: report correctness, de
 **Done when:** the whole suite stays green and fast (<10 s), zero tokens.
 
 **T30 ✅ · MVP acceptance run — 90 min**
-The real thing: `ai init` + `ai "Add Face ID support to the Flutter application"` against a real Flutter sample repo with real providers. Capture fresh contract fixtures from the run. File issues for every rough edge; fix in-scope ones.
+The real thing: `batonai init` + `batonai "Add Face ID support to the Flutter application"` against a real Flutter sample repo with real providers. Capture fresh contract fixtures from the run. File issues for every rough edge; fix in-scope ones.
 **Done when:** the MVP acceptance test from IMPLEMENTATION_PLAN §5 passes; **M4/MVP achieved**.
 
 ---
 
 ## M5 — Hardening & DX
 
-**T31 ✅ · `ai runs list/show` — 60 min**
+**T31 ✅ · `batonai runs list/show` — 60 min**
 List: table of run dirs (id, request excerpt, status, duration, total tokens). Show: per-stage detail + artifact paths for one run.
 **Done when:** both render correctly against a mix of succeeded/failed historical runs.
 
@@ -162,7 +162,7 @@ List: table of run dirs (id, request excerpt, status, duration, total tokens). S
 Audit every failure mode surfaced by T30 (timeout, auth expiry, parse failure, permission block): each produces a failure report with cause + raw path + resume instructions, and a distinct exit code (`0` ok, `1` stage failed, `2` config/env error).
 **Done when:** each failure mode is integration-tested via the fake provider (which can simulate all of them).
 
-**T33 ✅ · `ai resume <run-id>` — 90 min**
+**T33 ✅ · `batonai resume <run-id>` — 90 min**
 Load `run.json`, keep succeeded artifacts, re-enter the loop at the failed stage; refuse (with explanation) if config stage-list changed since the run; `--from <stage>` to deliberately redo a stage.
 **Done when:** integration test: fail at coder → fix fake provider → resume → run completes reusing the original plan artifact; **M5 demo achieved**.
 
@@ -172,13 +172,13 @@ Per-provider timeouts from config enforced end-to-end; SIGINT during a run leave
 
 **T35 ✅ · README + quickstart — 45 min**
 Install (uv), prerequisites (three CLIs + auth), 5-minute quickstart, trust-model note (ADR-007, prominently), pointers into `docs/`.
-**Done when:** a fresh-machine walkthrough of the README reaches a successful `ai doctor` and demo run without consulting anything else.
+**Done when:** a fresh-machine walkthrough of the README reaches a successful `batonai doctor` and demo run without consulting anything else.
 
 ---
 
 ## Sequencing notes
 
 - **First real token spend is T15** — everything before it is free; everything after M2 can develop against the fake provider (T18), which is why it lands early.
-- **Fixture capture (T10–T12) needs the real CLIs installed and authenticated** on the dev machine; do `ai doctor`'s manual equivalent before starting M1.
+- **Fixture capture (T10–T12) needs the real CLIs installed and authenticated** on the dev machine; do `batonai doctor`'s manual equivalent before starting M1.
 - **T21 (templates) is the highest-leverage 90 minutes in the project** — artifact quality downstream depends on it; budget review time accordingly.
 - If any task exceeds ~2× its estimate, stop and check whether it's fighting a design decision — that's a signal to revisit the doc, not to push through.

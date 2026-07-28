@@ -1,4 +1,4 @@
-"""`ai publish [--commit|--push]` — draft a commit message, then (only on an
+"""`batonai publish [--commit|--push]` — draft a commit message, then (only on an
 explicit user command) git commit and push (ADR-020).
 
 This is the ONE deliberate, user-triggered exception to ADR-014's "no role runs

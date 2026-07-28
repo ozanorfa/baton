@@ -1,4 +1,4 @@
-"""ADR-019: `ai revise` through the real CLI on the fake provider — continues
+"""ADR-019: `batonai revise` through the real CLI on the fake provider — continues
 the same run with a correction, re-running from the coder."""
 
 import json

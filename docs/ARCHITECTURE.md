@@ -1,6 +1,6 @@
 # Architecture — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-21 · fully implemented, M0–M5 + post-MVP (ADR-017–020: opencode/deterministic providers, `ai revise`, `ai publish`) — adapter table below reflects *verified* CLI behavior, not assumptions
+**Status:** Living · updated 2026-07-21 · fully implemented, M0–M5 + post-MVP (ADR-017–020: opencode/deterministic providers, `batonai revise`, `batonai publish`) — adapter table below reflects *verified* CLI behavior, not assumptions
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 ---
@@ -12,8 +12,8 @@ Four layers with strict downward-only dependencies. Every AI-CLI-specific detail
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  CLI Layer (Typer + Rich)                                   │
-│  ai "<request>" · ai init · ai doctor · ai runs ·           │
-│  ai resume · ai config · ai ask                             │
+│  batonai "<request>" · batonai init · batonai doctor · batonai runs ·           │
+│  batonai resume · batonai config · batonai ask                             │
 ├─────────────────────────────────────────────────────────────┤
 │  Orchestration Core                                         │
 │  PipelineEngine · RoutingEngine · ContextManager ·          │
@@ -49,13 +49,13 @@ Typer application, Rich for output. Thin by design: parses arguments, loads conf
 
 | Command | Purpose |
 |---|---|
-| `ai "<request>"` | Run the configured pipeline on a request |
-| `ai init` | Bootstrap `.ai/` in a project (config + project profile; the profile's Stack section is pre-filled by auto-detecting marker files — pubspec.yaml, package.json, pyproject.toml, go.mod, …) |
-| `ai doctor` | Verify every configured provider: binary found, version, authenticated |
-| `ai runs list` / `ai runs show <id>` | Run history and inspection |
-| `ai resume <run-id>` | Continue a failed run from its failed stage (`--with-designer`/`--with-publisher` to keep optional stages enabled) |
-| `ai config show` | Print merged effective configuration and its sources |
-| `ai ask --role <role> "<prompt>"` | One-shot single-role invocation (debugging/utility) |
+| `batonai "<request>"` | Run the configured pipeline on a request |
+| `batonai init` | Bootstrap `.ai/` in a project (config + project profile; the profile's Stack section is pre-filled by auto-detecting marker files — pubspec.yaml, package.json, pyproject.toml, go.mod, …) |
+| `batonai doctor` | Verify every configured provider: binary found, version, authenticated |
+| `batonai runs list` / `batonai runs show <id>` | Run history and inspection |
+| `batonai resume <run-id>` | Continue a failed run from its failed stage (`--with-designer`/`--with-publisher` to keep optional stages enabled) |
+| `batonai config show` | Print merged effective configuration and its sources |
+| `batonai ask --role <role> "<prompt>"` | One-shot single-role invocation (debugging/utility) |
 
 ### 2.2 Pipeline Engine
 
@@ -100,7 +100,7 @@ Pure function from config: `role → provider adapter instance`. Resolution orde
 3. User config (`~/.config/ai-orchestrator/config.yaml`)
 4. Built-in defaults
 
-At run start, the routing engine resolves **all** stages up front and health-checks each distinct provider once — a pipeline never fails at stage 3 because of something `ai doctor` could have caught before stage 1.
+At run start, the routing engine resolves **all** stages up front and health-checks each distinct provider once — a pipeline never fails at stage 3 because of something `batonai doctor` could have caught before stage 1.
 
 ### 2.4 Run Manager
 
@@ -124,7 +124,7 @@ Owns the run directory and the run state machine.
     └── 03-coder.stderr     # raw provider stderr per stage
 ```
 
-Stage statuses: `pending → running → succeeded | failed | skipped`. `run.json` is rewritten atomically on every transition, which is what makes `ai resume` possible: resume = load `run.json`, keep succeeded artifacts, re-enter the loop at the failed stage.
+Stage statuses: `pending → running → succeeded | failed | skipped`. `run.json` is rewritten atomically on every transition, which is what makes `batonai resume` possible: resume = load `run.json`, keep succeeded artifacts, re-enter the loop at the failed stage.
 
 ### 2.5 Reporter
 
@@ -206,10 +206,10 @@ providers:
   antigravity: { command: agy,    timeout_s: 600 }
 
 context:
-  project_profile: .ai/project.md    # written by `ai init`
+  project_profile: .ai/project.md    # written by `batonai init`
 ```
 
-Validated at load time into typed objects (pydantic): unknown keys warn, invalid values fail fast with the file and key that caused it. `ai config show` prints the merged result annotated with the source of each value. Changing any provider is a config edit — never a code change (goal G5, principle 6).
+Validated at load time into typed objects (pydantic): unknown keys warn, invalid values fail fast with the file and key that caused it. `batonai config show` prints the merged result annotated with the source of each value. Changing any provider is a config edit — never a code change (goal G5, principle 6).
 
 ## 5. Context Management
 
@@ -218,7 +218,7 @@ Four layers, assembled per stage by the `ContextManager` — the single place wh
 | Layer | Content | Lifetime | Example |
 |---|---|---|---|
 | **Global** | Orchestrator conventions: output format rules, artifact expectations | Static | "Write your plan as markdown with numbered steps" |
-| **Project** | Tech stack, structure, conventions — from `.ai/project.md` (`ai init`) | Per project | "Flutter 3.x app, Riverpod, feature-first layout" |
+| **Project** | Tech stack, structure, conventions — from `.ai/project.md` (`batonai init`) | Per project | "Flutter 3.x app, Riverpod, feature-first layout" |
 | **Workspace** (ADR-013) | Deterministic maturity detection: *established* → capped repo map + docs index (README/docs/*.md) + read-first instruction; *greenfield* → propose-structure guidance. Documents are indexed, never inlined | Computed per run | "Project documents (read the relevant ones first): README.md — Habit App…" |
 | **Task** | The user request + accumulated stage artifacts *per input contract* | Per run | The request + `plan.md` |
 | **Agent** | Role definition and boundaries | Static per role | "You are the Reviewer. Do not rewrite code; report findings." |

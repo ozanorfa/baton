@@ -1,4 +1,4 @@
-"""`ai doctor` — verify every configured provider before spending tokens."""
+"""`batonai doctor` — verify every configured provider before spending tokens."""
 
 import typer
 

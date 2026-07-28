@@ -9,6 +9,8 @@ build/
 # Tooling caches
 .pytest_cache/
 .ruff_cache/
+.coverage
+.uv-cache/
 
 # OS
 .DS_Store

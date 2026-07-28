@@ -1,4 +1,4 @@
-"""ADR-022: `ai review` — sends the current working-tree diff to the Reviewer,
+"""ADR-022: `batonai review` — sends the current working-tree diff to the Reviewer,
 pipeline-free and read-only."""
 
 import subprocess

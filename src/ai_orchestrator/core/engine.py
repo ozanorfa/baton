@@ -266,7 +266,7 @@ class PipelineEngine:
                 record.status = StageStatus.FAILED
                 record.finished_at = utcnow()
                 record.error = (
-                    f"interrupted by user (Ctrl-C); continue with: ai resume {state.run_id}"
+                    f"interrupted by user (Ctrl-C); continue with: batonai resume {state.run_id}"
                 )
                 state.status = RunStatus.FAILED
                 self.run_manager.save(state)

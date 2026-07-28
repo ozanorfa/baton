@@ -1,4 +1,4 @@
-"""`ai ask` — one-shot single-role invocation. The manual escape hatch (ADR-004)."""
+"""`batonai ask` — one-shot single-role invocation. The manual escape hatch (ADR-004)."""
 
 from pathlib import Path
 

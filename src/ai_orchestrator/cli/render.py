@@ -1,6 +1,7 @@
 """All Rich terminal output lives here; the core stays terminal-agnostic."""
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 from rich.console import Console
@@ -8,7 +9,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from ai_orchestrator.config.loader import LoadedConfig
-from ai_orchestrator.core.models import AgentResult, Health, RunState, StageStatus
+from ai_orchestrator.core.models import AgentResult, Health, RunState, StageStatus, utcnow
 
 console = Console()
 error_console = Console(stderr=True, style="bold red")
@@ -69,7 +70,7 @@ def render_usage_line(result: AgentResult) -> None:
 
 
 def render_commit_draft(message: str, source: str) -> None:
-    """Show the commit message that `ai publish` would use, in a panel."""
+    """Show the commit message that `batonai publish` would use, in a panel."""
     console.print(Panel(message.strip(), title="commit message", subtitle=source, expand=False))
 
 
@@ -191,8 +192,8 @@ def render_run_summary(state: RunState, run_dir: Path, report=None) -> None:
             console.print(f"raw stderr:  {stderr_file}")
         console.print(f"run detail:  {run_dir}")
         console.print(
-            f"next steps:  [bold]ai resume {state.run_id}[/bold] (retry from the failed stage) "
-            "· [bold]ai doctor[/bold] (provider health)"
+            f"next steps:  [bold]batonai resume {state.run_id}[/bold] "
+            "(retry from the failed stage) · [bold]batonai doctor[/bold] (provider health)"
         )
     else:
         if report is not None and report.verdict:
@@ -258,3 +259,72 @@ def render_doctor(rows: list[DoctorRow]) -> None:
             status,
         )
     console.print(table)
+
+
+# ── Interactive front door (ADR-026) ────────────────────────────────────────
+
+def render_banner() -> None:
+    console.print("\n[bold]baton[/bold] — AI coding pipeline")
+    console.print("[dim]planner → coder → reviewer, across Codex / Claude Code[/dim]\n")
+
+
+def _relative_age(created: datetime, now: datetime | None = None) -> str:
+    now = now or utcnow()
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=UTC)
+    seconds = max(0, int((now - created).total_seconds()))
+    if seconds < 90:
+        return "just now"
+    if seconds < 5400:
+        return f"{seconds // 60}m ago"
+    if seconds < 172800:
+        return f"{seconds // 3600}h ago"
+    return f"{seconds // 86400}d ago"
+
+
+def render_scan(state) -> None:
+    """The 'here is what I found' report the wizard opens with (ADR-026)."""
+    def row(mark: str, label: str, detail: str) -> None:
+        console.print(f"  {mark} [bold]{label:<10}[/bold] {detail}")
+
+    ok, warn = "[green]✓[/green]", "[yellow]⚠[/yellow]"
+
+    if state.issues:
+        for issue in state.issues:
+            row("[red]✗[/red]", "providers",
+                f"[red]{issue.provider} — {issue.detail}[/red] "
+                f"[dim](needed by: {', '.join(issue.roles)})[/dim]")
+    else:
+        row(ok, "providers", "all healthy")
+
+    if state.is_empty:
+        row(ok, "project", "empty folder — a new project")
+    else:
+        stack = "; ".join(state.stack) if state.stack else str(state.mode)
+        row(ok, "project", stack)
+
+    if not state.is_git:
+        row(warn, "git", "not a repository — diff capture and the no-change "
+                         "safety check are off")
+    elif state.git_dirty:
+        row(warn, "git", "uncommitted changes present")
+    else:
+        row(ok, "git", "clean")
+
+    if state.has_ai_dir:
+        if state.last_run is not None:
+            last = state.last_run
+            verdict = f" · {last.verdict}" if last.verdict else ""
+            row(ok, "baton", f"ready · last run {_relative_age(last.created_at)}"
+                             f'{verdict} · "{last.request[:48]}"')
+        else:
+            row(ok, "baton", "ready · no runs yet")
+    else:
+        row(warn, "baton", "not set up in this folder yet")
+
+    if state.health:
+        worst = [ln for ln in state.health.splitlines() if ln.startswith("- `")][:3]
+        row(ok, "health", "code hotspots found [dim](repowise)[/dim]")
+        for line in worst:
+            console.print(f"       [dim]{line.lstrip('- ').replace('`', '')}[/dim]")
+    console.print()

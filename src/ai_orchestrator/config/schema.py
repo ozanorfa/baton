@@ -26,7 +26,7 @@ class PipelineConfig(BaseModel):
     # ADR-023: when the Reviewer returns NEEDS WORK (a blocking finding), run
     # exactly one automatic fix pass — re-run the Coder with the review findings,
     # then re-review, then stop. Off by default (an extra Coder+Reviewer turn
-    # costs quota); opt in per project or with `ai run --fix-loop`.
+    # costs quota); opt in per project or with `batonai run --fix-loop`.
     fix_loop: bool = False
 
 

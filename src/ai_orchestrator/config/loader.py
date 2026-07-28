@@ -6,7 +6,7 @@ Precedence, highest wins:
         > user ~/.config/ai-orchestrator/config.yaml > built-in defaults
 
 Every leaf value remembers which layer set it (`LoadedConfig.sources`), which
-powers `ai config show` and lets validation errors name the offending file.
+powers `batonai config show` and lets validation errors name the offending file.
 
 Env var mapping: `AI_ORCH_` prefix, `__` for nesting, values YAML-parsed.
 Example: AI_ORCH_PROVIDERS__CLAUDE__TIMEOUT_S=300 → providers.claude.timeout_s.
@@ -73,7 +73,15 @@ def _leaf_paths(data: dict, prefix: str = "") -> list[str]:
 
 
 def _read_yaml(path: Path) -> dict:
-    data = yaml.safe_load(path.read_text())
+    try:
+        data = yaml.safe_load(path.read_text())
+    except yaml.YAMLError as exc:
+        # Without this, a mistyped .ai/config.yaml escapes as a raw parser
+        # traceback out of *every* command (found via the wizard's exit-2 test,
+        # 2026-07-28) instead of the documented config error.
+        raise ConfigError(f"{path}: not valid YAML — {exc}") from exc
+    except OSError as exc:
+        raise ConfigError(f"{path}: could not be read — {exc}") from exc
     if data is None:
         return {}
     if not isinstance(data, dict):

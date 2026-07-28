@@ -1,4 +1,4 @@
-"""`ai resume <run-id>` — continue a failed run from its failed stage,
+"""`batonai resume <run-id>` — continue a failed run from its failed stage,
 reusing every artifact that already succeeded (T33)."""
 
 from pathlib import Path
@@ -18,7 +18,7 @@ from ai_orchestrator.transport.headless import HeadlessTransport
 
 
 def resume(
-    run_id: str = typer.Argument(..., help="Run id (see `ai runs list`)."),
+    run_id: str = typer.Argument(..., help="Run id (see `batonai runs list`)."),
     from_stage: str = typer.Option(
         None, "--from", help="Deliberately redo from this stage instead of the failed one."
     ),

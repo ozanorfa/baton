@@ -1,4 +1,4 @@
-"""`ai init` — bootstrap .ai/ in a project (PROJECT_STRUCTURE.md §2.1).
+"""`batonai init` — bootstrap .ai/ in a project (PROJECT_STRUCTURE.md §2.1).
 
 Idempotent: existing files are never overwritten, only reported. `.ai/runs/`
 is gitignored (local history); config.yaml and project.md are meant to be
@@ -8,12 +8,12 @@ committed and shared with the team.
 from pathlib import Path
 
 from ai_orchestrator.cli import render
-from ai_orchestrator.context.awareness import STACK_MARKERS  # single source of truth
+from ai_orchestrator.context.awareness import stack_labels  # single source of truth
 
 STARTER_CONFIG = """\
 # AI Orchestrator — project configuration (commit this file)
 # Anything omitted falls back to user config (~/.config/ai-orchestrator/config.yaml)
-# and built-in defaults. `ai config show` prints the merged result with sources.
+# and built-in defaults. `batonai config show` prints the merged result with sources.
 
 # pipeline:
 #   stages: [planner, designer, coder, reviewer]
@@ -53,12 +53,7 @@ it is sent with every stage, so every line here costs tokens on every run.
 """
 
 def detect_stack(project: Path) -> str:
-    detected = [
-        label
-        for pattern, label in STACK_MARKERS
-        if ("*" in pattern and next(project.glob(pattern), None) is not None)
-        or ("*" not in pattern and (project / pattern).exists())
-    ]
+    detected = stack_labels(project)
     if detected:
         return (
             "Detected: " + "; ".join(detected) + ".\n"
@@ -71,7 +66,13 @@ def detect_stack(project: Path) -> str:
     )
 
 
-GITIGNORE_ENTRY = ".ai/runs/"
+GITIGNORE_ENTRY = ".ai/runs/"  # legacy root-.gitignore form; still honoured if present
+
+# Baton's ignore rule lives inside the directory it owns (ADR-027). Git applies
+# a .gitignore to its own directory and below, so `runs/` here is exactly
+# `.ai/runs/` — and because .ai/ is excluded from diff capture, this file never
+# shows up in a run's diff the way a root-.gitignore edit did.
+NESTED_GITIGNORE = "# AI orchestrator run history (local)\nruns/\n"
 
 
 def init() -> None:
@@ -95,17 +96,19 @@ def init() -> None:
             path.write_text(content)
             created.append(rel)
 
-    gitignore = project / ".gitignore"
-    if gitignore.exists():
-        if GITIGNORE_ENTRY in gitignore.read_text():
-            skipped.append(f".gitignore ({GITIGNORE_ENTRY} already present)")
-        else:
-            with gitignore.open("a") as f:
-                f.write(f"\n# AI orchestrator run history (local)\n{GITIGNORE_ENTRY}\n")
-            created.append(f".gitignore (+ {GITIGNORE_ENTRY})")
+    # ADR-027: never touch the project's root .gitignore — it is the user's
+    # file, and editing it made baton's own bookkeeping show up as part of the
+    # coder's diff on a first run (a live reviewer spent a finding on it).
+    root_gitignore = project / ".gitignore"
+    nested = ai_dir / ".gitignore"
+    if root_gitignore.is_file() and GITIGNORE_ENTRY in root_gitignore.read_text():
+        # Set up by an older baton: the rule is already in force, leave it be.
+        skipped.append(f".gitignore ({GITIGNORE_ENTRY} already present)")
+    elif nested.exists():
+        skipped.append(".ai/.gitignore")
     else:
-        gitignore.write_text(f"# AI orchestrator run history (local)\n{GITIGNORE_ENTRY}\n")
-        created.append(f".gitignore (+ {GITIGNORE_ENTRY})")
+        nested.write_text(NESTED_GITIGNORE)
+        created.append(".ai/.gitignore (ignores .ai/runs/)")
 
     for rel in created:
         render.console.print(f"  [green]created[/green] {rel}")

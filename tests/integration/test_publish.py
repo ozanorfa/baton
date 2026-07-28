@@ -1,4 +1,4 @@
-"""ADR-020: `ai publish` — the single, user-triggered git-writing command.
+"""ADR-020: `batonai publish` — the single, user-triggered git-writing command.
 
 Preview mode never touches git; --commit commits; --push commits + pushes; a
 rejected confirmation does nothing. No pipeline role runs git (ADR-014 intact).
