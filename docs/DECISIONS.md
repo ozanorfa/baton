@@ -1,6 +1,6 @@
 # Architectural Decision Records — AI Coding Orchestrator
 
-**Status:** Living · 27 ADRs · updated 2026-07-28
+**Status:** Living · 31 ADRs · updated 2026-07-28
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Convention: one ADR per consequential decision. New decisions get new ADRs; reversals supersede, never rewrite history. Any future proposal for dynamic/LLM-driven orchestration **requires** an ADR here before code (risk R7 guard).
@@ -573,3 +573,82 @@ Both are the same mistake in two places: **something nobody authored is presente
 **Trade-offs.** (a) A project that genuinely tracks one of the excluded names (a checked-in `node_modules`, a vendored `*.pyc`) will not see changes to it reviewed. Judged acceptable: those are rare, and the alternative — bogus Major findings and flipped verdicts — was observed in the wild on the very first real run. (b) The exclusion list is static rather than read from the project's `.gitignore`; parsing gitignore semantics correctly is a much larger job, and git already handles the ignored-file case on its own.
 
 **Alternatives considered.** (a) Have the wizard warn the user that `init`'s files are now uncommitted — rejected: it explains a self-inflicted problem instead of removing it. (b) Exclude `.gitignore` from diff capture entirely — rejected: a user's genuine `.gitignore` edit is real, reviewable work. (c) Commit `init`'s files automatically — rejected outright; ADR-020 makes `batonai publish` the single user-invoked git command, and no other code path may commit.
+
+## ADR-028 — Code-health is computed once per project and cached in `.ai/`, not per run
+
+**Status:** Accepted · 2026-07-28 · **Design only — not implemented.**
+
+**Context.** ADR-025 runs `repowise health` inside every run that enables it (~4 s), renders a slice into the prompts, and deletes the `.repowise/` index it created. Two costs follow. **(a)** The work is repeated for every run in a project whose code has barely moved. **(b)** The result is invisible: it survives only inside `prompts/*.md`, and the index it came from is gone — the owner's reaction on first contact was *"repowise çıktıları nerede göremedim?"*, and the honest answer was *nowhere*. `batonai health` (2026-07-28) made it printable on demand, but each invocation still recomputes.
+
+**Decision.** Compute health **once per project** and persist the result to **`.ai/health.json`**, alongside the run history baton already owns. Later runs read the cache instead of shelling out.
+
+- **Location.** `.ai/` — baton's own directory. It is already excluded from diff capture (ADR-027), so a cache file can never be mistaken for the Coder's work, and `.ai/.gitignore` decides whether it is committed. `.repowise/` stays transient and is still removed after use: that is *repowise's* index, not ours, and it is ~1 MB.
+- **Staleness.** A cache that silently rots is worse than no cache. Refresh when the newest source file is newer than the cache, or the cache is older than a fixed age; force with `batonai health --refresh`. The stored record carries the timestamp it was produced at, and every surface that shows health states that age, so a stale reading is never presented as current.
+- **Human-readable.** The file holds the rendered slice next to the raw KPIs, so opening it answers "what does baton think of this project?" with no command at all — which is the visibility half of the problem.
+
+**Consequences.** ADR-025's "computed once per run, never cached" is superseded. The ~4 s cost moves to the first run (or to `batonai init`, which is where the owner expects it: *"işin başında tüm proje için çalışacak"*). The no-litter guarantee is unchanged in spirit — the only new file lives in the directory baton already owns.
+
+**Trade-offs.** (a) A cache is a second source of truth and can disagree with reality; mitigated by the freshness rule and by always displaying the age. (b) `.ai/health.json` becomes something to keep valid across baton versions — it is a cache, so a format change may simply discard it rather than migrate. (c) A project edited constantly refreshes often and gains little; that is the correct behaviour, not a regression.
+
+**Alternatives considered.** (a) Keep `.repowise/` instead of deleting it — rejected: it is a third-party ~1 MB index in the user's tree, and its lifecycle is repowise's to manage, not baton's. (b) Cache in a global directory keyed by path — rejected: invisible to the user, and the point is partly visibility. (c) Recompute per run but show it in the terminal — solves visibility only, not the repeated work.
+
+
+## ADR-029 — A repository with no baseline commit is reported, never fixed by baton
+
+**Status:** Accepted · 2026-07-28 · **Design only — not implemented.**
+
+**Context.** ADR-026's wizard offers `git init` in a non-repository. Observed on a real project (`skii_game`, 2026-07-28): the user accepted, and the run started against a repo with **zero commits**. With no `HEAD`, every file in the project reads as a change — the dirty-tree warning fires immediately and says nothing useful, `diff.patch` would be the entire project rather than the Coder's work, and ADR-007's "did anything change?" safety net loses its baseline. Baton created a state its own design assumes away.
+
+The obvious repair — have the wizard make an initial commit right after `git init` — was **rejected**, on the owner's instruction to take whichever option is safer. ADR-020 makes `batonai publish --commit/--push` the single path by which anything reaches git history, and that guarantee is worth more than the convenience: a second committing path, however well-fenced, turns a rule a user can verify in one sentence into one with exceptions.
+
+**Decision.** Baton continues to create **no commits, ever**, outside `batonai publish`. Instead, "git repository with no commits" becomes a **distinct, named state** rather than being folded into "uncommitted changes present":
+
+- The wizard's scan reports it explicitly, and says what it costs — no diff capture, no meaningful change detection — instead of the current generic dirty-tree line.
+- The exact command to establish a baseline is printed for the user to run. Baton does not run it.
+- The `git init` offer says up front that a baseline commit is the natural next step, so the user is not led into the state blind.
+
+**Consequences.** A user can still start a run without a baseline; baton will not stop them, and the degraded behaviour is the same as today — but it is now stated rather than discovered. ADR-020's guarantee is untouched, and stays expressible as one unconditional sentence.
+
+**Trade-offs.** The friendlier flow (baton commits, user says yes once) stays unavailable, and some users will find the manual step tedious. Accepted deliberately: the trust model is the feature that makes an unattended Coder tolerable at all (ADR-007), and it is not worth spending for a saved keystroke.
+
+**Alternatives considered.** (a) Auto-commit after `git init` behind a confirmation — the friendlier option, rejected above. (b) Refuse to run without a baseline — rejected as paternalistic; a user experimenting in a scratch directory has a legitimate reason not to care. (c) Stop offering `git init` at all — rejected: it removes a genuinely useful step, and the non-git state (no diff capture) is worse than the no-baseline one.
+
+
+## ADR-030 — Live progress notes from the provider's own event stream
+
+**Status:** Accepted · 2026-07-28 · **Design only — not implemented.**
+
+**Context.** A stage shows an animated spinner and nothing else for as long as it runs. Observed live: a Coder stage passed ten minutes on a Flutter project and the owner interrupted it, reasonably unable to tell *working* from *hung* — the run had not failed, and the plan behind it was genuinely large. The owner's framing: *"ara ara ufak loglar atabiliriz kullanıcıya, böylece bug olmadığını ve gerçekten çalıştığını anlar."*
+
+**The information already exists.** Verified on a real captured log (2026-07-28): `codex --json` — the flag baton already passes — emits `thread.started`, `turn.started`, `item.started`/`item.completed` events carrying both the model's short reasoning lines and the shell commands it runs (*"I'll inspect the project documents…"*, `sed -n '200,520p' lib/src/world/snow_world.dart`). Claude Code supports `--output-format stream-json` (baton currently asks for `json`, a single blob at the end). **The only blocker is baton's own transport:** `HeadlessTransport` uses `subprocess.run`, which returns everything at once, so the stream is discarded until the stage is over.
+
+**Decision.** Surface a bounded trickle of progress notes while a stage runs.
+
+- **Transport gains a streaming mode** — incremental line reads instead of a single buffered call. This does not revisit ADR-002: still headless, still one subprocess, still no tmux; only the reading changes. Timeout, stdin delivery (ADR-010) and raw-log capture stay exactly as they are.
+- **Adapters own the interpretation.** Each adapter may translate one raw event line into a short human note, or decline. Vendor formats stay behind the adapter boundary, as with usage parsing — a provider that streams nothing simply keeps today's spinner, and no other layer learns about it.
+- **Bounded and throttled by construction.** A note is a single short line, rate-limited, and never the model's full reasoning: the goal is evidence of life and rough shape of the work, not a transcript. The complete stream keeps going to `logs/` unchanged, which stays the place to look for detail.
+- **Applies to any stage that streams,** planner and coder alike (the owner asked for both: *"hem kodda hem planda"*).
+
+**Trade-offs.** (a) Streaming is more moving parts than `subprocess.run` — partial lines, interleaved stderr, a child that dies mid-line — and the transport is a component whose simplicity is load-bearing; the streaming path must degrade to the current behaviour on any parse trouble rather than fail a stage. (b) Progress notes are vendor output rendered to the terminal: they must be treated as untrusted text (no control sequences, truncated) — a provider's output must never be able to redraw the user's screen. (c) It becomes possible to leak into the terminal something the raw log would have kept quieter; notes stay short and structural for that reason.
+
+**Alternatives considered.** (a) A heartbeat ("still working, 4m elapsed") with no content — cheaper and safer, but it does not answer "is it doing something sensible?", which is the actual question. Kept as the fallback for providers that do not stream. (b) Parse the raw log file as it grows — avoids touching the transport, but it is the same problem solved indirectly, and the transport does not write incrementally either. (c) tmux/observability transport — the long-parked ADR-002 item; far larger, and unnecessary for this.
+
+
+## ADR-031 — Model choice is asked at setup and pinned per project
+
+**Status:** Accepted · 2026-07-28 · **Design only — not implemented.**
+
+**Context.** Baton pins no model anywhere: `providers.*.model` defaults to `null`, and the adapters pass `--model`/`-m` only when it is set. So the model in use is whatever each CLI is configured to do on its own — on the owner's machine, `codex` runs `gpt-5.6-sol` from `~/.codex/config.toml` and `claude` runs `opus` from `~/.claude/settings.json`. Neither is visible from baton, and neither was chosen for the project. The owner had to ask which models the pipeline was even using, and the answer materially explains an expensive ten-minute Coder stage.
+
+This is a gap in a tool whose whole claim is that routing is legible: which *provider* handles which role is declared in config and printed by `batonai config show`, but which *model* is a hidden inherited setting.
+
+**Decision.** Ask at setup. `batonai init` — and the wizard's setup step, which is now where most projects get initialized (ADR-026) — offers a model choice per role that will actually run, and writes it into `.ai/config.yaml` as ordinary configuration.
+
+- **"Use the CLI's default" stays an option and stays the default.** Choosing it writes nothing, so existing projects and anyone who presses Enter behave exactly as today. The point is to make the choice *visible and available*, not to force it.
+- **Still pure configuration.** The answer lands in `.ai/config.yaml`; nothing is decided at runtime and ADR-004 is untouched. A user may edit or delete it afterwards like any other setting.
+- **Per project, not per machine.** A throwaway experiment can run a cheap model while a production repo runs a strong one, without either touching the CLI's global config — which is the thing baton currently cannot influence at all.
+- **Setup should say what the choice costs.** The reason this matters is quota (ADR-016's whole subject), so the prompt names the trade-off rather than listing opaque model ids.
+
+**Trade-offs.** (a) Model identifiers change often and are vendor-specific; a hardcoded menu will age. Mitigation: offer a short list plus free text, and never validate against a fixed set — an unknown string is passed through to the CLI, which is the authority. (b) One more question in a setup flow ADR-026 deliberately kept short; it belongs behind the same "use defaults" fast path. (c) A pinned model can silently stop existing when a vendor retires it; the failure surfaces as a provider error at preflight, which is where provider problems already surface.
+
+**Alternatives considered.** (a) Leave it to each CLI's own config — the status quo; rejected because it makes a decision with real cost consequences invisible and non-project-scoped. (b) Pin defaults in baton's own `defaults.yaml` — rejected: it would silently override what users configured in their CLIs, and baton has no business choosing a model on their behalf. (c) Show the resolved model in `batonai doctor`/`config show` without offering a choice — worth doing regardless, but it reports the problem rather than giving the user the lever.
