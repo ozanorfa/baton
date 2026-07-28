@@ -349,3 +349,12 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 - 📝 **ADR-031** — model choice offered at `init`/wizard setup and pinned per project, with "use the CLI's default" remaining the default so nothing changes for anyone who skips it. No hardcoded validation: an unknown model string is passed through to the CLI, which is the authority.
 - 📝 DECISIONS.md count 27→31; README's doc table and status paragraph updated — the status now states plainly that these four are **designed and queued, not built**, so the docs never describe behaviour that does not exist yet.
 - **Note for implementation:** ADR-030 is the largest of the four (it touches `transport/`, both adapters and `render.py`); ADR-028 and ADR-031 are self-contained; ADR-029 is mostly reporting and the smallest.
+
+## 2026-07-28 (cont.) · ADR-029 implemented — no-baseline repos are named, not fixed
+
+- 🤖 First of the four queued ADRs, taken smallest-first so each lands complete rather than leaving half-built work at a session boundary.
+- `git_state()` now returns `(is_git, dirty, has_commits)`; `WorkspaceScan` carries `has_commits`. The wizard's scan, and `batonai run`'s pre-run check, report "repository has no commits yet" as its **own** state — with the consequence spelled out (every file counts as a change, the diff becomes the whole project) and the exact remedy printed. The wizard's `git init` offer now warns about it up front, so nobody is led into the state blind.
+- **Baton still creates no commits** — verified live: after the wizard reported the state, `git rev-parse --verify HEAD` still fails. ADR-020's guarantee remains one unconditional sentence.
+- A test pins that this is **reporting only**: `decide(has_commits=False) == decide(has_commits=True)`, so no wizard step was added or reordered.
+- ✅ **265 passed** (was 261; +4, and 2 existing `git_state` tests updated to the 3-tuple contract). ruff clean.
+- **Remaining queued:** ADR-028 (health cache, self-contained), ADR-031 (model choice at setup, self-contained), ADR-030 (live progress — largest: `transport/`, both adapters, `render.py`).

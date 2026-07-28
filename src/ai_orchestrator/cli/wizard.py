@@ -53,6 +53,12 @@ def _git_init(project_dir: Path) -> bool:
         render.console.print(f"[yellow]  git init failed: {proc.stderr.strip()}[/yellow]")
         return False
     render.console.print("  [green]created[/green] .git/")
+    # ADR-029: a fresh repo has no baseline; say so now rather than let the user
+    # discover it as a confusing dirty-tree warning seconds later.
+    render.console.print(
+        "  [dim]tip: commit your existing files before running, so the coder's "
+        'diff is only its own work — git add -A && git commit -m "initial commit"[/dim]'
+    )
     return True
 
 

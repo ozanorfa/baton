@@ -33,11 +33,30 @@ def _warn_if_dirty_git_tree(project_dir: Path) -> None:
             "[yellow]⚠ not a git repository — diff capture and the no-change safety "
             "check are disabled. Run `git init` first to enable them.[/yellow]"
         )
+    elif not _has_commits(project_dir):
+        # ADR-029: reported, never fixed — baton creates no commits outside
+        # `batonai publish` (ADR-020), so it names the state and the remedy.
+        render.console.print(
+            "[yellow]⚠ this repository has no commits yet — there is no baseline to "
+            "diff against, so the whole project will read as the coder's work.\n"
+            "  fix: git add -A && git commit -m \"initial commit\"[/yellow]"
+        )
     elif status.stdout.strip():
         render.console.print(
             "[yellow]⚠ git working tree is not clean — the coder's changes will mix "
             "with yours. Consider committing or stashing first.[/yellow]"
         )
+
+
+def _has_commits(project_dir: Path) -> bool:
+    try:
+        proc = subprocess.run(
+            ["git", "rev-parse", "--verify", "HEAD"],
+            cwd=project_dir, capture_output=True, text=True, timeout=10, shell=False,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return True  # can't tell → don't cry wolf
+    return proc.returncode == 0
 
 
 def run(

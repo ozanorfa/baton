@@ -306,6 +306,14 @@ def render_scan(state) -> None:
     if not state.is_git:
         row(warn, "git", "not a repository — diff capture and the no-change "
                          "safety check are off")
+    elif not state.has_commits:
+        # ADR-029: distinct from "dirty" — with no HEAD there is no baseline, so
+        # every file reads as a change and the Coder's diff becomes the project.
+        row(warn, "git", "repository has no commits yet — with no baseline, every "
+                         "file counts as a change and the diff will be the whole "
+                         "project")
+        console.print("       [dim]fix: git add -A && git commit -m \"initial commit\""
+                      "  (baton never commits for you)[/dim]")
     elif state.git_dirty:
         row(warn, "git", "uncommitted changes present")
     else:

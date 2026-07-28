@@ -595,7 +595,7 @@ Both are the same mistake in two places: **something nobody authored is presente
 
 ## ADR-029 — A repository with no baseline commit is reported, never fixed by baton
 
-**Status:** Accepted · 2026-07-28 · **Design only — not implemented.**
+**Status:** Accepted · 2026-07-28 · **Implemented 2026-07-28.**
 
 **Context.** ADR-026's wizard offers `git init` in a non-repository. Observed on a real project (`skii_game`, 2026-07-28): the user accepted, and the run started against a repo with **zero commits**. With no `HEAD`, every file in the project reads as a change — the dirty-tree warning fires immediately and says nothing useful, `diff.patch` would be the entire project rather than the Coder's work, and ADR-007's "did anything change?" safety net loses its baseline. Baton created a state its own design assumes away.
 

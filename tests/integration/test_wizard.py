@@ -342,3 +342,33 @@ def test_is_interactive_reflects_the_real_streams(monkeypatch):
 
     monkeypatch.setattr(wizard.sys, "stdout", Stream(False))
     assert wizard.is_interactive() is False, "a redirected stdout is not interactive"
+
+
+def test_scan_names_the_no_baseline_state_and_the_fix(tmp_path, monkeypatch, fake_registry):
+    """ADR-029: distinct from 'uncommitted changes', and it prints the command.
+
+    Live case: the wizard's own `git init` offer produced this state, and the
+    generic dirty-tree warning told the user nothing useful.
+    """
+    project = tmp_path / "fresh"
+    (project / ".ai").mkdir(parents=True)
+    (project / ".ai" / "config.yaml").write_text(
+        "pipeline:\n  stages: [planner]\nroles:\n  planner: {provider: fake}\n"
+        f"providers:\n  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
+    )
+    subprocess.run(["git", "init", "-q"], cwd=project, check=True)  # no commit
+    (project / "main.py").write_text("x = 1\n")
+    (project / "pyproject.toml").write_text("[project]\nname='p'\n")
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    monkeypatch.chdir(project)
+    monkeypatch.setattr(scan_mod, "health_section", lambda _: "")
+    force_tty(monkeypatch, True)
+    stub_run(monkeypatch)
+
+    result = runner.invoke(app, [], input="a request\n")
+
+    assert "no commits yet" in result.output
+    assert "git commit" in result.output, "the remedy is printed for the user to run"
+    assert subprocess.run(
+        ["git", "rev-parse", "--verify", "HEAD"], cwd=project, capture_output=True
+    ).returncode != 0, "baton must never create the commit itself (ADR-020/029)"

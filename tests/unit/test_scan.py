@@ -26,6 +26,7 @@ def make_scan(**overrides) -> WorkspaceScan:
         is_empty=False,
         is_git=True,
         git_dirty=False,
+        has_commits=True,
         mode=WorkspaceMode.ESTABLISHED,
         stack=("Python (pyproject.toml)",),
         has_ai_dir=True,
@@ -135,7 +136,7 @@ def test_is_empty_dir_ignores_tooling_noise(tmp_path):
 
 
 def test_git_state_on_a_non_repo(tmp_path):
-    assert S.git_state(tmp_path) == (False, False)
+    assert S.git_state(tmp_path) == (False, False, False)
 
 
 def test_last_run_is_none_without_history(tmp_path):
@@ -192,8 +193,30 @@ def test_git_state_survives_git_being_absent(tmp_path, monkeypatch):
     def boom(*a, **kw):
         raise FileNotFoundError("no git")
     monkeypatch.setattr(S.subprocess, "run", boom)
-    assert S.git_state(tmp_path) == (False, False)
+    assert S.git_state(tmp_path) == (False, False, False)
 
 
 def test_is_empty_dir_on_an_unreadable_path(tmp_path):
     assert S.is_empty_dir(tmp_path / "does-not-exist") is False
+
+
+# ── ADR-029: a repo with no baseline commit is its own state ────────────────
+
+def test_git_state_reports_a_repo_without_commits(tmp_path):
+    import subprocess
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    (tmp_path / "a.py").write_text("x = 1\n")
+    is_git, dirty, has_commits = S.git_state(tmp_path)
+    assert (is_git, has_commits) == (True, False), "a fresh repo has no baseline"
+
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "seed"],
+        cwd=tmp_path, check=True,
+    )
+    assert S.git_state(tmp_path) == (True, False, True)
+
+
+def test_no_baseline_does_not_change_the_decision_table(tmp_path):
+    """ADR-029 is reporting only — it must not add or reorder wizard steps."""
+    assert S.decide(make_scan(has_commits=False)) == S.decide(make_scan(has_commits=True))

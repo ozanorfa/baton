@@ -62,6 +62,7 @@ class WorkspaceScan:
     is_empty: bool
     is_git: bool
     git_dirty: bool
+    has_commits: bool  # a repo with no HEAD has no baseline to diff against (ADR-029)
     mode: WorkspaceMode
     stack: tuple[str, ...]
     has_ai_dir: bool
@@ -159,8 +160,14 @@ def is_empty_dir(project_dir: Path) -> bool:
     return True
 
 
-def git_state(project_dir: Path) -> tuple[bool, bool]:
-    """(is a git repo, working tree is dirty)."""
+def git_state(project_dir: Path) -> tuple[bool, bool, bool]:
+    """(is a git repo, working tree is dirty, has at least one commit).
+
+    ADR-029: "repo with no commits" is its own state, not a flavour of dirty.
+    Without a HEAD every file reads as a change, so diff capture and ADR-007's
+    no-change safety net both lose their baseline — observed live when the
+    wizard's `git init` offer was accepted on a real project.
+    """
     try:
         proc = subprocess.run(
             ["git", "status", "--porcelain"],
@@ -171,10 +178,22 @@ def git_state(project_dir: Path) -> tuple[bool, bool]:
             shell=False,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
-        return False, False
+        return False, False, False
     if proc.returncode != 0:
-        return False, False
-    return True, bool(proc.stdout.strip())
+        return False, False, False
+    head = _git_ok(project_dir, "rev-parse", "--verify", "HEAD")
+    return True, bool(proc.stdout.strip()), head
+
+
+def _git_ok(project_dir: Path, *args: str) -> bool:
+    try:
+        proc = subprocess.run(
+            ["git", *args], cwd=project_dir, capture_output=True,
+            text=True, timeout=GIT_STATUS_TIMEOUT_S, shell=False,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return False
+    return proc.returncode == 0
 
 
 def last_run(project_dir: Path) -> LastRun | None:
@@ -199,7 +218,7 @@ def last_run(project_dir: Path) -> LastRun | None:
 def scan(project_dir: Path, config: AppConfig, transport: Transport) -> WorkspaceScan:
     """Observe the workspace. Does IO; takes no decisions (see `decide`)."""
     mode = detect_mode(project_dir)
-    is_git, dirty = git_state(project_dir)
+    is_git, dirty, has_commits = git_state(project_dir)
     # ADR-025: health is established-only (greenfield has no history to score);
     # `health_section` already returns "" when repowise is absent or fails.
     health = health_section(project_dir) if mode is WorkspaceMode.ESTABLISHED else ""
@@ -208,6 +227,7 @@ def scan(project_dir: Path, config: AppConfig, transport: Transport) -> Workspac
         is_empty=is_empty_dir(project_dir),
         is_git=is_git,
         git_dirty=dirty,
+        has_commits=has_commits,
         mode=mode,
         stack=tuple(stack_labels(project_dir)),
         has_ai_dir=(project_dir / ".ai" / "config.yaml").is_file(),
