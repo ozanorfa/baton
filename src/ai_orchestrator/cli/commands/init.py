@@ -72,7 +72,10 @@ GITIGNORE_ENTRY = ".ai/runs/"  # legacy root-.gitignore form; still honoured if 
 # a .gitignore to its own directory and below, so `runs/` here is exactly
 # `.ai/runs/` — and because .ai/ is excluded from diff capture, this file never
 # shows up in a run's diff the way a root-.gitignore edit did.
-NESTED_GITIGNORE = "# AI orchestrator run history (local)\nruns/\n"
+NESTED_GITIGNORE = (
+    "# AI orchestrator local state (run history + the code-health cache)\n"
+    "runs/\nhealth.json\n"
+)
 
 
 def init() -> None:

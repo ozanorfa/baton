@@ -576,7 +576,7 @@ Both are the same mistake in two places: **something nobody authored is presente
 
 ## ADR-028 — Code-health is computed once per project and cached in `.ai/`, not per run
 
-**Status:** Accepted · 2026-07-28 · **Design only — not implemented.**
+**Status:** Accepted · 2026-07-28 · **Implemented 2026-07-28** (measured: 1.96 s → 0.14 s on a repeat call).
 
 **Context.** ADR-025 runs `repowise health` inside every run that enables it (~4 s), renders a slice into the prompts, and deletes the `.repowise/` index it created. Two costs follow. **(a)** The work is repeated for every run in a project whose code has barely moved. **(b)** The result is invisible: it survives only inside `prompts/*.md`, and the index it came from is gone — the owner's reaction on first contact was *"repowise çıktıları nerede göremedim?"*, and the honest answer was *nowhere*. `batonai health` (2026-07-28) made it printable on demand, but each invocation still recomputes.
 

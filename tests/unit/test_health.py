@@ -221,3 +221,76 @@ def test_source_files_survive_the_filter() -> None:
     for path in ("lib/a.dart", "src/b.py", "web/c.ts"):
         assert path in out
     assert "3 source files analyzed" in out
+
+
+# ── ADR-028: computed once per project, cached in .ai/health.json ────────────
+
+def _project(tmp_path):
+    (tmp_path / ".ai").mkdir()
+    (tmp_path / "a.py").write_text("def f():\n    return 1\n")
+    return tmp_path
+
+
+def test_cache_is_written_then_reused_without_rerunning_repowise(tmp_path, monkeypatch):
+    project = _project(tmp_path)
+    calls = []
+    monkeypatch.setattr(H, "_run_health", lambda p: calls.append(p) or SAMPLE)
+
+    first = H.health_section(project)
+    assert first and calls == [project]
+    assert (project / H.CACHE_RELPATH).is_file(), "the analysis is persisted in .ai/"
+
+    second = H.health_section(project)
+    assert second == first
+    assert calls == [project], "a fresh cache must not shell out again"
+
+
+def test_refresh_forces_a_recompute(tmp_path, monkeypatch):
+    project = _project(tmp_path)
+    calls = []
+    monkeypatch.setattr(H, "_run_health", lambda p: calls.append(p) or SAMPLE)
+    H.health_section(project)
+    H.health_section(project, refresh=True)
+    assert len(calls) == 2
+
+
+def test_cache_is_invalidated_by_a_source_edit(tmp_path, monkeypatch):
+    """The point of the freshness rule: stale analysis is worse than none."""
+    import os
+    import time
+
+    project = _project(tmp_path)
+    calls = []
+    monkeypatch.setattr(H, "_run_health", lambda p: calls.append(p) or SAMPLE)
+    H.health_section(project)
+
+    future = time.time() + 10
+    os.utime(project / "a.py", (future, future))  # a source file changed after it
+    H.health_section(project)
+    assert len(calls) == 2, "an edited source file must invalidate the cache"
+
+
+def test_cache_from_another_format_is_discarded_not_migrated(tmp_path, monkeypatch):
+    project = _project(tmp_path)
+    (project / H.CACHE_RELPATH).write_text('{"something": "else"}')
+    monkeypatch.setattr(H, "_run_health", lambda p: SAMPLE)
+    assert H.read_cache(project) is None
+    assert H.health_section(project), "it recomputes rather than failing"
+
+
+def test_an_unwritable_cache_never_breaks_a_run(tmp_path, monkeypatch):
+    project = _project(tmp_path)
+    monkeypatch.setattr(H, "_run_health", lambda p: SAMPLE)
+    monkeypatch.setattr(
+        H.Path, "write_text", lambda *a, **k: (_ for _ in ()).throw(OSError("read-only"))
+    )
+    assert H.health_section(project), "the slice is still returned"
+
+
+def test_cache_age_is_available_for_display(tmp_path, monkeypatch):
+    project = _project(tmp_path)
+    monkeypatch.setattr(H, "_run_health", lambda p: SAMPLE)
+    assert H.cache_age_s(project) is None
+    H.health_section(project)
+    age = H.cache_age_s(project)
+    assert age is not None and age < 5

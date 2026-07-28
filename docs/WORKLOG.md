@@ -358,3 +358,13 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 - A test pins that this is **reporting only**: `decide(has_commits=False) == decide(has_commits=True)`, so no wizard step was added or reordered.
 - ✅ **265 passed** (was 261; +4, and 2 existing `git_state` tests updated to the 3-tuple contract). ruff clean.
 - **Remaining queued:** ADR-028 (health cache, self-contained), ADR-031 (model choice at setup, self-contained), ADR-030 (live progress — largest: `transport/`, both adapters, `render.py`).
+
+## 2026-07-28 (cont.) · ADR-028 implemented — health cached per project
+
+- 🤖 Second queued ADR. `health_section()` now serves from `.ai/health.json` when fresh, otherwise recomputes and stores. **Measured live: 1.96 s → 0.14 s** on a repeat call.
+- **Freshness rule, because a cache that rots silently is worse than none:** invalidated when any source file's mtime is newer than the record, or after 7 days; `batonai health --refresh` forces a recompute. `batonai health` prints the age whenever it serves a stored reading, so a cached number is never shown as current.
+- The record holds the **rendered slice next to the raw KPIs**, so opening `.ai/health.json` answers "what does baton think of this project?" with no command — the visibility half of 👤's original complaint ("repowise çıktıları nerede göremedim?").
+- Two failure modes made non-fatal by construction and pinned by tests: an unwritable cache still returns the slice, and a record from another format is **discarded rather than migrated** (it is a cache, not data).
+- `.ai/.gitignore` now covers `health.json` too for newly initialized projects. `.repowise/` is still transient and removed after use — that index is repowise's, not ours.
+- ✅ **271 passed** (was 265; +6). ruff clean.
+- **Remaining queued:** ADR-031 (model choice at setup, self-contained), ADR-030 (live progress — largest: `transport/` streaming, both adapters, `render.py`).

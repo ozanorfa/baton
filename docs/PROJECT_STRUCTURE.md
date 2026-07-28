@@ -219,7 +219,7 @@ Anything pointing the other way is a bug.
             └── logs/                 # orchestrator.jsonl + raw provider stdout/stderr
 ```
 
-`batonai init` also writes `.ai/.gitignore` containing `runs/` (runs are local history; `config.yaml` and `project.md` are meant to be committed and shared with the team). **The project's root `.gitignore` is never touched** — ADR-027: baton edits only files it owns, so its own bookkeeping can never show up as part of the Coder's diff. A project set up by an older baton keeps its root-`.gitignore` entry and gains no duplicate.
+`batonai init` also writes `.ai/.gitignore` containing `runs/` and `health.json` (the latter is the per-project code-health cache, ADR-028 — computed once and reused, with an age shown wherever it is displayed) (runs are local history; `config.yaml` and `project.md` are meant to be committed and shared with the team). **The project's root `.gitignore` is never touched** — ADR-027: baton edits only files it owns, so its own bookkeeping can never show up as part of the Coder's diff. A project set up by an older baton keeps its root-`.gitignore` entry and gains no duplicate.
 
 ### 2.2 In the user's home
 

@@ -22,7 +22,17 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import time
 from pathlib import Path
+
+# ADR-028: the analysis is a property of the project, not of a run. It is
+# computed once, cached here, and reused — instead of paying ~4 s on every run
+# and leaving the result visible only inside prompts/*.md. Lives in .ai/, which
+# baton owns and which diff capture already excludes (ADR-027).
+CACHE_RELPATH = Path(".ai") / "health.json"
+# Belt-and-braces upper bound: even with no source file newer than the cache,
+# never serve an analysis older than this.
+CACHE_MAX_AGE_S = 7 * 24 * 3600
 
 # repowise health writes a ~1 MB index here on first run. We only ever run
 # `health` when the user has NOT set repowise up themselves, so baton must not
@@ -182,13 +192,85 @@ def render_health(data: dict) -> str:
     return "\n\n".join(lines)
 
 
-def health_section(project_dir: Path) -> str:
+def _newest_source_mtime(project_dir: Path) -> float:
+    """Most recent mtime among source files — the cache invalidation signal."""
+    from ai_orchestrator.context.awareness import CODE_EXTENSIONS, EXCLUDED_DIRS
+
+    newest = 0.0
+    for path in project_dir.rglob("*"):
+        if path.suffix.lower() not in CODE_EXTENSIONS:
+            continue
+        if any(part in EXCLUDED_DIRS or part == _INDEX_DIR for part in path.parts):
+            continue
+        try:
+            newest = max(newest, path.stat().st_mtime)
+        except OSError:
+            continue
+    return newest
+
+
+def read_cache(project_dir: Path) -> dict | None:
+    """The stored analysis, or None when absent/unreadable/stale (ADR-028).
+
+    Stale means: a source file has changed since it was produced, or it is
+    simply too old. A cache that silently rots is worse than no cache.
+    """
+    path = project_dir / CACHE_RELPATH
+    try:
+        record = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(record, dict) or "generated_at" not in record:
+        return None  # a format from another version: discard, never migrate
+    produced = record.get("generated_at", 0)
+    if not isinstance(produced, (int, float)):
+        return None
+    if time.time() - produced > CACHE_MAX_AGE_S:
+        return None
+    if _newest_source_mtime(project_dir) > produced:
+        return None
+    return record
+
+
+def write_cache(project_dir: Path, data: dict, section: str) -> None:
+    """Persist the analysis next to the run history. Never fatal on failure."""
+    path = project_dir / CACHE_RELPATH
+    record = {
+        "generated_at": time.time(),
+        # The rendered slice is stored alongside the raw KPIs so the file
+        # answers "what does baton think of this project?" when simply opened.
+        "section": section,
+        "kpis": data.get("kpis") or {},
+    }
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(record, indent=2))
+    except OSError:
+        pass  # a cache that cannot be written must never break a run
+
+
+def cache_age_s(project_dir: Path) -> float | None:
+    """Age of the stored analysis in seconds, or None if there is none to serve."""
+    record = read_cache(project_dir)
+    if record is None:
+        return None
+    return max(0.0, time.time() - record["generated_at"])
+
+
+def health_section(project_dir: Path, refresh: bool = False) -> str:
     """The optional health slice for a stage prompt, or "" if unavailable.
 
-    Safe to call unconditionally: returns "" when repowise is not installed or
-    the analysis yields nothing worth surfacing.
+    Served from the per-project cache when it is fresh (ADR-028); otherwise
+    recomputed and stored. Safe to call unconditionally: returns "" when
+    repowise is not installed or the analysis yields nothing worth surfacing.
     """
+    if not refresh:
+        cached = read_cache(project_dir)
+        if cached is not None:
+            return cached.get("section", "")
     data = _run_health(project_dir)
     if data is None:
         return ""
-    return render_health(data)
+    section = render_health(data)
+    write_cache(project_dir, data, section)
+    return section
