@@ -1,6 +1,6 @@
 # Architecture — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-21 · fully implemented, M0–M5 + post-MVP (ADR-017–020: opencode/deterministic providers, `batonai revise`, `batonai publish`) — adapter table below reflects *verified* CLI behavior, not assumptions
+**Status:** Living · updated 2026-07-29 · fully implemented, M0–M5 + post-MVP (ADR-017–033: opencode/deterministic/testrunner providers, `batonai revise`/`publish`/`review`, repowise code-health context, the `batonai` interactive front door and `setup` command, live progress notes) — adapter table below reflects *verified* CLI behavior, not assumptions
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 ---
@@ -12,8 +12,9 @@ Four layers with strict downward-only dependencies. Every AI-CLI-specific detail
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  CLI Layer (Typer + Rich)                                   │
-│  batonai "<request>" · batonai init · batonai doctor · batonai runs ·           │
-│  batonai resume · batonai config · batonai ask                             │
+│  batonai (no args → interactive wizard, ADR-026) · run ·    │
+│  init · setup · doctor · health · runs · resume · revise ·  │
+│  review · publish · config · ask                            │
 ├─────────────────────────────────────────────────────────────┤
 │  Orchestration Core                                         │
 │  PipelineEngine · RoutingEngine · ContextManager ·          │
@@ -22,11 +23,17 @@ Four layers with strict downward-only dependencies. Every AI-CLI-specific detail
 │  Provider Layer                                             │
 │  ProviderRegistry → ProviderAdapter (ABC)                   │
 │  ├─ ClaudeCodeAdapter    (claude -p --output-format json)   │
-│  ├─ CodexAdapter         (codex exec)                       │
-│  └─ AntigravityAdapter   (agy -p)                           │
+│  ├─ CodexAdapter         (codex exec --json; streams        │
+│  │                        progress notes, ADR-030)          │
+│  ├─ AntigravityAdapter   (agy -p)                            │
+│  ├─ OpencodeAdapter      (free-tier Publisher only, ADR-017)│
+│  ├─ DeterministicAdapter (zero-LLM Publisher floor, ADR-018)│
+│  └─ TestRunnerAdapter    (zero-LLM Tester, ADR-024)          │
 ├─────────────────────────────────────────────────────────────┤
-│  Transport Layer                                            │
-│  HeadlessTransport (subprocess)  ·  [post-MVP] TmuxTransport│
+│  Transport Layer                                             │
+│  HeadlessTransport: buffered subprocess.run by default, an  │
+│  opt-in Popen+line-read streaming path for progress notes   │
+│  (ADR-030) · [post-MVP] TmuxTransport (full observability)  │
 └─────────────────────────────────────────────────────────────┘
                             │
                             ▼
@@ -49,11 +56,17 @@ Typer application, Rich for output. Thin by design: parses arguments, loads conf
 
 | Command | Purpose |
 |---|---|
+| `batonai` (no arguments) | Interactive front door (ADR-026): scans the workspace, offers the setup it finds missing, runs code-health analysis, then asks what to do — hands off to the same `run`/`revise`/`review`/`publish` code below. Prints help instead if stdin/stdout isn't a terminal, so scripts and CI are unaffected |
 | `batonai "<request>"` | Run the configured pipeline on a request |
-| `batonai init` | Bootstrap `.ai/` in a project (config + project profile; the profile's Stack section is pre-filled by auto-detecting marker files — pubspec.yaml, package.json, pyproject.toml, go.mod, …) |
+| `batonai init` | Bootstrap `.ai/` in a project (config + project profile; the profile's Stack section is pre-filled by auto-detecting marker files — pubspec.yaml, package.json, pyproject.toml, go.mod, …). Also offers a model choice per provider (ADR-031) |
+| `batonai setup` | Change which provider handles each role and which model each provider runs, at any time — merges into `.ai/config.yaml` without disturbing other settings (ADR-032) |
 | `batonai doctor` | Verify every configured provider: binary found, version, authenticated |
+| `batonai health` | Print the repowise code-health hotspot slice every stage prompt would receive, zero tokens — served from the per-project cache when fresh (`--refresh` to force, ADR-028) |
 | `batonai runs list` / `batonai runs show <id>` | Run history and inspection |
 | `batonai resume <run-id>` | Continue a failed run from its failed stage (`--with-designer`/`--with-publisher` to keep optional stages enabled) |
+| `batonai revise "<correction>"` | Continue the **last** run without starting over — the Coder resumes its own session (ADR-019) |
+| `batonai review` | Send the current working-tree diff to the Reviewer, read-only and pipeline-free (ADR-022) |
+| `batonai publish` | Draft a commit message; `--commit`/`--push` to actually commit/push — the **only** command that ever runs git, and only on an explicit flag (ADR-020) |
 | `batonai config show` | Print merged effective configuration and its sources |
 | `batonai ask --role <role> "<prompt>"` | One-shot single-role invocation (debugging/utility) |
 
@@ -261,4 +274,4 @@ Per-project persistent knowledge in `.ai/memory/`: decisions made in past runs, 
 | Message bus / event-driven core | Sequential pipeline needs a for-loop, not an event system |
 | Server process + DB (FastAPI/SQLite) | Local-first single command; the filesystem is the database, the run directory is the schema |
 | tmux pane-scraping as transport | Heuristic completion detection is the flakiest part of CAO; headless JSON is deterministic |
-| Streaming stage-to-stage piping | Artifacts on disk are inspectable, resumable, and debuggable; streaming buys nothing in a sequential pipeline |
+| Streaming stage-to-stage piping | Artifacts on disk are inspectable, resumable, and debuggable; streaming buys nothing in a sequential pipeline. *(Distinct from ADR-030's streaming: that reads one stage's own stdout live for a progress note while still capturing and writing the full output to disk exactly as before — no artifact ever travels stage-to-stage as a stream.)* |

@@ -140,7 +140,8 @@ Opsiyonel Yayıncı aşaması (ve `batonai ask --role publisher`), bu sığ "dif
 | `batonai ask --role coder "<soru>"` | Tek bir AI'ya ucuz, tek seferlik bir çağrı — pipeline yok, artifact yok. Küçük sorular veya minik düzeltmeler için ideal |
 | `batonai health` | Baton'un kod-sağlığı açısından riskli saydığı dosyaları gösterir (her aşamaya verilen metnin aynısı). Ücretsiz, run gerektirmez — `repowise` kurulu olmalı |
 | `batonai doctor` | Tüm sağlayıcıların kurulu ve giriş yapılmış olduğunu kontrol eder |
-| `batonai init` | Bir projede `.ai/`'ı kurar (tekrar çalıştırmak güvenlidir; senin düzenlemelerinin üzerine asla yazmaz) |
+| `batonai init` | Bir projede `.ai/`'ı kurar (tekrar çalıştırmak güvenlidir; senin düzenlemelerinin üzerine asla yazmaz). Her sağlayıcı için hangi modeli kullanacağını sorar — Enter, o CLI'ın kendi ayarını korur (ADR-031) |
+| `batonai setup` | Hangi AI'ın hangi işi yaptığını (Coder=Claude, Planner=Codex…) ve hangi modeli kullandığını istediğin zaman değiştir. Varsayılan düzen aynı kalır — bu sadece görünür ve değiştirilebilir yapar (ADR-032) |
 | `batonai config show` | Geçerli tam yapılandırmayı ve her değerin nereden geldiğini gösterir |
 | `batonai runs list` | Bu projedeki geçmiş tüm çalıştırmaları listeler: durum, maliyet, karar |
 | `batonai runs show <run-id>` | Bir çalıştırmanın detayını gösterir |

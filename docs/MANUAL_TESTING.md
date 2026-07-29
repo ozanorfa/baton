@@ -398,3 +398,74 @@ s = snapshot_changes(Path('.')); print(s.changed)"     # still False — noise i
 
 Excluded: `__pycache__`, `*.pyc`, `*.pyo`, `.pytest_cache`, `.ruff_cache`, `.mypy_cache`, `node_modules`, `.DS_Store`. **Not** excluded on purpose: `build/`, `dist/`, `target/` — real source directories in some projects, and already gitignored when they aren't. Free checks: `uv run pytest tests/unit/test_run_manager.py tests/unit/test_cli_init.py`.
 
+
+## Code-health cache (ADR-028) — computed once per project, not per run
+
+**Free, and the point of it:** the first call computes and stores; the second is served from disk.
+
+```bash
+time batonai health          # first call: shells out to repowise, ~2-4s
+time batonai health          # second call: from .ai/health.json, well under 1s
+                             #   and prints "from the cached analysis, computed <age> ago"
+batonai health --refresh     # force a recompute regardless of freshness
+```
+
+**Free — the cache invalidates itself when code changes:**
+
+```bash
+touch src/some_file.py       # any source file, newer than the cache
+batonai health                # recomputes automatically — no stale reading served
+```
+
+`.ai/health.json` holds the rendered slice next to the raw KPIs, so it's readable by just opening it — no command needed. It's covered by `.ai/.gitignore` (local state, like `runs/`). Free logic check: `uv run pytest tests/unit/test_health.py -k cache`.
+
+## No-baseline-commit reporting (ADR-029) — a repo baton (or you) just `git init`'d
+
+**Free:** create a git repo with files but no commit, and watch both surfaces name it distinctly from "dirty":
+
+```bash
+mkdir /tmp/nobase && cd /tmp/nobase && git init -q && echo "x=1" > a.py
+batonai            # wizard scan: "repository has no commits yet — with no baseline,
+                   #   every file counts as a change…" + the exact `git commit` command
+git rev-parse --verify HEAD   # still fails afterward — baton never committed it for you
+```
+
+Same wording from a scripted run (no wizard): `batonai "<request>"` prints the identical warning before the pipeline starts. Free logic check: `uv run pytest tests/unit/test_scan.py -k commits`.
+
+## Live progress notes (ADR-030) — evidence a long stage is actually working
+
+**Real test, spends quota:** watch the spinner *change text* while the Planner (codex) works, instead of sitting still for minutes.
+
+```bash
+batonai "<a request that makes the planner explore several files>"
+```
+
+What to expect: next to the spinner, short notes like `$ sed -n '1,240p' src/thing.py` appear and update as codex works — this is `codex --json`'s own event stream, forwarded live, not a fabricated heartbeat. The **Coder** (claude) still shows a plain spinner — claude doesn't stream yet (documented limitation, see ADR-030's status line). Notes never reach the durable log: `grep -c stage_progress .ai/runs/*/logs/orchestrator.jsonl` must print `0`.
+
+Free logic check (no live provider): `uv run pytest tests/unit/test_progress.py` — covers the buffered-path-unless-streaming guarantee, a watchdog timeout on a hanging streamed process, and that notes can't carry escape sequences or Rich markup.
+
+## Model choice at setup, and `batonai setup` to change it later (ADR-031/032/033)
+
+**Free — offered once, at `init`:**
+
+```bash
+mkdir /tmp/models && cd /tmp/models && git init -q && echo "[project]" > pyproject.toml
+batonai init
+```
+Enter keeps everything (writes no `providers:` block at all — byte-identical to today); typing `haiku` for claude writes `providers: {claude: {model: haiku}}`. `--no-models` skips the question outright; without a terminal it's never asked (a scripted `batonai init` never blocks).
+
+**Free — revise it later, any time, without re-running `init`:**
+
+```bash
+batonai setup    # shows the current role→provider→model table, then asks about each
+```
+Enter everywhere → "nothing changed", file untouched. Provider names are validated (an unknown one is rejected with a note); model ids are **not** — whatever you type is passed straight to the CLI. `-` clears a model pin back to the CLI's own default.
+
+**Free — live model discovery for antigravity:** unlike codex/claude, `agy` can list its own current models. Enable the Designer role first (`roles: {designer: {enabled: true}}` in `.ai/config.yaml`), then:
+```bash
+batonai setup    # the antigravity model prompt shows a real, live list (e.g. "gemini-3.6-flash-high/…")
+                 #   fetched from `agy models`, not a hardcoded guess
+```
+If `agy` is missing or the call fails, this silently falls back to no suggestion — never an error. codex and opencode have no such list; they show an explanatory hint instead (where to find a valid id) rather than nothing.
+
+Free logic checks: `uv run pytest tests/unit/test_model_catalog.py tests/unit/test_setup.py`.

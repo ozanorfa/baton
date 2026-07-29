@@ -23,6 +23,23 @@ Convention: one ADR per consequential decision. New decisions get new ADRs; reve
 | [ADR-014](#adr-014) | Optional Publisher role: per-project, per-provider, prepare-only | Accepted |
 | [ADR-015](#adr-015) | Same-provider session chaining, capability- and access-aware | Accepted |
 | [ADR-016](#adr-016) | Default provider assignment spreads quota across three pools by task depth | Accepted |
+| [ADR-017](#adr-017) | Publisher runs on opencode (a free-tier client), confined to shallow text | Accepted |
+| [ADR-018](#adr-018) | A zero-LLM Publisher floor: conventional-commit from the diffstat | Accepted |
+| [ADR-019](#adr-019) | `ai revise`: session-preserving iteration instead of a chat mode | Accepted |
+| [ADR-020](#adr-020) | `ai publish`: the one deliberate, user-triggered exception to "no git" | Accepted |
+| [ADR-021](#adr-021) | A declared no-op is a success, not a silent-permission-block failure | Accepted |
+| [ADR-022](#adr-022) | `ai review`: the Reviewer on demand, over the current diff | Accepted |
+| [ADR-023](#adr-023) | A bounded fix-loop: one automatic pass on a NEEDS WORK verdict | Accepted |
+| [ADR-024](#adr-024) | A zero-LLM Tester role: run the project's tests, report the result | Accepted |
+| [ADR-025](#adr-025) | Optional repowise code-health context: hotspots in every stage prompt | Accepted |
+| [ADR-026](#adr-026) | `batonai`: an interactive front door (scan → offer → run) | Accepted |
+| [ADR-027](#adr-027) | Baton's own footprint is never mistaken for the coder's work | Accepted |
+| [ADR-028](#adr-028) | Code-health is computed once per project and cached in `.ai/`, not per run | Accepted |
+| [ADR-029](#adr-029) | A repository with no baseline commit is reported, never fixed by baton | Accepted |
+| [ADR-030](#adr-030) | Live progress notes from the provider's own event stream | Accepted |
+| [ADR-031](#adr-031) | Model choice is asked at setup and pinned per project | Accepted |
+| [ADR-032](#adr-032) | `batonai setup`: the routing and model decisions stay revisable | Accepted |
+| [ADR-033](#adr-033) | Model suggestions are shared and live-discovered, not silently absent | Accepted |
 
 ---
 
@@ -510,7 +527,7 @@ It honors the pure-adapter contract (ARCHITECTURE §3.1) by delegating the one s
 
 ## ADR-026 — `batonai`: an interactive front door (scan → offer → run)
 
-**Status:** Accepted · 2026-07-28 · **Design only — not yet implemented** (scoped step-by-step per the owner's working style; implementation + doc rename follow as a separate step).
+**Status:** Accepted · 2026-07-28 · **Implemented 2026-07-28**, in the same session this ADR was written (the owner's step-by-step preference paused implementation only long enough for the design to be reviewed first). The binary rename, the wizard, and the scan/decide split described below are all live; `docs/WORKLOG.md` 2026-07-28 has the implementation and verification notes.
 
 **Context.** Every command baton ships assumes the user already holds baton's mental model. A newcomer who opens a folder and types the command gets a Typer help dump (`no_args_is_help=True`, `cli/app.py:28`) — a list of ten subcommands with no indication of which one to type first. To get to a successful run they must already know, unprompted, to: check `doctor` before trusting anything, run `init` once per project, start from a clean git tree (the run only *warns*, after the fact), and that `--health` exists at all. `init` itself is a silent file-writer: it never asks, never reports what it found, never suggests what comes next beyond one printed line.
 

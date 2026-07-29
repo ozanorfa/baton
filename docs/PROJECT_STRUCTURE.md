@@ -55,16 +55,31 @@ cli/
 │                           #   decide() maps that state → wizard steps (PURE, no LLM)
 ├── wizard.py               # ADR-026: the interactive front door — prompts, then
 │                           #   hands off to the same run/revise/review/publish commands
+├── model_catalog.py        # ADR-031/033: model suggestions/hints for init + setup —
+│                           #   live discovery (`agy models`) where a provider supports it,
+│                           #   a static fallback otherwise; never validated (ADR-031)
 ├── commands/
 │   ├── run.py              # `batonai run "<request>"` — the pipeline (+ --with-designer,
-│   │                       #   dirty-git-tree warning)
-│   ├── init.py             # `batonai init` — bootstrap .ai/ in a project
+│   │                       #   dirty-git-tree / no-baseline-commit warnings, ADR-029)
+│   ├── init.py             # `batonai init` — bootstrap .ai/ in a project; offers a
+│   │                       #   model choice per provider (ADR-031)
+│   ├── setup.py            # `batonai setup` — revise role→provider and provider→model
+│   │                       #   at any time; merges into .ai/config.yaml (ADR-032)
 │   ├── doctor.py           # `batonai doctor` — provider health checks
+│   ├── health.py           # `batonai health` — print the repowise code-health slice
+│   │                       #   on demand, zero tokens (cached per project, ADR-028)
 │   ├── runs.py             # `batonai runs list|show` — run history
 │   ├── resume.py           # `batonai resume <run-id>` — continue from the failed stage
+│   ├── revise.py           # `batonai revise "<correction>"` — continue the last run,
+│   │                       #   Coder resumes its own session (ADR-019)
+│   ├── review.py           # `batonai review` — Reviewer over the current diff, read-only
+│   │                       #   and pipeline-free (ADR-022)
+│   ├── publish.py          # `batonai publish` — draft/commit/push, the one command
+│   │                       #   that ever runs git, and only on explicit flags (ADR-020)
 │   ├── config_cmd.py       # `batonai config show` (merged config + value sources)
 │   └── ask.py              # `batonai ask --role <role> "<prompt>"` — one-shot escape hatch
-└── render.py               # ALL Rich output: progress events, summary/report tables, errors
+└── render.py               # ALL Rich output: progress events (incl. ADR-030's live notes),
+                            #   summary/report tables, the wizard's scan report, errors
 ```
 
 **Responsibility:** argument parsing, config loading, delegation, rendering. **Zero business logic** — every command body should read as "parse → call core → render". `render.py` centralizes Rich so the core stays terminal-agnostic (a future MCP entry layer reuses the core untouched, ARCHITECTURE §7).
@@ -119,11 +134,19 @@ prompts/
 
 ```
 providers/
-├── base.py                 # ProviderAdapter ABC, Capabilities, Health
-├── registry.py             # ProviderRegistry: built-in registration + entry-point discovery
-├── claude.py               # ClaudeCodeAdapter
-├── codex.py                # CodexAdapter
-└── antigravity.py          # AntigravityAdapter (ADR-012)
+├── base.py              # ProviderAdapter ABC, Capabilities, Health, progress_note()
+│                        #   default (ADR-030) and the shared _sanitize() for untrusted
+│                        #   provider text rendered to a terminal
+├── registry.py          # ProviderRegistry: built-in registration + entry-point discovery
+├── claude.py             # ClaudeCodeAdapter — the Coder's usual provider
+├── codex.py              # CodexAdapter — implements progress_note() from `--json`
+│                         #   item.started/completed events (ADR-030)
+├── antigravity.py        # AntigravityAdapter (ADR-012) — the Designer's provider
+├── opencode.py           # OpencodeAdapter (ADR-017) — free-tier client, Publisher only
+├── deterministic.py      # DeterministicAdapter (ADR-018) — zero-LLM Publisher floor,
+│                         #   a conventional-commit message from `git diff --stat`
+└── testrunner.py         # TestRunnerAdapter (ADR-024) — zero-LLM Tester, runs the
+                          #   project's own test command and reports pass/fail
 ```
 
 **Responsibility:** everything CLI-vendor-specific — flags, output parsing, token-usage extraction, auth checks — and *nothing* else. Adapters are pure (build `Invocation`, parse `TransportResult`; never spawn processes), which is what makes `tests/contract/` possible. When a vendor changes their CLI (risk R1), the blast radius is exactly one file plus its fixtures.
@@ -208,9 +231,15 @@ Anything pointing the other way is a bug.
 <user-project>/
 └── .ai/
     ├── config.yaml             # project config: pipeline stages, role→provider bindings
+    │                           #   (editable by hand, or via `batonai setup`, ADR-032)
     ├── project.md              # Project context layer: stack, conventions (batonai init bootstraps
     │                           #   with the stack auto-detected from marker files; user curates —
     │                           #   this file is the token budget's best friend)
+    ├── .gitignore              # ignores runs/ and health.json (ADR-027) — never the project's
+    │                           #   own root .gitignore, which baton does not touch
+    ├── health.json             # per-project code-health cache (ADR-028): the rendered
+    │                           #   repowise slice + raw KPIs, refreshed when a source file
+    │                           #   is newer than it or it turns 7 days old
     ├── prompts/                # optional per-project role template overrides
     └── runs/
         └── 2026-07-11_1432_a3f9/     # one dir per run (ARCHITECTURE §2.4)
@@ -221,7 +250,7 @@ Anything pointing the other way is a bug.
             └── logs/                 # orchestrator.jsonl + raw provider stdout/stderr
 ```
 
-`batonai init` also writes `.ai/.gitignore` containing `runs/` and `health.json` (the latter is the per-project code-health cache, ADR-028 — computed once and reused, with an age shown wherever it is displayed) (runs are local history; `config.yaml` and `project.md` are meant to be committed and shared with the team). **The project's root `.gitignore` is never touched** — ADR-027: baton edits only files it owns, so its own bookkeeping can never show up as part of the Coder's diff. A project set up by an older baton keeps its root-`.gitignore` entry and gains no duplicate.
+`config.yaml` and `project.md` are meant to be committed and shared with the team; `.gitignore`, `health.json` and `runs/` are local state and stay out of version control. **The project's root `.gitignore` is never touched** (ADR-027) — baton edits only files it owns, so its own bookkeeping can never show up as part of the Coder's diff. A project set up by an older baton (which did append to the root `.gitignore`) keeps that entry and gains no duplicate.
 
 ### 2.2 In the user's home
 
