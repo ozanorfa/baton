@@ -75,7 +75,8 @@ def test_an_unknown_provider_is_refused_not_written(monkeypatch):
 def test_model_answers_are_not_validated(monkeypatch):
     """Model ids change often; the CLI is the authority, not baton (ADR-031)."""
     monkeypatch.setattr(S.typer, "prompt", lambda *a, **k: "some-2029-model")
-    assert S.choose_models({"claude": None}, ["claude"]) == {"claude": "some-2029-model"}
+    result = S.choose_models({"claude": None}, ["claude"], {"claude": "claude"})
+    assert result == {"claude": "some-2029-model"}
 
 
 def test_setup_reports_when_nothing_changed(tmp_path, monkeypatch):

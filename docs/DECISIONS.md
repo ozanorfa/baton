@@ -1,6 +1,6 @@
 # Architectural Decision Records — AI Coding Orchestrator
 
-**Status:** Living · 32 ADRs · updated 2026-07-28
+**Status:** Living · 33 ADRs · updated 2026-07-29
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Convention: one ADR per consequential decision. New decisions get new ADRs; reversals supersede, never rewrite history. Any future proposal for dynamic/LLM-driven orchestration **requires** an ADR here before code (risk R7 guard).
@@ -671,3 +671,24 @@ This is a gap in a tool whose whole claim is that routing is legible: which *pro
 **Trade-offs.** (a) Losing comments in a hand-annotated `.ai/config.yaml` is a genuine cost; a comment-preserving round-trip needs a different YAML library, and the warning was judged sufficient for a file baton itself generates. (b) The provider list is whatever the registry reports, so a plugin (ADR-009) appears automatically — including one that makes no sense for a given role; role/provider compatibility is not modelled, and preflight remains the check that matters.
 
 **Alternatives considered.** (a) Tell users to edit `.ai/config.yaml` — the status quo; it works, but it makes a first-class decision feel like an internal detail and gives no discoverable list of valid providers. (b) Ask everything during the wizard's setup step — rejected as scope creep on a flow ADR-026 deliberately kept to two questions; `init` now points at `batonai setup` instead. (c) A flag-driven `batonai config set roles.coder.provider=codex` — more scriptable, but it answers "how do I change it" only for someone who already knows what the options are.
+
+
+## ADR-033 — Model suggestions are shared and live-discovered, not silently absent
+
+**Status:** Accepted · 2026-07-29 · **Implemented 2026-07-29** (a same-day fix to ADR-031/032's live behaviour).
+
+**Context.** A live user report: running `batonai init`, the `codex` model prompt showed nothing at all — no suggestions, no hint — while `claude`'s did (`opus/sonnet/haiku`). The user happened to already know a valid codex model id from their own `~/.codex/config.toml` and typed it; a user who didn't would have been stuck typing a guess, or pressing Enter and never learning a choice existed. Root cause: `init.py` and `setup.py` each carried their **own copy** of a `MODEL_SUGGESTIONS`/`MODEL_HINT` dict, both containing only a `claude` entry — the two commands had drifted, and `codex` had simply never been added to either.
+
+Investigating further found a second real capability going unused: `agy` (the antigravity CLI) ships an `agy models` subcommand that prints its current, real model list — unlike codex or claude, which expose no such thing. Wiring that in gives genuinely live, always-current suggestions for the one provider that supports it, rather than a static guess that goes stale (exactly the failure ADR-031 designed the "no validation" rule around).
+
+**Decision.** Extract a single shared module, `cli/model_catalog.py`, used by both `init` and `setup`.
+
+- **One source of hints/suggestions**, so the two commands cannot drift again. `codex` and `opencode` (neither has a listable model set) now get an explanatory hint instead of silence — "no fixed list — check `~/.codex/config.toml`'s `model =` line…" — so a user without prior knowledge is told where to look rather than shown nothing.
+- **Live discovery where a provider actually supports it.** `discover_models()` shells out to `agy models` and parses its plain output; on success, live suggestions are shown in place of any static list. This is best-effort by construction — a missing binary, timeout, non-zero exit, or empty output all yield no suggestions, never an error, exactly like every other optional shell-out in this codebase (`repowise health`, ADR-025).
+- **Bounded, not a dump:** capped at 8 suggestions, matching the existing pattern for anything the user is meant to glance at, not read in full.
+
+**A second bug found while verifying the fix, not in review.** `agy models` was live-tested twice with different results: with `stdin=/dev/null` it returned its list in ~2 s; left to inherit the calling process's ambient stdin (a real pty, not closed, not fed) it **hung indefinitely** until killed. `discover_models()`'s `subprocess.run` call did not set `stdin` at all — meaning it silently inherited whatever fd `init`/`setup` happened to have, which in a real interactive terminal session is exactly the hanging case. Fixed by passing `stdin=subprocess.DEVNULL` explicitly, so the child process never depends on the parent's stdin type. Re-verified afterward through an actual pty (`script`): the same call completed in 1.96 s. A test pins that `stdin=subprocess.DEVNULL` is always passed.
+
+**Trade-offs.** (a) `agy models`' output format is not a documented contract — a future version could change or remove it, in which case `discover_models` simply returns nothing and the (still-present) static/hint fallback takes over; nothing breaks, the suggestion just reverts to what it is for codex today. (b) Every `setup`/`init` call that touches antigravity now costs up to ~2 s for the live query; judged worth it against showing a stale or absent list.
+
+**Alternatives considered.** (a) Hardcode a codex model list — rejected on the same ADR-031 grounds that killed the idea originally: model ids change too often, and a hardcoded list would eventually mislead rather than help. (b) Leave `codex`/`opencode` with no suggestion, since neither has a machine list — rejected once the reporter's experience showed "nothing at all" reads as a gap, not a deliberate absence; a hint costs nothing and was missing purely by omission.

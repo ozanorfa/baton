@@ -15,18 +15,11 @@ from pathlib import Path
 import typer
 import yaml
 
-from ai_orchestrator.cli import render
+from ai_orchestrator.cli import model_catalog, render
 from ai_orchestrator.config.loader import ConfigError, load_config
 from ai_orchestrator.providers import load_all
 
 CONFIG_RELPATH = Path(".ai") / "config.yaml"
-
-# Suggestions only — never validated. Model ids are vendor-specific and change
-# often, so an unrecognised answer is passed through to the CLI (ADR-031).
-MODEL_SUGGESTIONS: dict[str, tuple[str, ...]] = {
-    "claude": ("opus", "sonnet", "haiku"),
-}
-MODEL_HINT = {"claude": "opus = strongest/slowest · haiku = cheapest/fastest"}
 
 # Roles whose provider is a real choice. The zero-LLM roles are excluded: the
 # tester runs your test command and the deterministic publisher floor is a
@@ -75,8 +68,15 @@ def choose_providers(current: dict[str, str], available: list[str]) -> dict[str,
     return chosen
 
 
-def choose_models(current: dict[str, str | None], providers: list[str]) -> dict[str, str]:
-    """Ask which model each provider should use. '-' clears a pin."""
+def choose_models(
+    current: dict[str, str | None], providers: list[str], commands: dict[str, str]
+) -> dict[str, str]:
+    """Ask which model each provider should use. '-' clears a pin.
+
+    `commands` maps provider name to its actually-configured CLI command, so
+    live discovery (e.g. `agy models`) queries what the project really runs,
+    not just the provider's usual default.
+    """
     render.console.print(
         "\n[bold]Model per provider[/bold] [dim](Enter = keep · '-' = use the CLI's "
         "own setting)[/dim]"
@@ -84,10 +84,12 @@ def choose_models(current: dict[str, str | None], providers: list[str]) -> dict[
     chosen: dict[str, str] = {}
     for provider in providers:
         now = current.get(provider) or "CLI default"
-        if hint := MODEL_HINT.get(provider):
+        command = commands.get(provider, provider)
+        suggestions = model_catalog.suggestions_for(provider, command)
+        if hint := model_catalog.hint_for(provider):
             render.console.print(f"  [dim]{hint}[/dim]")
         label = f"  {provider} [{now}]"
-        if suggestions := MODEL_SUGGESTIONS.get(provider, ()):
+        if suggestions:
             label += f" ({'/'.join(suggestions)})"
         answer = typer.prompt(label, default="", show_default=False).strip()
         if answer:
@@ -145,7 +147,10 @@ def setup() -> None:
     # about the same provider three times exhausts piped input and aborts.
     effective = {**current_roles, **roles}
     in_use = sorted({effective[r] for r in CHOOSABLE_ROLES if r in effective})
-    models = choose_models(current_models, in_use)
+    commands = {
+        name: cfg.command for name, cfg in loaded.config.providers.items() if name in in_use
+    }
+    models = choose_models(current_models, in_use, commands)
 
     if not roles and not models:
         render.console.print("\nnothing changed.")

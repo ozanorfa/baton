@@ -10,24 +10,16 @@ from pathlib import Path
 
 import typer
 
-from ai_orchestrator.cli import render
+from ai_orchestrator.cli import model_catalog, render
 from ai_orchestrator.context.awareness import stack_labels  # single source of truth
 
 # ADR-031: baton pins no model of its own, so whatever each CLI is configured to
 # do silently decides cost and speed — on one machine that was codex/gpt-5.6-sol
 # and claude/opus, neither chosen for the project, neither visible from baton.
 # Setup offers the choice; "use the CLI's default" stays the default, so pressing
-# Enter changes nothing for anyone.
-#
-# Suggestions only. Nothing is validated against this list: model identifiers are
-# vendor-specific and change often, so an unrecognised answer is passed straight
-# through to the CLI, which is the authority.
-MODEL_SUGGESTIONS: dict[str, tuple[str, ...]] = {
-    "claude": ("opus", "sonnet", "haiku"),
-}
-MODEL_HINT = {
-    "claude": "opus = strongest and slowest; haiku = cheapest and fastest",
-}
+# Enter changes nothing for anyone. Suggestions/hints live in `model_catalog`,
+# shared with `batonai setup` — they used to be duplicated per command, which is
+# how `codex` ended up with neither (found live, 2026-07-29).
 
 
 def prompt_models(providers: list[str]) -> dict[str, str]:
@@ -42,8 +34,9 @@ def prompt_models(providers: list[str]) -> dict[str, str]:
         "setting, which is what happens today)[/dim]"
     )
     for provider in providers:
-        suggestions = MODEL_SUGGESTIONS.get(provider, ())
-        if hint := MODEL_HINT.get(provider):
+        command = model_catalog.DEFAULT_COMMANDS.get(provider, provider)
+        suggestions = model_catalog.suggestions_for(provider, command)
+        if hint := model_catalog.hint_for(provider):
             render.console.print(f"  [dim]{hint}[/dim]")
         # Plain text: typer.prompt writes straight to the stream and does not
         # interpret Rich markup, so tags here would be printed literally.
