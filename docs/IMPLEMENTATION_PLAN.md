@@ -1,6 +1,6 @@
 # Implementation Plan — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-11 · **ALL MILESTONES COMPLETE (M0–M5, 2026-07-12)** — next: post-MVP roadmap (§4), starting with session persistence · progress detail in [TASKS.md](TASKS.md), history in [WORKLOG.md](WORKLOG.md)
+**Status:** Frozen snapshot of the build plan · milestones complete 2026-07-12 · §4's post-MVP roadmap is kept current; everything else is history — what shipped since is in [CHANGELOG.md](../CHANGELOG.md), [DECISIONS.md](DECISIONS.md) and [WORKLOG.md](WORKLOG.md) · progress detail in [TASKS.md](TASKS.md), history in [WORKLOG.md](WORKLOG.md)
 **Related docs:** [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 ---
@@ -86,7 +86,7 @@ Failure-path UX (clear resume instructions after fail-stop), `batonai runs list/
 ### Post-MVP roadmap (ordered, not scheduled)
 1. ~~**Session persistence**~~ — **shipped 2026-07-12 as ADR-015** (same-provider chaining within a run; live-verified cached-token ratio rising 70%→84% through the chain). Cross-run session reuse (resuming a project's *last* run) remains open for the future memory system.
 2. **tmux observability layer** — optional live view of provider processes (borrowing CAO's patterns); never the parsing mechanism.
-3. **New roles** — Tester first (highest value: closes the loop with actual verification), then Documentation, Security, Performance, Deployment.
+3. **New roles** — ~~Tester first~~ **shipped 2026-07-27 as ADR-024** (zero-LLM `testrunner`, `--with-tester`); the Publisher followed as ADR-014/017/018. Still open: Documentation, Security, Performance, Deployment.
 4. **Retries & escalation** — policy-driven (config), still deterministic.
 5. **MCP integration** — expose the orchestrator as an MCP server so other tools can invoke pipelines; consume MCP tools for context enrichment.
 6. **Memory system** — per-project persistent knowledge (decisions made, conventions learned) fed into the Project context layer.

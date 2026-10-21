@@ -1,6 +1,8 @@
-# Nasıl Kullanılır — AI Coding Orchestrator ("baton")
+# Nasıl Kullanılır — batonai
 
-Sade, pratik bir rehber. Teknik tasarım için [ARCHITECTURE.md](ARCHITECTURE.md) ve [DECISIONS.md](DECISIONS.md)'a, uygulamalı test komutları için [MANUAL_TESTING.md](MANUAL_TESTING.md)'a bakabilirsin. *(For English: [HOW_TO_USE.md](HOW_TO_USE.md))*
+*[English](HOW_TO_USE.md) · Türkçe*
+
+Sade, pratik bir rehber. Teknik tasarım için [ARCHITECTURE.md](ARCHITECTURE.md) ve [DECISIONS.md](DECISIONS.md)'a, uygulamalı test komutları için [MANUAL_TESTING.md](MANUAL_TESTING.md)'a bakabilirsin.
 
 ---
 
@@ -19,15 +21,16 @@ Bu tek satırın arkasında sırayla şunlar olur: bir **Planlayıcı (Planner)*
 ## 2. Başlamadan önce
 
 Bilgisayarında kurulu ve giriş yapılmış olması gerekenler:
-- `claude` (Claude Code)
-- `codex` (Codex CLI)
-- `agy` (Antigravity CLI)
+- `claude` (Claude Code) — Coder
+- `codex` (Codex CLI) — Planner ve Reviewer
 
-Üçünü birden kontrol et:
+İsteğe bağlı, yalnızca ilgili aşamayı açarsan: `agy` (Antigravity CLI, `--with-designer` için), `opencode` (ücretsiz istemci, `--with-publisher` için), `repowise` (`--health` için).
+
+Hepsini tek seferde kontrol et:
 ```bash
 batonai doctor
 ```
-Her satırda `✓ healthy` yazmalı. Biri yazmıyorsa, devam etmeden önce o sağlayıcının girişini/kurulumunu düzelt — orchestrator bozuk bir sağlayıcıyı atlayıp geçmez.
+Zorunlu iki satırda `✓ healthy` yazmalı; biri yazmıyorsa devam etmeden önce o sağlayıcının girişini/kurulumunu düzelt — orchestrator bozuk bir sağlayıcıyı atlayıp geçmez. Aşaması kapalı olan sağlayıcılar *optional* olarak listelenir ve seni asla engellemez.
 
 ## 3. Kurulum
 

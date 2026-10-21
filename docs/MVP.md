@@ -1,6 +1,6 @@
 # MVP — First Working Version
 
-**Status:** Living · updated 2026-07-12 · **MVP ACHIEVED (M4/T30):** real acceptance run on a fresh Flutter repo — Face ID feature planned (codex), implemented (claude, 299 insertions across 9 files), reviewed (codex, verdict APPROVE WITH NOTES); report.json, diff.patch, all artifacts verified. Checklist below ticked accordingly.
+**Status:** Frozen — historical record of the first working version · **MVP ACHIEVED 2026-07-12 (M4/T30):** real acceptance run on a fresh Flutter repo — Face ID feature planned (codex), implemented (claude, 299 insertions across 9 files), reviewed (codex, verdict APPROVE WITH NOTES); report.json, diff.patch, all artifacts verified. Checklist below ticked accordingly.
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md)
 
 The MVP is milestone **M4** (tasks T01–T30): one command runs a deterministic four-stage pipeline over three AI CLIs and produces inspectable artifacts plus an execution report. Nothing dynamic, nothing parallel, nothing clever.

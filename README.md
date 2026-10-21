@@ -1,4 +1,6 @@
-# AI Coding Orchestrator
+# batonai
+
+*User guide: [English](docs/HOW_TO_USE.md) · [Türkçe](docs/HOW_TO_USE.tr.md)*
 
 A **local-first CLI** that turns multiple AI coding assistants (Claude Code, Codex CLI, Antigravity CLI) into one deterministic development pipeline:
 
@@ -12,13 +14,21 @@ batonai "Add Face ID support to the Flutter application"
 
 ## Status
 
-**All planned milestones complete (M0–M5, 2026-07-12).** MVP acceptance passed on a real Flutter app (Face ID feature, reviewer verdict APPROVE WITH NOTES); hardening shipped (`batonai resume`, `batonai runs`, Ctrl-C safety), workspace awareness landed (ADR-013: established projects get a docs index + read-first instruction; greenfield get propose-structure guidance), an optional Publisher role (ADR-014: drafts a commit message + PR description on a provider of your choice, independent of the coder — never runs git itself), and same-provider session chaining (ADR-015: consecutive same-vendor stages resume each other's session instead of cold-starting — live-verified to cut redundant repo re-exploration without changing which model does which job). Since then: quota-spread defaults now put the shallow Publisher on a free client (ADR-017: opencode) with a zero-LLM commit-message floor (ADR-018: `deterministic`); and an interactive loop landed — `batonai revise` iterates on the last run with the Coder resuming its own session (ADR-019), and `batonai publish --commit/--push` is the one user-invoked git step (ADR-020). Most recently, the CLI grew a front door: bare `batonai` is an interactive wizard that scans the workspace, offers the setup it finds missing, and runs code-health analysis on its own, so a newcomer needs no prior knowledge of which command comes first (ADR-026 — which also renamed the binary from `ai`). **Designed and queued, not yet built** (ADR-028–031, all recorded before any code): a per-project code-health cache in `.ai/` instead of a per-run probe; a repo-with-no-baseline-commit reported rather than silently fixed (baton still never commits outside `batonai publish`); live progress notes streamed from each provider's own event output, so a ten-minute stage is legibly working rather than possibly hung; and a model choice offered at setup, since today the model silently comes from each CLI's own config. Then the rest of the post-MVP roadmap (tmux observability, new roles, a persistent REPL, MCP context reducer, memory). **2026-10-21 — hardening pass (ADR-034):** a full from-scratch review closed eight *silent* failure paths — a crash can no longer leave a run reading as "running"/"succeeded", the no-change safety net now works on `revise`/fix-loop, untracked files with spaces reach the Reviewer, timed-out providers die as a whole process tree, Ctrl-C mid-stage shows the summary and exits 130, stale commit drafts are not reused, and the Coder can be given bounded command access (`allow_commands`) to actually run its verification. See [docs/TASKS.md](docs/TASKS.md) for progress and [docs/WORKLOG.md](docs/WORKLOG.md) for history.
+**v0.1.0 — first public release** (2026-10-21; PyPI publication pending, install from GitHub meanwhile — see below). Everything described in this README is built, tested and in use:
+
+- the six-stage pipeline with Claude Code, Codex, Antigravity, opencode, a zero-LLM test runner and a zero-LLM commit-message floor;
+- resumable runs, `revise`/`review`/`publish`, same-provider session chaining, the interactive front door, per-project provider/model setup, live progress notes, optional code-health context;
+- a 2026-10-21 hardening pass (ADR-034) that closed every *silent* failure path a from-scratch review found.
+
+**Verified on:** macOS; one real Flutter app end to end (Face ID feature, verdict APPROVE WITH NOTES), plus a 346-test suite that needs no AI access. **Not yet:** Linux (expected to work), Windows (not supported), any measurement of output quality against a single-model session — see [CHANGELOG.md](CHANGELOG.md) for releases, [docs/WORKLOG.md](docs/WORKLOG.md) for history, [docs/DECISIONS.md](docs/DECISIONS.md) for the reasoning behind every design choice.
+
+**What's next** (ordered, not scheduled): a live tmux view of provider processes · more roles (documentation, security) · policy-driven retries · an MCP server interface · per-project memory. Details in [docs/IMPLEMENTATION_PLAN.md §4](docs/IMPLEMENTATION_PLAN.md).
 
 ## Prerequisites
 
 - macOS (tested) or Linux (expected to work, unverified), Python ≥3.12, and [uv](https://docs.astral.sh/uv/) or [pipx](https://pipx.pypa.io/)
-- The provider CLIs, installed and authenticated: `claude` (Claude Code), `codex` (Codex CLI), `agy` (Antigravity CLI)
-- Optional: `opencode` (free client — the default Publisher provider; point it at a free-tier model). Not needed unless you enable the Publisher stage.
+- **Required** provider CLIs, installed and logged in: `claude` (Claude Code — the Coder) and `codex` (Codex CLI — Planner and Reviewer)
+- **Optional**, only for stages that are off by default: `agy` (Antigravity CLI — the Designer, `--with-designer`), `opencode` (free client — the Publisher, `--with-publisher`), `repowise` (code-health hotspots, `--health`). `batonai doctor` lists these as *optional* and does not fail on them.
 
 ## Install & quickstart
 
@@ -57,7 +67,7 @@ batonai "do something useful"  # run the pipeline
 | `batonai ask --role coder "<q>"` | One cheap single-role call, no pipeline |
 | `batonai setup` | Change which AI handles each role and which model it runs — revisable any time; the defaults stay the defaults (ADR-032) |
 | `batonai health` | Print the repowise code-health hotspots every stage is told about — zero tokens, no run needed |
-| `batonai doctor` / `batonai config show` / `batonai init` | Health check · effective config with sources · project setup |
+| `batonai doctor` / `batonai config show` / `batonai init` | Provider health (optional providers marked, never block) · effective config with sources · project setup |
 
 Exit codes: `0` success · `1` a stage failed · `2` config/usage error · `130` you cancelled the wizard.
 
@@ -79,16 +89,17 @@ The Coder stage **edits your repository unattended** (scoped to the project dire
 
 | Doc | What's in it |
 |---|---|
-| [HOW_TO_USE.md](docs/HOW_TO_USE.md) · [🇹🇷 Türkçe](docs/HOW_TO_USE.tr.md) | **Start here** — plain-language user guide |
-| [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | Vision, goals, milestones, risks |
+| [HOW_TO_USE.md](docs/HOW_TO_USE.md) (English) · [HOW_TO_USE.tr.md](docs/HOW_TO_USE.tr.md) (Türkçe) | **Start here** — plain-language user guide |
+| [CHANGELOG.md](CHANGELOG.md) | What changed in each release |
+| [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | Vision, goals, the M0–M5 milestones (complete) and the post-MVP roadmap |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers, adapter contract, context system, verified CLI behavior |
 | [DECISIONS.md](docs/DECISIONS.md) | 34 ADRs — why everything is the way it is |
 | [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | Repo layout + runtime footprint |
-| [TASKS.md](docs/TASKS.md) | 35-task build plan with acceptance criteria |
-| [MVP.md](docs/MVP.md) | The first full version, stage by stage |
+| [TASKS.md](docs/TASKS.md) | The original 35-task build plan, all done — kept as history |
+| [MVP.md](docs/MVP.md) | The first full version, stage by stage — kept as history |
 | [MANUAL_TESTING.md](docs/MANUAL_TESTING.md) | Hands-on test commands per milestone |
 | [WORKLOG.md](docs/WORKLOG.md) | Session-by-session history |
-| [IDEAS.md](docs/IDEAS.md) | Evaluated ideas — opencode & the zero-LLM floor shipped (ADR-017/018); repowise/MCP context reducer still parked |
+| [IDEAS.md](docs/IDEAS.md) | Evaluated ideas and what became of them — most have since shipped (ADR-017/018/025); the MCP-based context reducer is still parked |
 
 ## Development
 

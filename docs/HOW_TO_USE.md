@@ -1,6 +1,8 @@
-# How to Use — AI Coding Orchestrator ("baton")
+# How to Use — batonai
 
-A practical, plain-language guide. For the technical design, see [ARCHITECTURE.md](ARCHITECTURE.md) and [DECISIONS.md](DECISIONS.md); for hands-on test commands, see [MANUAL_TESTING.md](MANUAL_TESTING.md). *(Türkçe için: [HOW_TO_USE.tr.md](HOW_TO_USE.tr.md))*
+*English · [Türkçe](HOW_TO_USE.tr.md)*
+
+A practical, plain-language guide. For the technical design, see [ARCHITECTURE.md](ARCHITECTURE.md) and [DECISIONS.md](DECISIONS.md); for hands-on test commands, see [MANUAL_TESTING.md](MANUAL_TESTING.md).
 
 ---
 
@@ -19,15 +21,16 @@ Behind that one line, four things happen in order: a **Planner** writes an imple
 ## 2. Before you start
 
 You need, installed and logged in on your machine:
-- `claude` (Claude Code)
-- `codex` (Codex CLI)
-- `agy` (Antigravity CLI)
+- `claude` (Claude Code) — the Coder
+- `codex` (Codex CLI) — the Planner and the Reviewer
 
-Check all three at once:
+Optional, only if you turn on the matching stage: `agy` (Antigravity CLI, for `--with-designer`), `opencode` (a free client, for `--with-publisher`), `repowise` (for `--health`).
+
+Check everything at once:
 ```bash
 batonai doctor
 ```
-Every row should say `✓ healthy`. If one doesn't, fix that provider's login/install before continuing — the orchestrator does not work around a broken provider.
+The two required rows must say `✓ healthy`; if one doesn't, fix that provider's login/install before continuing — the orchestrator does not work around a broken provider. Providers whose stages are off are listed as *optional* and never block you.
 
 ## 3. Install
 

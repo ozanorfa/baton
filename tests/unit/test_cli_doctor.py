@@ -62,3 +62,38 @@ def test_doctor_unregistered_provider_named(tmp_path: Path, monkeypatch) -> None
     result = runner.invoke(app, ["doctor"], env={"COLUMNS": "250"})
     assert result.exit_code == 1
     assert "unknown provider" in result.output
+
+
+def test_doctor_missing_optional_provider_does_not_fail(tmp_path: Path, monkeypatch) -> None:
+    """opencode/antigravity serve stages that are OFF by default; a machine without
+    them can run the whole default pipeline, so doctor must not report failure."""
+    setup_project(
+        tmp_path,
+        monkeypatch,
+        "providers:\n"
+        "  claude: {command: /usr/bin/true}\n"
+        "  codex: {command: /usr/bin/true}\n"
+        "  antigravity: {command: /nonexistent/agy}\n"
+        "  opencode: {command: /nonexistent/opencode}\n",
+    )
+    result = runner.invoke(app, ["doctor"], env={"COLUMNS": "200"})
+    assert result.exit_code == 0, result.output
+    assert "optional" in result.output
+    assert "designer (off)" in result.output and "publisher (off)" in result.output
+
+
+def test_doctor_missing_optional_provider_fails_once_its_stage_is_enabled(
+    tmp_path: Path, monkeypatch
+) -> None:
+    setup_project(
+        tmp_path,
+        monkeypatch,
+        "roles:\n  publisher: {enabled: true}\n"
+        "providers:\n"
+        "  claude: {command: /usr/bin/true}\n"
+        "  codex: {command: /usr/bin/true}\n"
+        "  opencode: {command: /nonexistent/opencode}\n",
+    )
+    result = runner.invoke(app, ["doctor"], env={"COLUMNS": "200"})
+    assert result.exit_code == 1
+    assert "✗" in result.output

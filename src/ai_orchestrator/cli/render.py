@@ -272,6 +272,7 @@ class DoctorRow:
     command: str
     roles: list[str]
     health: Health
+    required: bool = True  # bound to an enabled stage; optional ones never fail doctor
 
 
 def render_doctor(rows: list[DoctorRow]) -> None:
@@ -285,8 +286,10 @@ def render_doctor(rows: list[DoctorRow]) -> None:
     for row in rows:
         if row.health.ok:
             status = "[green]✓ healthy[/green]"
-        else:
+        elif row.required:
             status = f"[red]✗ {row.health.detail or 'unavailable'}[/red]"
+        else:
+            status = f"[dim]○ optional — {row.health.detail or 'unavailable'}[/dim]"
         table.add_row(
             row.provider,
             row.command,
@@ -295,6 +298,11 @@ def render_doctor(rows: list[DoctorRow]) -> None:
             status,
         )
     console.print(table)
+    if any(not r.health.ok and not r.required for r in rows):
+        console.print(
+            "[dim]○ optional = no enabled stage uses it; install it only if you turn that "
+            "stage on (--with-designer / --with-publisher).[/dim]"
+        )
 
 
 # ── Interactive front door (ADR-026) ────────────────────────────────────────

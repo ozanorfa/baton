@@ -1,6 +1,6 @@
 # Task Breakdown — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-12 · **progress: 35/35 done — ALL MILESTONES COMPLETE (M0–M5 ✅)**
+**Status:** Frozen — historical record · **35/35 done, all milestones complete 2026-07-12** · post-MVP work is tracked in [CHANGELOG.md](../CHANGELOG.md), [DECISIONS.md](DECISIONS.md) and [WORKLOG.md](WORKLOG.md), not here
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [MVP.md](MVP.md)
 
 35 tasks, 30–90 minutes each, strictly ordered — every task builds on a working previous state and ends in something runnable or testable. Tasks map to milestones M0–M5 from IMPLEMENTATION_PLAN.md §4. Total estimate: ~36 h.
