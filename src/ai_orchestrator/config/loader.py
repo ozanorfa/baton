@@ -44,14 +44,19 @@ LEGACY_USER_CONFIG_DIR = "ai-orchestrator"  # the pre-0.1.0 distribution name
 
 
 def user_config_path() -> Path:
-    """`~/.config/batonai/config.yaml` (XDG-aware).
+    """`~/.config/batonai/config.yaml` (XDG-aware; `%APPDATA%\\batonai\\` on Windows).
 
     A config written under the old distribution name is still honoured when no
     new-style file exists, so a pre-release install keeps working after the
     rename; the new path wins as soon as it is created.
     """
     base = os.environ.get("XDG_CONFIG_HOME")
-    root = Path(base) if base else Path.home() / ".config"
+    if base:
+        root = Path(base)
+    elif os.name == "nt" and os.environ.get("APPDATA"):
+        root = Path(os.environ["APPDATA"])  # %APPDATA%\batonai\config.yaml (ADR-035)
+    else:
+        root = Path.home() / ".config"
     preferred = root / "batonai" / "config.yaml"
     legacy = root / LEGACY_USER_CONFIG_DIR / "config.yaml"
     if not preferred.is_file() and legacy.is_file():
@@ -87,7 +92,7 @@ def _leaf_paths(data: dict, prefix: str = "") -> list[str]:
 
 def _read_yaml(path: Path) -> dict:
     try:
-        data = yaml.safe_load(path.read_text())
+        data = yaml.safe_load(path.read_text(encoding="utf-8", errors="replace"))
     except yaml.YAMLError as exc:
         # Without this, a mistyped .ai/config.yaml escapes as a raw parser
         # traceback out of *every* command (found via the wizard's exit-2 test,
@@ -140,7 +145,8 @@ def load_config(
     user_path = user_path or user_config_path()
     project_path = project_config_path(project_dir)
 
-    defaults = yaml.safe_load((files("ai_orchestrator.config") / "defaults.yaml").read_text())
+    defaults_text = (files("ai_orchestrator.config") / "defaults.yaml").read_text(encoding="utf-8")
+    defaults = yaml.safe_load(defaults_text)
 
     layers: list[tuple[str, dict, Path | None]] = [("defaults", defaults, None)]
     if user_path.is_file():

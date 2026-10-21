@@ -20,13 +20,13 @@ batonai "Add Face ID support to the Flutter application"
 - resumable runs, `revise`/`review`/`publish`, same-provider session chaining, the interactive front door, per-project provider/model setup, live progress notes, optional code-health context;
 - a 2026-10-21 hardening pass (ADR-034) that closed every *silent* failure path a from-scratch review found.
 
-**Verified on:** macOS; one real Flutter app end to end (Face ID feature, verdict APPROVE WITH NOTES), plus a 348-test suite that needs no AI access. **Not yet:** Linux (expected to work), Windows (not supported), any measurement of output quality against a single-model session — see [CHANGELOG.md](CHANGELOG.md) for releases, [docs/WORKLOG.md](docs/WORKLOG.md) for history, [docs/DECISIONS.md](docs/DECISIONS.md) for the reasoning behind every design choice.
+**Verified on:** macOS live with real provider CLIs (one real Flutter app end to end: Face ID feature, verdict APPROVE WITH NOTES); the 348-test suite, which needs no AI access, runs green on macOS, Linux and Windows in CI. **Not yet:** a live run with real CLIs on Linux or Windows (see the Windows note in the user guide), any measurement of output quality against a single-model session — see [CHANGELOG.md](CHANGELOG.md) for releases, [docs/WORKLOG.md](docs/WORKLOG.md) for history, [docs/DECISIONS.md](docs/DECISIONS.md) for the reasoning behind every design choice.
 
 **What's next** (ordered, not scheduled): a live tmux view of provider processes · more roles (documentation, security) · policy-driven retries · an MCP server interface · per-project memory. Details in [docs/IMPLEMENTATION_PLAN.md §4](docs/IMPLEMENTATION_PLAN.md).
 
 ## Prerequisites
 
-- macOS (tested) or Linux (expected to work, unverified), Python ≥3.12, and [uv](https://docs.astral.sh/uv/) or [pipx](https://pipx.pypa.io/)
+- macOS, Linux or Windows — the full test suite runs on all three in CI (ADR-035); real provider CLIs have been exercised live on macOS only. Python ≥3.12, and [uv](https://docs.astral.sh/uv/) or [pipx](https://pipx.pypa.io/)
 - **Required** provider CLIs, installed and logged in: `claude` (Claude Code — the Coder) and `codex` (Codex CLI — Planner and Reviewer)
 - **Optional**, only for stages that are off by default: `agy` (Antigravity CLI — the Designer, `--with-designer`), `opencode` (free client — the Publisher, `--with-publisher`), `repowise` (code-health hotspots, `--health`). `batonai doctor` lists these as *optional* and does not fail on them.
 

@@ -40,6 +40,8 @@ uv tool install batonai      # or: pipx install batonai
 
 This installs `batonai` as a command you can run from **any folder**. You need [uv](https://docs.astral.sh/uv/) or [pipx](https://pipx.pypa.io/) first — both install Python tools in their own isolated environments, so nothing touches your system Python. Later: `uv tool upgrade batonai` to update, `uv tool uninstall batonai` to remove.
 
+**On Windows:** install Python 3.12+ and `uv` (or `pipx`) the normal way, then the same command works in PowerShell or Windows Terminal — no WSL needed. Your user-level config lives at `%APPDATA%\batonai\config.yaml`. Everything baton itself does is tested on Windows in CI; the provider CLIs are the vendors' own programs, so run `batonai doctor` first and expect Claude Code and Codex (the default pipeline, which send the prompt over stdin) to be the safe choices. The optional Designer (`agy`) and Publisher (`opencode`) pass the prompt as a command-line argument, which on Windows goes through `cmd.exe` quoting — untested there; if a prompt with `%`, `^` or `"` misbehaves, that is why.
+
 Want the newest unreleased code, or to work on baton itself?
 ```bash
 uv tool install git+https://github.com/ozanorfa/baton          # latest main

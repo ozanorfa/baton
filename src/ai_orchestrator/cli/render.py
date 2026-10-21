@@ -207,7 +207,7 @@ def render_run_summary(state: RunState, run_dir: Path, report=None) -> None:
         )
         error_console.print(f"\nstage {failed.name!r} failed: {failed.error}")
         stderr_file = run_dir / "logs" / f"{failed_idx:02d}-{failed.name}.stderr"
-        if stderr_file.is_file() and stderr_file.read_text().strip():
+        if stderr_file.is_file() and stderr_file.read_text(encoding="utf-8").strip():
             console.print(f"raw stderr:  {stderr_file}")
         console.print(f"run detail:  {run_dir}")
         console.print(

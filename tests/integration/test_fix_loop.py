@@ -38,8 +38,7 @@ def project(tmp_path: Path, monkeypatch) -> Path:
         "  coder: {provider: fake}\n"
         "  reviewer: {provider: fake}\n"
         "providers:\n"
-        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
-    )
+        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n", encoding="utf-8")
     subprocess.run(["git", "init", "-q"], cwd=proj, check=True)
     subprocess.run(["git", "add", "-A"], cwd=proj, check=True)
     subprocess.run(
@@ -59,7 +58,7 @@ def _revised_count(project: Path, run_id: str) -> int:
     log = project / ".ai" / "runs" / run_id / "logs" / "orchestrator.jsonl"
     return sum(
         1
-        for line in log.read_text().splitlines()
+        for line in log.read_text(encoding="utf-8").splitlines()
         if line and json.loads(line)["event"] == "run_revised"
     )
 
@@ -71,7 +70,9 @@ def test_fix_loop_fires_exactly_once_on_needs_work(project, fake_registry) -> No
     # exactly one fix pass — never a second loop even though the verdict stays NEEDS WORK
     assert _revised_count(project, run_id) == 1
     # the review findings reached the re-run coder
-    coder_prompt = (project / ".ai" / "runs" / run_id / "prompts" / "02-coder.md").read_text()
+    coder_prompt = (project / ".ai" / "runs" / run_id / "prompts" / "02-coder.md").read_text(
+        encoding="utf-8"
+    )
     assert "Address them, then stop" in coder_prompt
     assert len(list((project / ".ai" / "runs").iterdir())) == 1  # same run — revise reuses it
 
@@ -92,7 +93,7 @@ def test_no_fix_loop_on_clean_approve(project, fake_registry) -> None:
 
 def test_fix_loop_via_project_config(project, fake_registry) -> None:
     config = project / ".ai" / "config.yaml"
-    config.write_text(config.read_text().replace(
+    config.write_text(config.read_text(encoding="utf-8").replace(
         "pipeline:\n  stages:", "pipeline:\n  fix_loop: true\n  stages:"
     ))
     result = runner.invoke(app, ["run", NEEDS_WORK], env={"COLUMNS": "220"})

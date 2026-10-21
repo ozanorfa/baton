@@ -131,7 +131,7 @@ def test_is_empty_dir_ignores_tooling_noise(tmp_path):
     (tmp_path / ".git").mkdir()
     (tmp_path / ".ai").mkdir()
     assert S.is_empty_dir(tmp_path), "a folder with only tooling dirs is still empty"
-    (tmp_path / "main.py").write_text("x = 1")
+    (tmp_path / "main.py").write_text("x = 1", encoding="utf-8")
     assert not S.is_empty_dir(tmp_path)
 
 
@@ -147,7 +147,7 @@ def test_last_run_survives_a_corrupt_run_dir(tmp_path):
     """A half-written run must degrade to 'no history', never crash the wizard."""
     run_dir = tmp_path / ".ai" / "runs" / "20260728-000000"
     run_dir.mkdir(parents=True)
-    (run_dir / "run.json").write_text("{ this is not json")
+    (run_dir / "run.json").write_text("{ this is not json", encoding="utf-8")
     assert S.last_run(tmp_path) is None
 
 
@@ -205,7 +205,7 @@ def test_is_empty_dir_on_an_unreadable_path(tmp_path):
 def test_git_state_reports_a_repo_without_commits(tmp_path):
     import subprocess
     subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
-    (tmp_path / "a.py").write_text("x = 1\n")
+    (tmp_path / "a.py").write_text("x = 1\n", encoding="utf-8")
     is_git, dirty, has_commits = S.git_state(tmp_path)
     assert (is_git, has_commits) == (True, False), "a fresh repo has no baseline"
 

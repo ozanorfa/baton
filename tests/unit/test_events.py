@@ -38,4 +38,4 @@ def test_read_missing_file_is_empty(tmp_path: Path) -> None:
 def test_non_serializable_fields_are_stringified(tmp_path: Path) -> None:
     log = EventLog(tmp_path / "logs")
     log.emit(events.RUN_STARTED, path=Path("/tmp/x"))
-    assert log.read()[0]["path"] == "/tmp/x"
+    assert log.read()[0]["path"] == str(Path("/tmp/x"))  # OS-native spelling

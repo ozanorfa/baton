@@ -174,7 +174,7 @@ def init(
         if path.exists():
             skipped.append(rel)
         else:
-            path.write_text(content)
+            path.write_text(content, encoding="utf-8")
             created.append(rel)
 
     # ADR-027: never touch the project's root .gitignore — it is the user's
@@ -182,13 +182,13 @@ def init(
     # coder's diff on a first run (a live reviewer spent a finding on it).
     root_gitignore = project / ".gitignore"
     nested = ai_dir / ".gitignore"
-    if root_gitignore.is_file() and GITIGNORE_ENTRY in root_gitignore.read_text():
+    if root_gitignore.is_file() and GITIGNORE_ENTRY in root_gitignore.read_text(encoding="utf-8"):
         # Set up by an older baton: the rule is already in force, leave it be.
         skipped.append(f".gitignore ({GITIGNORE_ENTRY} already present)")
     elif nested.exists():
         skipped.append(".ai/.gitignore")
     else:
-        nested.write_text(NESTED_GITIGNORE)
+        nested.write_text(NESTED_GITIGNORE, encoding="utf-8")
         created.append(".ai/.gitignore (ignores .ai/runs/)")
 
     for rel in created:

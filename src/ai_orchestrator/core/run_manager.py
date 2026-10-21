@@ -55,7 +55,7 @@ class RunManager:
         path = self.run_dir(run_id) / RUN_FILE
         if not path.is_file():
             raise FileNotFoundError(f"no run {run_id!r} under {self.runs_dir}")
-        return RunState.model_validate_json(path.read_text())
+        return RunState.model_validate_json(path.read_text(encoding="utf-8"))
 
     def list_run_ids(self) -> list[str]:
         if not self.runs_dir.is_dir():
@@ -73,20 +73,20 @@ class RunManager:
         """Atomic write: crash between write and rename leaves the old file intact."""
         path = self.run_dir(state.run_id) / RUN_FILE
         tmp = path.with_suffix(".json.tmp")
-        tmp.write_text(state.model_dump_json(indent=2))
+        tmp.write_text(state.model_dump_json(indent=2), encoding="utf-8")
         os.replace(tmp, path)
 
     def save_artifact(self, state: RunState, name: str, content: str) -> Path:
         path = self.artifacts_dir(state.run_id) / name
-        path.write_text(content)
+        path.write_text(content, encoding="utf-8")
         return path
 
     def load_artifact(self, state: RunState, name: str) -> str:
-        return (self.artifacts_dir(state.run_id) / name).read_text()
+        return (self.artifacts_dir(state.run_id) / name).read_text(encoding="utf-8")
 
     def save_prompt(self, state: RunState, position: int, stage_name: str, prompt: str) -> Path:
         path = self.run_dir(state.run_id) / "prompts" / f"{position:02d}-{stage_name}.md"
-        path.write_text(prompt)
+        path.write_text(prompt, encoding="utf-8")
         return path
 
     # -- paths ---------------------------------------------------------------

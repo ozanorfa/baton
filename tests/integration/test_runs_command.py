@@ -17,8 +17,7 @@ def two_stage_project(tmp_path: Path, monkeypatch) -> Path:
         "pipeline:\n  stages: [planner, coder]\n"
         "roles:\n  planner: {provider: fake}\n  coder: {provider: fake}\n"
         "providers:\n"
-        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
-    )
+        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n", encoding="utf-8")
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     monkeypatch.chdir(project)
     return project

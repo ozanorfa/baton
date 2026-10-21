@@ -108,7 +108,7 @@ class PipelineEngine:
         artifacts_dir = self.run_manager.artifacts_dir(state.run_id)
         for path in sorted(artifacts_dir.iterdir()) if artifacts_dir.is_dir() else []:
             if path.is_file():
-                artifacts[path.name] = path.read_text()
+                artifacts[path.name] = path.read_text(encoding="utf-8")
 
         log = EventLog(self.run_manager.logs_dir(state.run_id), sink=self.event_sink)
         log.emit(
@@ -165,7 +165,7 @@ class PipelineEngine:
         artifacts_dir = self.run_manager.artifacts_dir(state.run_id)
         for path in sorted(artifacts_dir.iterdir()) if artifacts_dir.is_dir() else []:
             if path.is_file():
-                artifacts[path.name] = path.read_text()
+                artifacts[path.name] = path.read_text(encoding="utf-8")
 
         log = EventLog(self.run_manager.logs_dir(state.run_id), sink=self.event_sink)
         log.emit(
@@ -290,8 +290,9 @@ class PipelineEngine:
                 # Persist raw output before evaluating anything (ARCHITECTURE §2.2).
                 logs_dir = self.run_manager.logs_dir(state.run_id)
                 stdout_path = logs_dir / f"{position:02d}-{stage.spec.name}.stdout"
-                stdout_path.write_text(raw.stdout)
-                (logs_dir / f"{position:02d}-{stage.spec.name}.stderr").write_text(raw.stderr)
+                stdout_path.write_text(raw.stdout, encoding="utf-8")
+                stderr_path = logs_dir / f"{position:02d}-{stage.spec.name}.stderr"
+                stderr_path.write_text(raw.stderr, encoding="utf-8")
                 result = stage.adapter.parse(raw)
             except KeyboardInterrupt:
                 # Ctrl-C must leave a resumable run, not a corrupt one (T34).

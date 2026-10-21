@@ -7,6 +7,7 @@ or something is wrong. This module answers "did anything change, and what?"
 via git, without ever mutating the user's index.
 """
 
+import difflib
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,7 +23,7 @@ def _git(project_dir: Path, *args: str) -> subprocess.CompletedProcess | None:
     try:
         return subprocess.run(
             ["git", *args],
-            cwd=project_dir, capture_output=True, text=True, errors="replace",
+            cwd=project_dir, capture_output=True, text=True, encoding="utf-8", errors="replace",
             timeout=30, shell=False,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
@@ -99,8 +100,32 @@ def snapshot_changes(project_dir: Path) -> WorkspaceSnapshot | None:
 
     for xy, rel in entries:
         if xy == "??":
-            untracked = _git(project_dir, "diff", "--no-index", "--", "/dev/null", rel)
-            if untracked is not None and untracked.stdout:
-                parts.append(untracked.stdout)
+            parts.append(_new_file_patch(project_dir, rel))
 
     return WorkspaceSnapshot(changed=True, patch="".join(parts))
+
+
+def _new_file_patch(project_dir: Path, rel: str) -> str:
+    """A git-style "new file" hunk for an untracked path, built in Python.
+
+    `git diff --no-index -- /dev/null <file>` did this before, but `/dev/null`
+    does not exist on Windows (ADR-035), and one git call per new file was the
+    slowest part of the snapshot. `difflib` produces the same unified format the
+    Reviewer already reads; binary files get a one-line note, as git prints.
+    """
+    path = project_dir / rel
+    header = f"diff --git a/{rel} b/{rel}\nnew file mode 100644\n"
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return ""
+    if b"\0" in data[:8000]:
+        return f"{header}Binary files /dev/null and b/{rel} differ\n"
+    text = data.decode("utf-8", errors="replace").replace("\r\n", "\n")
+    lines = text.splitlines(keepends=True)
+    body = "".join(
+        difflib.unified_diff([], lines, fromfile="/dev/null", tofile=f"b/{rel}", n=0)
+    )
+    if body and not body.endswith("\n"):
+        body += "\n\\ No newline at end of file\n"
+    return header + body

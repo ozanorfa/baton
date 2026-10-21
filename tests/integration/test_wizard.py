@@ -35,7 +35,7 @@ def wizard_project(tmp_path: Path, monkeypatch, *, init_ai: bool = True) -> Path
     project.mkdir(parents=True)
     if init_ai:
         (project / ".ai").mkdir()
-        (project / ".ai" / "config.yaml").write_text(FAKE_CONFIG)
+        (project / ".ai" / "config.yaml").write_text(FAKE_CONFIG, encoding="utf-8")
     else:
         # No project config → the wizard would resolve the built-in defaults,
         # which name the REAL claude/codex binaries. On a developer machine those
@@ -45,10 +45,10 @@ def wizard_project(tmp_path: Path, monkeypatch, *, init_ai: bool = True) -> Path
         # while the project itself still has no .ai/ — exactly the scenario.
         user_cfg = tmp_path / "xdg" / "batonai" / "config.yaml"
         user_cfg.parent.mkdir(parents=True)
-        user_cfg.write_text(FAKE_CONFIG)
+        user_cfg.write_text(FAKE_CONFIG, encoding="utf-8")
     subprocess.run(["git", "init", "-q"], cwd=project, check=True)
-    (project / "main.py").write_text("x = 1\n")
-    (project / "pyproject.toml").write_text("[project]\nname='p'\n")
+    (project / "main.py").write_text("x = 1\n", encoding="utf-8")
+    (project / "pyproject.toml").write_text("[project]\nname='p'\n", encoding="utf-8")
     subprocess.run(["git", "add", "-A"], cwd=project, check=True)
     subprocess.run(
         ["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "seed"],
@@ -160,8 +160,7 @@ def test_blocked_when_a_needed_provider_is_missing(tmp_path, monkeypatch, fake_r
     (project / ".ai" / "config.yaml").write_text(
         "pipeline:\n  stages: [planner]\n"
         "roles:\n  planner: {provider: fake}\n"
-        "providers:\n  fake: {command: /nonexistent-binary, timeout_s: 5}\n"
-    )
+        "providers:\n  fake: {command: /nonexistent-binary, timeout_s: 5}\n", encoding="utf-8")
     force_tty(monkeypatch, True)
 
     result = runner.invoke(app, [], input=f"{REQ}\n")
@@ -221,9 +220,8 @@ def test_wizard_offers_git_init_in_a_non_repo(tmp_path, monkeypatch, fake_regist
     (project / ".ai").mkdir(parents=True)
     (project / ".ai" / "config.yaml").write_text(
         "pipeline:\n  stages: [planner]\nroles:\n  planner: {provider: fake}\n"
-        f"providers:\n  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
-    )
-    (project / "main.py").write_text("x = 1\n")
+        f"providers:\n  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n", encoding="utf-8")
+    (project / "main.py").write_text("x = 1\n", encoding="utf-8")
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     monkeypatch.chdir(project)
     monkeypatch.setattr(scan_mod, "health_section", lambda _: "")
@@ -270,9 +268,8 @@ def test_menu_dispatches_review_for_real(tmp_path, monkeypatch, fake_registry):
         "pipeline:\n  stages: [planner, coder, reviewer]\n"
         "roles:\n  planner: {provider: fake}\n  coder: {provider: fake}\n"
         "  reviewer: {provider: fake}\n"
-        f"providers:\n  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
-    )
-    (project / "main.py").write_text("x = 2  # changed\n")  # something to review
+        f"providers:\n  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n", encoding="utf-8")
+    (project / "main.py").write_text("x = 2  # changed\n", encoding="utf-8")  # something to review
     force_tty(monkeypatch, True)
     first = runner.invoke(app, [], input=f"{REQ}\n")
     assert first.exit_code == 0, first.output
@@ -334,7 +331,8 @@ def test_menu_out_of_range_number_falls_back_to_run(tmp_path, monkeypatch, fake_
 
 def test_broken_config_exits_2_before_scanning(tmp_path, monkeypatch):
     project = wizard_project(tmp_path, monkeypatch)
-    (project / ".ai" / "config.yaml").write_text("pipeline: [this is not a mapping\n")
+    (project / ".ai" / "config.yaml").write_text("pipeline: [this is not a mapping\n",
+        encoding="utf-8")
     force_tty(monkeypatch, True)
 
     result = runner.invoke(app, [], input=f"{REQ}\n")
@@ -367,11 +365,10 @@ def test_scan_names_the_no_baseline_state_and_the_fix(tmp_path, monkeypatch, fak
     (project / ".ai").mkdir(parents=True)
     (project / ".ai" / "config.yaml").write_text(
         "pipeline:\n  stages: [planner]\nroles:\n  planner: {provider: fake}\n"
-        f"providers:\n  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
-    )
+        f"providers:\n  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n", encoding="utf-8")
     subprocess.run(["git", "init", "-q"], cwd=project, check=True)  # no commit
-    (project / "main.py").write_text("x = 1\n")
-    (project / "pyproject.toml").write_text("[project]\nname='p'\n")
+    (project / "main.py").write_text("x = 1\n", encoding="utf-8")
+    (project / "pyproject.toml").write_text("[project]\nname='p'\n", encoding="utf-8")
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     monkeypatch.chdir(project)
     monkeypatch.setattr(scan_mod, "health_section", lambda _: "")

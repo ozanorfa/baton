@@ -52,7 +52,9 @@ def test_crash_between_write_and_rename_keeps_previous_state(
 
     reloaded = manager.load_run(state.run_id)  # previous consistent state intact
     assert reloaded.stage("planner").status is StageStatus.PENDING
-    json.loads((manager.run_dir(state.run_id) / "run.json").read_text())  # not corrupted
+    json.loads((manager.run_dir(state.run_id) / "run.json").read_text(
+        encoding="utf-8"
+    ))  # not corrupted
 
 
 def test_artifacts_and_prompts(manager: RunManager) -> None:
@@ -62,7 +64,7 @@ def test_artifacts_and_prompts(manager: RunManager) -> None:
 
     prompt_path = manager.save_prompt(state, 1, "planner", "you are the planner")
     assert prompt_path.name == "01-planner.md"
-    assert prompt_path.read_text() == "you are the planner"
+    assert prompt_path.read_text(encoding="utf-8") == "you are the planner"
 
 
 def test_list_and_load_missing(manager: RunManager) -> None:
@@ -86,7 +88,7 @@ def test_run_state_stage_names_match_specs(manager: RunManager) -> None:
 def _repo(tmp_path):
     import subprocess
     subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
-    (tmp_path / "app.py").write_text("x = 1\n")
+    (tmp_path / "app.py").write_text("x = 1\n", encoding="utf-8")
     subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
     subprocess.run(
         ["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "seed"],
@@ -107,7 +109,7 @@ def test_snapshot_ignores_generated_artifacts(tmp_path):
     (project / "__pycache__").mkdir()
     (project / "__pycache__" / "app.cpython-312.pyc").write_bytes(b"\x00compiled")
     (project / "node_modules").mkdir()
-    (project / "node_modules" / "dep.js").write_text("module.exports = 1\n")
+    (project / "node_modules" / "dep.js").write_text("module.exports = 1\n", encoding="utf-8")
 
     snap = snapshot_changes(project)
     assert snap is not None
@@ -121,8 +123,8 @@ def test_snapshot_still_sees_real_edits_alongside_noise(tmp_path):
     project = _repo(tmp_path)
     (project / "__pycache__").mkdir()
     (project / "__pycache__" / "app.cpython-312.pyc").write_bytes(b"\x00compiled")
-    (project / "app.py").write_text("x = 2  # real edit\n")
-    (project / "feature.py").write_text("def feature(): ...\n")  # real new file
+    (project / "app.py").write_text("x = 2  # real edit\n", encoding="utf-8")
+    (project / "feature.py").write_text("def feature(): ...\n", encoding="utf-8")  # real new file
 
     snap = snapshot_changes(project)
     assert snap is not None and snap.changed is True
@@ -137,7 +139,7 @@ def test_snapshot_keeps_directories_that_only_look_generated(tmp_path):
 
     project = _repo(tmp_path)
     (project / "build").mkdir()
-    (project / "build" / "make.py").write_text("def build(): ...\n")
+    (project / "build" / "make.py").write_text("def build(): ...\n", encoding="utf-8")
 
     snap = snapshot_changes(project)
     assert snap is not None and snap.changed is True

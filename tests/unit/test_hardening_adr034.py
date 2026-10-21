@@ -153,8 +153,15 @@ def test_undecodable_output_degrades_instead_of_crashing(streaming: bool) -> Non
 
 
 def _alive(pid: int) -> bool:
+    if sys.platform == "win32":
+        import subprocess
+
+        out = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}", "/NH"], capture_output=True, text=True
+        ).stdout
+        return str(pid) in out
     try:
-        os.kill(pid, 0)
+        os.kill(pid, 0)  # signal 0 = existence check (POSIX only)
     except ProcessLookupError:
         return False
     except PermissionError:
@@ -254,7 +261,7 @@ def test_verdict_is_matched_case_insensitively_and_normalised(tmp_path: Path) ->
     assert save_report(state, manager).verdict == "NEEDS WORK"
     manager.save_artifact(state, "review.md", "Verdict: Approve With Notes\n")
     assert save_report(state, manager).verdict == "APPROVE WITH NOTES"
-    data = json.loads((manager.run_dir(state.run_id) / "report.json").read_text())
+    data = json.loads((manager.run_dir(state.run_id) / "report.json").read_text(encoding="utf-8"))
     assert data["verdict"] == "APPROVE WITH NOTES"
 
 

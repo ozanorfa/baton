@@ -25,8 +25,7 @@ def project(tmp_path: Path, monkeypatch) -> Path:
         "  coder: {provider: fake}\n"
         "  reviewer: {provider: fake}\n"
         "providers:\n"
-        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
-    )
+        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n", encoding="utf-8")
     subprocess.run(["git", "init", "-q"], cwd=proj, check=True)
     subprocess.run(["git", "add", "-A"], cwd=proj, check=True)
     subprocess.run(
@@ -51,7 +50,7 @@ def test_revise_continues_same_run_with_correction(project, fake_registry) -> No
     )
     assert first.exit_code == 0
     run_id = only_run_id(project)
-    assert (project / "app.py").read_text() == "x=1\n"
+    assert (project / "app.py").read_text(encoding="utf-8") == "x=1\n"
 
     revised = runner.invoke(
         app,
@@ -64,13 +63,17 @@ def test_revise_continues_same_run_with_correction(project, fake_registry) -> No
     # same run — no second run directory was created
     assert len(list((project / ".ai" / "runs").iterdir())) == 1
 
-    state = json.loads((project / ".ai" / "runs" / run_id / "run.json").read_text())
+    state = json.loads((project / ".ai" / "runs" / run_id / "run.json").read_text(encoding="utf-8"))
     assert state["status"] == "succeeded"
     assert "set x to two" in state["request"]  # correction injected into the request
 
-    coder_prompt = (project / ".ai" / "runs" / run_id / "prompts" / "02-coder.md").read_text()
+    coder_prompt = (project / ".ai" / "runs" / run_id / "prompts" / "02-coder.md").read_text(
+        encoding="utf-8"
+    )
     assert "set x to two" in coder_prompt  # reached the coder
-    assert (project / "app.py").read_text() == "x=2\n"  # coder's revised write applied
+    assert (project / "app.py").read_text(
+        encoding="utf-8"
+    ) == "x=2\n"  # coder's revised write applied
 
 
 def test_revise_with_no_runs_errors(project, fake_registry) -> None:
@@ -87,7 +90,7 @@ def test_revise_from_planner_reruns_whole_pipeline(project, fake_registry) -> No
     assert first.exit_code == 0
     run_id = only_run_id(project)
     planner_before = json.loads(
-        (project / ".ai" / "runs" / run_id / "run.json").read_text()
+        (project / ".ai" / "runs" / run_id / "run.json").read_text(encoding="utf-8")
     )["stages"][0]["started_at"]
 
     revised = runner.invoke(
@@ -97,6 +100,6 @@ def test_revise_from_planner_reruns_whole_pipeline(project, fake_registry) -> No
     )
     assert revised.exit_code == 0
     planner_after = json.loads(
-        (project / ".ai" / "runs" / run_id / "run.json").read_text()
+        (project / ".ai" / "runs" / run_id / "run.json").read_text(encoding="utf-8")
     )["stages"][0]["started_at"]
     assert planner_after != planner_before  # planner was re-run this time

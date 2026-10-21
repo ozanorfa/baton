@@ -19,10 +19,9 @@ def git_project(tmp_path: Path, monkeypatch) -> Path:
         "pipeline:\n  stages: [reviewer]\n"
         "roles:\n  reviewer: {provider: fake}\n"
         "providers:\n"
-        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
-    )
+        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n", encoding="utf-8")
     subprocess.run(["git", "init", "-q"], cwd=proj, check=True)
-    (proj / "seed.txt").write_text("seed\n")
+    (proj / "seed.txt").write_text("seed\n", encoding="utf-8")
     subprocess.run(["git", "add", "-A"], cwd=proj, check=True)
     subprocess.run(
         ["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init"],
@@ -43,7 +42,8 @@ def _commits(project: Path) -> int:
 
 def test_review_prints_verdict_and_touches_nothing(tmp_path, monkeypatch, fake_registry) -> None:
     project = git_project(tmp_path, monkeypatch)
-    (project / "feature.py").write_text("x = 1\n")  # an uncommitted change to review
+    (project / "feature.py").write_text("x = 1\n",
+        encoding="utf-8")  # an uncommitted change to review
     before = _commits(project)
 
     result = runner.invoke(

@@ -65,7 +65,7 @@ def test_build_invocation_explicit_command_is_shlex_split(tmp_path) -> None:
 
 
 def test_build_invocation_auto_detects_from_marker(tmp_path) -> None:
-    (tmp_path / "pyproject.toml").write_text("[project]\n")
+    (tmp_path / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
     inv = TestRunnerAdapter(command="auto").build_invocation(request(tmp_path))
     assert inv.argv == ["pytest"]
 
@@ -77,8 +77,8 @@ def test_build_invocation_auto_with_no_marker_is_sentinel(tmp_path) -> None:
 
 def test_detect_command_priority(tmp_path) -> None:
     assert detect_command(tmp_path) is None
-    (tmp_path / "go.mod").write_text("module x\n")
+    (tmp_path / "go.mod").write_text("module x\n", encoding="utf-8")
     assert detect_command(tmp_path) == "go test ./..."
-    (tmp_path / "package.json").write_text("{}\n")
+    (tmp_path / "package.json").write_text("{}\n", encoding="utf-8")
     # package.json sits ahead of go.mod in the priority list
     assert detect_command(tmp_path) == "npm test"

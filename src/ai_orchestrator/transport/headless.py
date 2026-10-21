@@ -4,58 +4,85 @@ argv list with shell=False — no shell interpolation anywhere. Timeouts and
 missing binaries become structured results, not exceptions: the engine's
 fail-stop logic deals in TransportResults.
 
-Process hygiene (ADR-034):
+Process hygiene (ADR-034) and portability (ADR-035):
 
-* Every child runs in **its own session** (`start_new_session=True`), so a
-  timeout or a Ctrl-C kills the *whole tree* — provider CLIs spawn helpers
-  (MCP servers, language servers, node workers) that a plain `proc.kill()`
-  would orphan, still burning CPU and quota after baton has given up.
-* Because a new session leaves the terminal's foreground process group, the
-  child no longer receives the terminal's SIGINT by itself; the transport
-  therefore forwards Ctrl-C explicitly (kill the tree, then re-raise).
-* Output is decoded with `errors="replace"`: a single undecodable byte from a
-  third-party process must degrade to U+FFFD in the log, never abort a stage.
+* Every child is started so that a timeout or a Ctrl-C kills the *whole
+  tree* — provider CLIs spawn helpers (MCP servers, language servers, node
+  workers) that a plain `proc.kill()` would orphan, still burning CPU and
+  quota after baton has given up. POSIX: the child is its own session leader
+  and `killpg` takes the group. Windows: the child gets its own process group
+  and `taskkill /T` takes the tree.
+* Because the child leaves the terminal's foreground group, it no longer
+  receives the terminal's Ctrl-C by itself; the transport therefore forwards
+  it explicitly (kill the tree, then re-raise).
+* The executable is resolved with `shutil.which` before launch. On Windows
+  the provider CLIs are npm shims (`claude.cmd`, `codex.cmd`) that
+  `CreateProcess` cannot find from a bare name; on POSIX this is what `execvp`
+  does anyway, so behaviour is unchanged there.
+* Output is decoded as UTF-8 with `errors="replace"` — never the console's
+  locale code page, which on Windows is not UTF-8 and would turn every
+  non-ASCII character a provider prints into a decoding error or mojibake.
 """
 
 import contextlib
 import os
+import shutil
 import signal
 import subprocess
+import sys
 import threading
 import time
 
 from ai_orchestrator.transport.base import Invocation, LineSink, TransportResult
 
+IS_WINDOWS = sys.platform == "win32"
+
 # How long to wait for a killed tree to actually exit before giving up on
-# collecting its remaining output. Kill is SIGKILL, so this is generous.
+# collecting its remaining output. Kill is unconditional, so this is generous.
 _REAP_TIMEOUT_S = 5
 
 
 def _kill_tree(proc: subprocess.Popen) -> None:
-    """SIGKILL the child's whole process group (it is its own session leader).
-
-    Falls back to killing just the child where process groups are unavailable
-    or the group is already gone. Never raises: this runs on error paths.
-    """
-    with contextlib.suppress(Exception):
-        os.killpg(proc.pid, signal.SIGKILL)
+    """Kill the child's whole process tree. Never raises: this runs on error paths."""
+    if IS_WINDOWS:
+        with contextlib.suppress(Exception):
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                capture_output=True, timeout=_REAP_TIMEOUT_S,
+            )
+    else:
+        with contextlib.suppress(Exception):
+            os.killpg(proc.pid, signal.SIGKILL)
     with contextlib.suppress(Exception):
         proc.kill()
 
 
+def resolve_executable(name: str) -> str:
+    """The path `shutil.which` finds for `name`, or `name` itself when nothing is
+    found (so the launch fails with the normal FileNotFoundError path)."""
+    return shutil.which(name) or name
+
+
 def _popen(invocation: Invocation) -> subprocess.Popen:
     env = {**os.environ, **invocation.env}
+    argv = [resolve_executable(invocation.argv[0]), *invocation.argv[1:]]
+    isolation = (
+        {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+        if IS_WINDOWS
+        else {"start_new_session": True}
+    )
     return subprocess.Popen(
-        invocation.argv,
+        argv,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         cwd=invocation.workdir,
         env=env,
         text=True,
+        encoding="utf-8",
         errors="replace",
         shell=False,
-        start_new_session=True,
+        **isolation,
     )
 
 
@@ -74,14 +101,8 @@ class HeadlessTransport:
         start = time.monotonic()
         try:
             proc = _popen(invocation)
-        except FileNotFoundError:
-            return TransportResult(
-                exit_code=None,
-                stdout="",
-                stderr="",
-                duration_s=time.monotonic() - start,
-                error=f"binary not found: {invocation.argv[0]!r}",
-            )
+        except (FileNotFoundError, OSError) as exc:
+            return _not_launched(invocation, exc, start)
         try:
             stdout, stderr = proc.communicate(invocation.stdin, timeout=invocation.timeout_s)
         except subprocess.TimeoutExpired:
@@ -97,7 +118,7 @@ class HeadlessTransport:
             )
         except BaseException:
             # Ctrl-C (or anything else unexpected) must not leave the provider
-            # running detached in its own session — see module docstring.
+            # running detached — see module docstring.
             _kill_tree(proc)
             _reap(proc)
             raise
@@ -119,12 +140,8 @@ class HeadlessTransport:
         start = time.monotonic()
         try:
             proc = _popen(invocation)
-        except FileNotFoundError:
-            return TransportResult(
-                exit_code=None, stdout="", stderr="",
-                duration_s=time.monotonic() - start,
-                error=f"binary not found: {invocation.argv[0]!r}",
-            )
+        except (FileNotFoundError, OSError) as exc:
+            return _not_launched(invocation, exc, start)
 
         def _feed() -> None:
             try:
@@ -173,8 +190,8 @@ class HeadlessTransport:
                         on_line(line)
             proc.wait()
         except BaseException:
-            # Ctrl-C while streaming: the child is in its own session and would
-            # otherwise keep running after baton exits (see module docstring).
+            # Ctrl-C while streaming: the child would otherwise keep running
+            # after baton exits (see module docstring).
             watchdog.cancel()
             _kill_tree(proc)
             _reap(proc)
@@ -195,6 +212,19 @@ class HeadlessTransport:
             stderr="".join(stderr_parts),
             duration_s=time.monotonic() - start,
         )
+
+
+def _not_launched(invocation: Invocation, exc: OSError, start: float) -> TransportResult:
+    """The process never started: missing binary, or (Windows) a file that is not
+    executable. Both are the same thing to the engine — a provider that is not
+    there — and are reported in the same words so doctor/preflight stay readable."""
+    if isinstance(exc, FileNotFoundError) or getattr(exc, "winerror", None) in (2, 193):
+        error = f"binary not found: {invocation.argv[0]!r}"
+    else:
+        error = f"could not start {invocation.argv[0]!r}: {exc}"
+    return TransportResult(
+        exit_code=None, stdout="", stderr="", duration_s=time.monotonic() - start, error=error,
+    )
 
 
 def _reap(proc: subprocess.Popen) -> tuple[str, str]:

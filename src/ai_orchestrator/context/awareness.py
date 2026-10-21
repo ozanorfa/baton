@@ -129,7 +129,7 @@ def repo_map(project_dir: Path) -> str:
 
 def _doc_title(path: Path) -> str:
     try:
-        for line in path.read_text(errors="replace").splitlines()[:10]:
+        for line in path.read_text(errors="replace", encoding="utf-8").splitlines()[:10]:
             line = line.strip()
             if line.startswith("#"):
                 return line.lstrip("# ").strip()
@@ -165,7 +165,9 @@ def docs_index(project_dir: Path) -> list[tuple[str, str]]:
         if file_id in seen_ids:
             continue
         seen_ids.add(file_id)
-        index.append((str(path.relative_to(project_dir)), _doc_title(path)))
+        # as_posix(): the index is prose for a model, and `docs\\state.md` would
+        # both read oddly and break the tests' expectations on Windows (ADR-035)
+        index.append((path.relative_to(project_dir).as_posix(), _doc_title(path)))
         if len(index) >= DOCS_INDEX_MAX:
             break
     return index
@@ -175,7 +177,7 @@ def _readme_excerpt(project_dir: Path) -> str | None:
     for name in ("README.md", "readme.md"):
         path = project_dir / name
         if path.is_file():
-            text = path.read_text(errors="replace").strip()
+            text = path.read_text(errors="replace", encoding="utf-8").strip()
             if not text:
                 return None
             if len(text) > README_EXCERPT_CHARS:

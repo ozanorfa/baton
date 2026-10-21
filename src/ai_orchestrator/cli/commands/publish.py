@@ -27,7 +27,7 @@ from ai_orchestrator.transport.headless import HeadlessTransport
 def _git(project_dir: Path, *args: str, stdin: str = "") -> subprocess.CompletedProcess:
     return subprocess.run(
         ["git", *args], cwd=project_dir, input=stdin,
-        capture_output=True, text=True, errors="replace", timeout=30, shell=False,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30, shell=False,
     )
 
 

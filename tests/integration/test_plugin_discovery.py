@@ -38,13 +38,13 @@ NOT_AN_ADAPTER = object()
 
 
 def install_toy_distribution(root: Path, entry_line: str) -> None:
-    (root / "toyplug.py").write_text(PLUGIN_MODULE)
+    (root / "toyplug.py").write_text(PLUGIN_MODULE, encoding="utf-8")
     dist_info = root / "toyplug-0.1.dist-info"
     dist_info.mkdir()
-    (dist_info / "METADATA").write_text("Metadata-Version: 2.1\nName: toyplug\nVersion: 0.1\n")
+    (dist_info / "METADATA").write_text("Metadata-Version: 2.1\nName: toyplug\nVersion: 0.1\n",
+        encoding="utf-8")
     (dist_info / "entry_points.txt").write_text(
-        f"[ai_orchestrator.providers]\n{entry_line}\n"
-    )
+        f"[ai_orchestrator.providers]\n{entry_line}\n", encoding="utf-8")
 
 
 def test_discovers_installed_plugin(tmp_path: Path, monkeypatch) -> None:

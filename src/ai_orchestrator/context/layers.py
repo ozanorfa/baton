@@ -23,12 +23,14 @@ NO_PROFILE_NOTE = (
 
 
 def global_layer() -> str:
-    return (_PROMPTS / "_global.md").read_text().strip()
+    return (_PROMPTS / "_global.md").read_text(encoding="utf-8").strip()
 
 
 def project_layer(project_dir: Path, profile_relpath: str) -> str:
     profile = project_dir / profile_relpath
-    text = profile.read_text(errors="replace").strip() if profile.is_file() else ""
+    text = ""
+    if profile.is_file():
+        text = profile.read_text(encoding="utf-8", errors="replace").strip()
     if text:
         return f"## Project context\n\n{text}"
     return NO_PROFILE_NOTE
@@ -38,8 +40,8 @@ def agent_template(contract: RoleContract, project_dir: Path) -> Template:
     """Project override (.ai/prompts/<template>) wins over the built-in (ADR-009)."""
     override = project_dir / ".ai" / "prompts" / contract.template
     if override.is_file():
-        return Template(override.read_text())
-    return Template((_PROMPTS / contract.template).read_text())
+        return Template(override.read_text(encoding="utf-8"))
+    return Template((_PROMPTS / contract.template).read_text(encoding="utf-8"))
 
 
 def inputs_section(admitted: Iterable[str], artifacts: dict[str, str]) -> str:

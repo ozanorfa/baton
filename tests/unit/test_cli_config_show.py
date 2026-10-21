@@ -10,7 +10,8 @@ runner = CliRunner()
 def test_config_show_renders_values_and_sources(tmp_path: Path, monkeypatch) -> None:
     project = tmp_path / "proj"
     (project / ".ai").mkdir(parents=True)
-    (project / ".ai" / "config.yaml").write_text("providers:\n  claude:\n    timeout_s: 1234\n")
+    (project / ".ai" / "config.yaml").write_text("providers:\n  claude:\n    timeout_s: 1234\n",
+        encoding="utf-8")
     monkeypatch.chdir(project)
     # isolate from the real user config
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
@@ -27,7 +28,8 @@ def test_config_show_renders_values_and_sources(tmp_path: Path, monkeypatch) -> 
 def test_config_show_invalid_config_exits_2(tmp_path: Path, monkeypatch) -> None:
     project = tmp_path / "proj"
     (project / ".ai").mkdir(parents=True)
-    (project / ".ai" / "config.yaml").write_text("providers:\n  claude:\n    timeout_s: -1\n")
+    (project / ".ai" / "config.yaml").write_text("providers:\n  claude:\n    timeout_s: -1\n",
+        encoding="utf-8")
     monkeypatch.chdir(project)
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
 
