@@ -1,6 +1,6 @@
 [project]
 name = "batonai"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local-first AI coding orchestrator: a deterministic planner → coder → reviewer pipeline over Claude Code, Codex and other AI coding CLIs"
 readme = "README.md"
 license = "MIT"

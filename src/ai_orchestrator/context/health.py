@@ -227,7 +227,14 @@ def read_cache(project_dir: Path) -> dict | None:
         return None
     if time.time() - produced > CACHE_MAX_AGE_S:
         return None
-    if _newest_source_mtime(project_dir) > produced:
+    # Compare file mtimes with the mtime snapshot taken when the cache was
+    # written — never with `time.time()`. The two clocks do not agree to the
+    # millisecond (NTFS timestamps vs the system tick on Windows), so a file
+    # written just before the analysis could read as "newer than the cache"
+    # and silently defeat it on every run (found by the Windows CI, ADR-035).
+    # Records from before this field fall back to the old comparison.
+    seen = record.get("source_mtime", produced)
+    if not isinstance(seen, (int, float)) or _newest_source_mtime(project_dir) > seen:
         return None
     return record
 
@@ -237,6 +244,7 @@ def write_cache(project_dir: Path, data: dict, section: str) -> None:
     path = project_dir / CACHE_RELPATH
     record = {
         "generated_at": time.time(),
+        "source_mtime": _newest_source_mtime(project_dir),  # freshness baseline
         # The rendered slice is stored alongside the raw KPIs so the file
         # answers "what does baton think of this project?" when simply opened.
         "section": section,

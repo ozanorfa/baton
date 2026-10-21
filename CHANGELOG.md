@@ -8,12 +8,21 @@ history in [docs/WORKLOG.md](docs/WORKLOG.md).
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-10-21
+
 ### Added
 - **Windows support** (ADR-035): portable process-tree control (`taskkill` on
   Windows, `killpg` on POSIX), npm `.cmd` shims found via `PATHEXT`, untracked
   file diffs generated in Python instead of via `/dev/null`, explicit UTF-8 for
   every file and subprocess, `%APPDATA%\batonai\config.yaml` for the user
   config, and the full test suite running on `windows-latest` in CI.
+
+### Changed
+- `batonai doctor` distinguishes **required** providers (bound to an enabled
+  stage) from **optional** ones; optional providers that are missing are shown
+  as `○ optional` and no longer fail the command (docs pass, 2026-10-21).
+- `main` is protected: changes land by pull request with green CI on Ubuntu,
+  macOS and Windows.
 
 ## [0.1.0] — 2026-10-21
 
@@ -54,5 +63,6 @@ First public release. Everything below was built between 2026-07-11 and
 - Requires the provider CLIs (`claude`, `codex`, optionally `agy`,
   `opencode`) to be installed and authenticated separately.
 
-[Unreleased]: https://github.com/ozanorfa/baton/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ozanorfa/baton/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ozanorfa/baton/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ozanorfa/baton/releases/tag/v0.1.0
