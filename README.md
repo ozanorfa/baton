@@ -64,7 +64,7 @@ batonai "do something useful"  # run the pipeline
 | `batonai review` | Send the current working-tree diff to the Reviewer — check your own changes with a different model, no pipeline, read-only (ADR-022) |
 | `batonai publish` | Preview a drafted commit message; `--commit`/`--push` commit (and push) — the only command that runs git, and only when you ask (ADR-020) |
 | `batonai resume <run-id>` | Continue a failed run from the failed stage — completed stages are never re-paid |
-| `batonai runs list` / `batonai runs show <id>` | Run history: status, per-stage glyphs, cost, verdict |
+| `batonai runs list` / `batonai runs show <id>` / `batonai runs export` | Run history: status, per-stage glyphs, cost, verdict · `export` prints one Markdown/JSON row per run with cost, diff size and reviewer findings, for the evaluation protocol in [docs/EVALUATION.md](docs/EVALUATION.md) (ADR-036) |
 | `batonai ask --role coder "<q>"` | One cheap single-role call, no pipeline |
 | `batonai setup` | Change which AI handles each role and which model it runs — revisable any time; the defaults stay the defaults (ADR-032) |
 | `batonai health` | Print the repowise code-health hotspots every stage is told about — zero tokens, no run needed |
@@ -98,6 +98,7 @@ The Coder stage **edits your repository unattended** (scoped to the project dire
 | [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | Repo layout + runtime footprint |
 | [TASKS.md](docs/TASKS.md) | The original 35-task build plan, all done — kept as history |
 | [MVP.md](docs/MVP.md) | The first full version, stage by stage — kept as history |
+| [EVALUATION.md](docs/EVALUATION.md) | The protocol for testing the project's own premise — does the pipeline beat a single session? (no results yet) |
 | [MANUAL_TESTING.md](docs/MANUAL_TESTING.md) | Hands-on test commands per milestone |
 | [WORKLOG.md](docs/WORKLOG.md) | Session-by-session history |
 | [IDEAS.md](docs/IDEAS.md) | Evaluated ideas and what became of them — most have since shipped (ADR-017/018/025); the MCP-based context reducer is still parked |

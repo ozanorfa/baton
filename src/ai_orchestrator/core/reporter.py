@@ -54,6 +54,43 @@ class Report(BaseModel):
     stages: list[StageReport]
 
 
+SEVERITIES = ("blocker", "major", "minor")
+_SEVERITY_PATTERN = re.compile(r"\b(blocker|major|minor)\b", re.IGNORECASE)
+
+
+def review_findings(review_text: str) -> dict[str, int]:
+    """Count the Reviewer's findings by severity (ADR-036).
+
+    Pure: reads the `Findings` section of review.md (up to `Suggestions` when
+    present) and counts each severity word once per mention. The reviewer
+    template asks for exactly one severity per finding, so mentions ≈ findings;
+    it is a measurement of the artifact, never an interpretation of it.
+    """
+    lower = review_text.lower()
+    start = lower.find("findings")
+    section = review_text[start:] if start != -1 else review_text
+    end = section.lower().find("suggestions")
+    if end != -1:
+        section = section[:end]
+    counts = dict.fromkeys(SEVERITIES, 0)
+    for match in _SEVERITY_PATTERN.finditer(section):
+        counts[match.group(1).lower()] += 1
+    return counts
+
+
+def diff_stats(patch: str) -> tuple[int, int, int]:
+    """(files changed, lines added, lines removed) from a unified diff. Pure."""
+    files = added = removed = 0
+    for line in patch.splitlines():
+        if line.startswith("diff --git "):
+            files += 1
+        elif line.startswith("+") and not line.startswith("+++"):
+            added += 1
+        elif line.startswith("-") and not line.startswith("---"):
+            removed += 1
+    return files, added, removed
+
+
 def _total(values: list[int | float | None]) -> int | float | None:
     measured = [v for v in values if v is not None]
     return sum(measured) if measured else None

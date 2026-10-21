@@ -154,6 +154,7 @@ Opsiyonel Yayıncı aşaması (ve `batonai ask --role publisher`), bu sığ "dif
 | `batonai config show` | Geçerli tam yapılandırmayı ve her değerin nereden geldiğini gösterir |
 | `batonai runs list` | Bu projedeki geçmiş tüm çalıştırmaları listeler: durum, maliyet, karar |
 | `batonai runs show <run-id>` | Bir çalıştırmanın detayını gösterir |
+| `batonai runs export [idler…]` | Her çalıştırma için bir Markdown satırı (`--format json` ile veri): süre, token, maliyet, karar, Reviewer bulguları (önem derecesine göre), değişen dosya ve satır sayısı — [EVALUATION.md](EVALUATION.md) için |
 | `batonai resume <run-id>` | Başarısız olan bir çalıştırmayı kaldığı yerden devam ettirir — daha önce başarılı olan aşamalar asla tekrar yapılmaz veya tekrar ödenmez |
 | `batonai revise "<düzeltme>"` | **Son** çalıştırma üzerinde sıfırdan başlamadan iterasyon yapar — Coder kendi oturumunu sürdürüp düzeltmeni uygular, sonra Reviewer tekrar bakar (bkz. §8.1) |
 | `batonai review` | Mevcut (commit'lenmemiş) değişikliklerini ikinci bir görüş için Reviewer'a gönderir — pipeline yok, hiçbir şeyi değiştirmez. `-m "şuna odaklan"` ile yönlendir |

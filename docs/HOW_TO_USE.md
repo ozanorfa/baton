@@ -154,6 +154,7 @@ The optional Publisher stage (and `batonai ask --role publisher`) is wired to **
 | `batonai config show` | See the full effective configuration and where every value came from |
 | `batonai runs list` | See every past run in this project: status, cost, verdict |
 | `batonai runs show <run-id>` | See one run's detail |
+| `batonai runs export [ids…]` | One Markdown row per run (`--format json` for data): time, tokens, cost, verdict, reviewer findings by severity, files and lines changed — for [EVALUATION.md](EVALUATION.md) |
 | `batonai resume <run-id>` | Continue a failed run from where it stopped — earlier successful stages are never redone or repaid |
 | `batonai revise "<correction>"` | Iterate on the **last** run without starting over — the Coder picks up its own session and applies your correction, then the Reviewer re-checks (see §8.1) |
 | `batonai review` | Send your current uncommitted changes to the Reviewer for a second opinion — no pipeline, changes nothing. `-m "focus on X"` to steer it |

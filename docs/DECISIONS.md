@@ -1,6 +1,6 @@
 # Architectural Decision Records — AI Coding Orchestrator
 
-**Status:** Living · 35 ADRs · updated 2026-10-21
+**Status:** Living · 36 ADRs · updated 2026-10-21
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Convention: one ADR per consequential decision. New decisions get new ADRs; reversals supersede, never rewrite history. Any future proposal for dynamic/LLM-driven orchestration **requires** an ADR here before code (risk R7 guard).
@@ -42,6 +42,7 @@ Convention: one ADR per consequential decision. New decisions get new ADRs; reve
 | [ADR-033](#adr-033) | Model suggestions are shared and live-discovered, not silently absent | Accepted |
 | [ADR-034](#adr-034) | Hardening pass: no silent states — crashes recorded, trees compared to a baseline, process trees killed, opt-in command access | Accepted |
 | [ADR-035](#adr-035) | Windows is a supported platform: portable process control, explicit UTF-8, CI on all three OSes | Accepted |
+| [ADR-036](#adr-036) | Measure before building: an evaluation protocol and `runs export` decide the roadmap | Accepted |
 
 ---
 
@@ -772,3 +773,19 @@ Investigating further found a second real capability going unused: `agy` (the an
 **Trade-offs.** (a) `taskkill /F` is a hard kill, like `SIGKILL`; neither gives the provider a chance to clean up, which ADR-034 already accepted. (b) `shutil.which` adds one PATH lookup per launch — microseconds. (c) Forcing UTF-8 on redirected output means a user piping baton into a cp1252-only tool sees replacement characters rather than a crash; the alternative was the crash. (d) The CI matrix is 50% longer in wall-clock terms; the macOS runner is already the slow one, so the critical path did not move.
 
 **Alternatives considered.** (a) "Use WSL" — rejected by the owner as the answer for most Windows users; kept in the docs as an option. (b) `psutil` for process trees — a native-extension dependency for one function that `taskkill`/`killpg` already provide. (c) Keeping `git diff --no-index` with `NUL` on Windows — Git for Windows' handling of `NUL` as a pathspec is not documented; generating the hunk in Python is portable by construction and removes a subprocess per file. (d) Setting `PYTHONUTF8=1` for users — would have hidden the encoding bugs in CI while leaving every real user exposed.
+
+## ADR-036 — Measure before building
+
+**Status:** Accepted · 2026-10-21 · protocol and tooling implemented; **results pending**.
+
+**Context.** With v0.2.0 the codebase is sound, tested on three platforms, released and documented. The one thing the project has never produced is evidence for its own premise: that a Planner → Coder → Reviewer pipeline on two different models yields better, safer code than one model in one session. The single acceptance run (2026-07-12) showed that the pipeline *works*, not that it *helps*. Every remaining roadmap item — retries, memory, an MCP interface, more roles — assumes it does. Building on that assumption without checking it is how a tool grows features nobody needed.
+
+**Decision.** Before any further roadmap work, run a small, honest comparison and let its outcome set direction.
+
+- **A written protocol** (`docs/EVALUATION.md`): four or five real tasks on a real project, each done once in a plain Claude Code session and once through baton with `allow_commands` on, alternating order, same starting commit; per arm record tests passing, diff size, cost, time, and the owner's "would I commit this as-is" judgement; for baton additionally the Reviewer's findings and how many were *real*. Results are appended, never edited.
+- **Tooling so the measurement is cheap and consistent:** `batonai runs export` prints one Markdown (or JSON) row per run — wall time, tokens, cost, verdict, findings by severity, files and lines changed — read from the run directory with two pure functions (`review_findings`, `diff_stats`) in `core/reporter.py`. Nothing is estimated; a missing artifact shows as missing.
+- **The outcome decides the roadmap, in both directions.** Real Reviewer catches that the single session shipped justify the next features. No difference after five tasks is written down as the finding, and the project is then described — and invested in — as what it has shown itself to be: a disciplined quota-spreading orchestrator with good bookkeeping.
+
+**Trade-offs.** (a) Five tasks is a small sample; it can refute the premise but not prove it broadly — enough to decide whether to keep investing. (b) The owner is both operator and judge; alternating arm order and judging diffs before looking at which arm produced them are the cheap mitigations. (c) `review_findings` counts severity words, so a reviewer that writes "no blockers" inflates the count by one; the protocol asks for *real* findings to be counted by hand precisely because the automatic number is only a pointer.
+
+**Alternatives considered.** (a) Continue the roadmap and evaluate later — rejected: later never comes, and each feature makes the comparison harder to run cleanly. (b) A benchmark on synthetic tasks — rejected: the claim is about real projects with conventions and history, which is what ADR-013's context layers exist for. (c) An LLM-as-judge for diff quality — rejected for now; a second model grading the first is the same premise under test.

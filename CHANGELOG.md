@@ -8,6 +8,11 @@ history in [docs/WORKLOG.md](docs/WORKLOG.md).
 
 ## [Unreleased]
 
+### Added
+- `batonai runs export`: one Markdown or JSON row per run with wall time, tokens,
+  cost, verdict, reviewer findings by severity and diff size — the measurement
+  side of the evaluation protocol in `docs/EVALUATION.md` (ADR-036).
+
 ## [0.2.0] — 2026-10-21
 
 ### Added
