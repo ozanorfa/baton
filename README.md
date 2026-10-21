@@ -20,7 +20,7 @@ batonai "Add Face ID support to the Flutter application"
 - resumable runs, `revise`/`review`/`publish`, same-provider session chaining, the interactive front door, per-project provider/model setup, live progress notes, optional code-health context;
 - a 2026-10-21 hardening pass (ADR-034) that closed every *silent* failure path a from-scratch review found.
 
-**Verified on:** macOS; one real Flutter app end to end (Face ID feature, verdict APPROVE WITH NOTES), plus a 346-test suite that needs no AI access. **Not yet:** Linux (expected to work), Windows (not supported), any measurement of output quality against a single-model session — see [CHANGELOG.md](CHANGELOG.md) for releases, [docs/WORKLOG.md](docs/WORKLOG.md) for history, [docs/DECISIONS.md](docs/DECISIONS.md) for the reasoning behind every design choice.
+**Verified on:** macOS; one real Flutter app end to end (Face ID feature, verdict APPROVE WITH NOTES), plus a 348-test suite that needs no AI access. **Not yet:** Linux (expected to work), Windows (not supported), any measurement of output quality against a single-model session — see [CHANGELOG.md](CHANGELOG.md) for releases, [docs/WORKLOG.md](docs/WORKLOG.md) for history, [docs/DECISIONS.md](docs/DECISIONS.md) for the reasoning behind every design choice.
 
 **What's next** (ordered, not scheduled): a live tmux view of provider processes · more roles (documentation, security) · policy-driven retries · an MCP server interface · per-project memory. Details in [docs/IMPLEMENTATION_PLAN.md §4](docs/IMPLEMENTATION_PLAN.md).
 
