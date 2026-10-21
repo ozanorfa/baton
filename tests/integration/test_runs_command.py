@@ -54,3 +54,42 @@ def test_runs_show_unknown_id_exit_2(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path / "empty")
     result = runner.invoke(app, ["runs", "show", "nope"])
     assert result.exit_code == 2
+
+
+def test_runs_export_markdown_and_json(tmp_path, fake_registry, monkeypatch) -> None:
+    """ADR-036: one row per run with cost, diff size and reviewer findings."""
+    project = two_stage_project(tmp_path, monkeypatch)
+    config = project / ".ai" / "config.yaml"
+    config.write_text(config.read_text(encoding="utf-8").replace(
+        "stages: [planner, coder]", "stages: [planner, coder, reviewer]"
+    ).replace(
+        "  coder: {provider: fake}\n", "  coder: {provider: fake}\n  reviewer: {provider: fake}\n"
+    ), encoding="utf-8")
+    import subprocess
+    subprocess.run(["git", "init", "-q"], cwd=project, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=project, check=True)
+    subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "i"],
+                   cwd=project, check=True)
+    req = ("build [[write@coder:app.py:x=1]] "
+           "[[output@reviewer:**Verdict** — APPROVE WITH NOTES\n\nFindings\n1. minor — naming]]")
+    assert runner.invoke(app, ["run", req]).exit_code == 0
+
+    md = runner.invoke(app, ["runs", "export"], env={"COLUMNS": "300"})
+    assert md.exit_code == 0, md.output
+    header, sep, row = [ln for ln in md.output.splitlines() if ln.startswith("|")][:3]
+    assert "findings (blocker / major / minor)" in header
+    assert "| APPROVE WITH NOTES | 0 / 0 / 1 | 1 | +1/-0 |" in row
+
+    js = runner.invoke(app, ["runs", "export", "--format", "json"])
+    assert js.exit_code == 0, js.output
+    import json
+    data = json.loads(js.output)
+    assert data[0]["files_changed"] == 1 and data[0]["findings"]["minor"] == 1
+    assert data[0]["verdict"] == "APPROVE WITH NOTES"
+    assert data[0]["stages"] == ["planner", "coder", "reviewer"]
+
+
+def test_runs_export_unknown_id_is_a_usage_error(tmp_path, fake_registry, monkeypatch) -> None:
+    two_stage_project(tmp_path, monkeypatch)
+    result = runner.invoke(app, ["runs", "export", "nope"])
+    assert result.exit_code == 2

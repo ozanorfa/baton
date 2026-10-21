@@ -76,3 +76,33 @@ def test_verdict_variants(tmp_path: Path) -> None:
     assert save_report(state, manager).verdict == "NEEDS WORK"
     manager.save_artifact(state, "review.md", "Verdict: APPROVE\n")
     assert save_report(state, manager).verdict == "APPROVE"
+
+
+def test_review_findings_counts_by_severity_within_the_findings_section() -> None:
+    from ai_orchestrator.core.reporter import review_findings
+
+    review = (
+        "1. **Verdict** — NEEDS WORK\n\n"
+        "2. **Verification performed** — ran the major test suite\n\n"  # 'major' outside Findings
+        "3. **Findings**\n"
+        "   1. blocker — src/a.py: crashes on empty input\n"
+        "   2. major — src/b.py: n+1 query\n"
+        "   3. minor — naming\n"
+        "   4. minor — typo\n\n"
+        "4. **Suggestions** — a minor restructure later (blocker-free)\n"
+    )
+    assert review_findings(review) == {"blocker": 1, "major": 1, "minor": 2}
+    assert review_findings("") == {"blocker": 0, "major": 0, "minor": 0}
+
+
+def test_diff_stats_counts_files_and_lines_not_headers() -> None:
+    from ai_orchestrator.core.reporter import diff_stats
+
+    patch = (
+        "diff --git a/x.py b/x.py\n--- a/x.py\n+++ b/x.py\n@@ -1,2 +1,3 @@\n"
+        "-old\n+new\n+more\n"
+        "diff --git a/y.py b/y.py\nnew file mode 100644\n--- /dev/null\n+++ b/y.py\n"
+        "@@ -0,0 +1 @@\n+hello\n"
+    )
+    assert diff_stats(patch) == (2, 3, 1)
+    assert diff_stats("") == (0, 0, 0)
