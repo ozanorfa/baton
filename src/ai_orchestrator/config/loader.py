@@ -3,7 +3,7 @@
 Precedence, highest wins:
 
     CLI overrides > env (AI_ORCH_*) > project .ai/config.yaml
-        > user ~/.config/ai-orchestrator/config.yaml > built-in defaults
+        > user ~/.config/batonai/config.yaml > built-in defaults
 
 Every leaf value remembers which layer set it (`LoadedConfig.sources`), which
 powers `batonai config show` and lets validation errors name the offending file.
@@ -40,10 +40,23 @@ class LoadedConfig:
         return self.sources.get(dotted_path, "defaults")
 
 
+LEGACY_USER_CONFIG_DIR = "ai-orchestrator"  # the pre-0.1.0 distribution name
+
+
 def user_config_path() -> Path:
+    """`~/.config/batonai/config.yaml` (XDG-aware).
+
+    A config written under the old distribution name is still honoured when no
+    new-style file exists, so a pre-release install keeps working after the
+    rename; the new path wins as soon as it is created.
+    """
     base = os.environ.get("XDG_CONFIG_HOME")
     root = Path(base) if base else Path.home() / ".config"
-    return root / "ai-orchestrator" / "config.yaml"
+    preferred = root / "batonai" / "config.yaml"
+    legacy = root / LEGACY_USER_CONFIG_DIR / "config.yaml"
+    if not preferred.is_file() and legacy.is_file():
+        return legacy
+    return preferred
 
 
 def project_config_path(project_dir: Path) -> Path:

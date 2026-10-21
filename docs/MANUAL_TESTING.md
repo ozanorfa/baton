@@ -2,7 +2,7 @@
 
 Commands you can run yourself to check the orchestrator, grouped by the milestone that introduced them. Grows with every milestone.
 
-**`batonai` is installed globally** (via `uv tool install --editable .`, 2026-07-11), so every command below works from **any directory** — no `uv run`, no `--project`. Because the install is editable, new milestones are picked up automatically. To remove it ever: `uv tool uninstall ai-orchestrator`.
+**`batonai` is installed globally** (via `uv tool install --editable .`, 2026-07-11), so every command below works from **any directory** — no `uv run`, no `--project`. Because the install is editable, new milestones are picked up automatically. To remove it ever: `uv tool uninstall batonai`.
 
 ## The simplest possible test
 
@@ -24,7 +24,7 @@ Only the test-suite commands (`uv run pytest`, `uv run ruff check .`) still need
 ## M0 — Foundations (free, no tokens)
 
 ```bash
-uv run batonai --version        # prints: ai-orchestrator 0.1.0
+uv run batonai --version        # prints: batonai 0.1.0
 uv run batonai --help           # lists all commands
 uv run batonai config show      # merged config as a table with a "source" column
 uv run pytest              # full test suite — everything should pass

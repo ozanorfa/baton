@@ -17,3 +17,6 @@ build/
 
 # Orchestrator run history (when dogfooding in this repo)
 .ai/runs/
+
+# Personal Claude Code settings (per-developer, not project config)
+.claude/settings.local.json

@@ -32,12 +32,16 @@ Every row should say `✓ healthy`. If one doesn't, fix that provider's login/in
 ## 3. Install
 
 ```bash
-git clone <this-repo>
-cd <repo-folder>
-uv tool install --editable .
+uv tool install batonai      # or: pipx install batonai
 ```
 
-This installs `batonai` as a command you can run from **any folder**, not just this one. (The package itself is called `ai-orchestrator` — that's the name to use with `uv tool list` or `uv tool uninstall`.) Because the install is "editable," future updates to this codebase apply automatically — no reinstalling needed.
+This installs `batonai` as a command you can run from **any folder**. You need [uv](https://docs.astral.sh/uv/) or [pipx](https://pipx.pypa.io/) first — both install Python tools in their own isolated environments, so nothing touches your system Python. Later: `uv tool upgrade batonai` to update, `uv tool uninstall batonai` to remove.
+
+Want the newest unreleased code, or to work on baton itself?
+```bash
+uv tool install git+https://github.com/ozanorfa/baton          # latest main
+git clone https://github.com/ozanorfa/baton && cd baton && uv tool install --editable .   # hacking on it
+```
 
 ## 4. Your first run
 

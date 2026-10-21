@@ -111,7 +111,7 @@ Pure function from config: `role → provider adapter instance`. Resolution orde
 
 1. Per-run CLI override (`--provider coder=claude`) — highest
 2. Project config (`.ai/config.yaml`)
-3. User config (`~/.config/ai-orchestrator/config.yaml`)
+3. User config (`~/.config/batonai/config.yaml`)
 4. Built-in defaults
 
 At run start, the routing engine resolves **all** stages up front and health-checks each distinct provider once — a pipeline never fails at stage 3 because of something `batonai doctor` could have caught before stage 1.
@@ -200,7 +200,7 @@ Role prompt templates are equally pluggable: built-in templates in the package, 
 YAML, merged with clear precedence (highest wins):
 
 ```
-CLI flags  >  env vars (AI_ORCH_*)  >  ./.ai/config.yaml  >  ~/.config/ai-orchestrator/config.yaml  >  built-in defaults
+CLI flags  >  env vars (AI_ORCH_*)  >  ./.ai/config.yaml  >  ~/.config/batonai/config.yaml  >  built-in defaults
 ```
 
 ```yaml

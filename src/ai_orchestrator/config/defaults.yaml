@@ -1,5 +1,5 @@
 # Built-in defaults — the lowest precedence layer (ARCHITECTURE.md §4).
-# Override per user (~/.config/ai-orchestrator/config.yaml) or per project (.ai/config.yaml).
+# Override per user (~/.config/batonai/config.yaml) or per project (.ai/config.yaml).
 
 pipeline:
   stages: [planner, designer, coder, tester, reviewer, publisher]

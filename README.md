@@ -16,19 +16,22 @@ batonai "Add Face ID support to the Flutter application"
 
 ## Prerequisites
 
-- macOS, Python ≥3.12, [uv](https://docs.astral.sh/uv/)
+- macOS (tested) or Linux (expected to work, unverified), Python ≥3.12, and [uv](https://docs.astral.sh/uv/) or [pipx](https://pipx.pypa.io/)
 - The provider CLIs, installed and authenticated: `claude` (Claude Code), `codex` (Codex CLI), `agy` (Antigravity CLI)
 - Optional: `opencode` (free client — the default Publisher provider; point it at a free-tier model). Not needed unless you enable the Publisher stage.
 
 ## Install & quickstart
 
 ```bash
-git clone <this-repo> && cd ai-agent-test
-uv tool install --editable .   # installs `batonai` (package name: ai-orchestrator)
+uv tool install batonai        # or: pipx install batonai
 
 cd any-project                 # ideally a git repo with a clean tree
 batonai                        # ← that's it: scans, sets up, asks what you want
 ```
+
+Latest `main` instead of the last release: `uv tool install git+https://github.com/ozanorfa/baton`.
+Working on baton itself: `git clone https://github.com/ozanorfa/baton && cd baton && uv tool install --editable .`
+Upgrade: `uv tool upgrade batonai` · Remove: `uv tool uninstall batonai`.
 
 Bare **`batonai`** opens the interactive front door (ADR-026): it checks your providers, detects the stack, reports code-health hotspots, offers the one-time `init` if the project isn't set up, and then asks what you want done. Nothing to memorize.
 
@@ -94,5 +97,7 @@ uv sync
 uv run pytest          # unit + contract (recorded real CLI fixtures) + integration (fake provider)
 uv run ruff check .
 ```
+
+**Releasing** (maintainers): bump `version` in `pyproject.toml`, add the section to `CHANGELOG.md`, commit, then `git tag v<version> && git push origin v<version>`. The `release` workflow verifies the tag matches the version, runs the suite, builds, publishes to PyPI via trusted publishing and creates the GitHub release.
 
 If you move or rename the checkout, the old `.venv` keeps absolute paths to the previous location (`uv run pytest` then fails to import `ai_orchestrator`): `rm -rf .venv && uv sync`, and `unset VIRTUAL_ENV` if your shell still exports the old one.

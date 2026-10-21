@@ -88,7 +88,7 @@ def test_subcommands_are_untouched_by_the_wizard(tmp_path, monkeypatch):
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
     assert called == [], "explicit commands must never open the wizard"
-    assert "ai-orchestrator" in result.output
+    assert "batonai 0." in result.output
 
 
 # ── the wizard proper ───────────────────────────────────────────────────────

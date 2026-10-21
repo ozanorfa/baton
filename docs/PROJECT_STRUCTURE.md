@@ -3,7 +3,7 @@
 **Status:** Living · updated 2026-10-21 · matches the repo — all planned milestones (M0–M5) built, plus post-MVP work through ADR-034
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
-Naming: distribution package **`ai-orchestrator`**, import package **`ai_orchestrator`**, console script **`batonai`** (all referenced by ADR-009's entry-point group `ai_orchestrator.providers`).
+Naming: distribution package **`batonai`** (PyPI), import package **`ai_orchestrator`** (kept from the pre-release name so ADR-009 plugins stay compatible), console script **`batonai`**; the entry-point group is `ai_orchestrator.providers`.
 
 There are two distinct layouts to understand: the **repository** (this codebase) and the **runtime footprint** (what the tool creates inside a *user's* project and home directory).
 
@@ -12,7 +12,7 @@ There are two distinct layouts to understand: the **repository** (this codebase)
 ## 1. Repository Layout
 
 ```
-ai-orchestrator/
+baton/
 ├── pyproject.toml              # uv-managed; deps, console script `batonai`, entry-point group
 ├── uv.lock
 ├── README.md                   # quickstart; points into docs/
@@ -259,7 +259,7 @@ Anything pointing the other way is a bug.
 ### 2.2 In the user's home
 
 ```
-~/.config/ai-orchestrator/
+~/.config/batonai/          # (a pre-0.1.0 ~/.config/ai-orchestrator/ is still read if this is absent)
 └── config.yaml             # user-level defaults (provider commands, timeouts, models)
 ```
 

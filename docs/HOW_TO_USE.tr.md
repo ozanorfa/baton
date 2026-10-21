@@ -32,12 +32,16 @@ Her satırda `✓ healthy` yazmalı. Biri yazmıyorsa, devam etmeden önce o sa�
 ## 3. Kurulum
 
 ```bash
-git clone <bu-repo>
-cd <repo-klasörü>
-uv tool install --editable .
+uv tool install batonai      # veya: pipx install batonai
 ```
 
-Bu, `batonai` komutunu **her klasörden** çalıştırabileceğin şekilde kurar — sadece bu klasörden değil. (Paketin kendi adı `ai-orchestrator`; `uv tool list` veya `uv tool uninstall` ile bu adı kullanırsın.) Kurulum "editable" (düzenlenebilir) olduğu için, bu kod tabanındaki gelecekteki güncellemeler otomatik olarak geçerli olur — yeniden kurmana gerek yok.
+Bu, `batonai` komutunu **her klasörden** çalıştırabileceğin şekilde kurar. Önce [uv](https://docs.astral.sh/uv/) ya da [pipx](https://pipx.pypa.io/) gerekir — ikisi de Python araçlarını kendi yalıtılmış ortamlarına kurar, sistem Python'una dokunmaz. Sonrası için: güncellemek `uv tool upgrade batonai`, kaldırmak `uv tool uninstall batonai`.
+
+En yeni, henüz yayınlanmamış kodu mu istiyorsun, ya da baton'un kendisi üzerinde mi çalışacaksın?
+```bash
+uv tool install git+https://github.com/ozanorfa/baton          # en güncel main
+git clone https://github.com/ozanorfa/baton && cd baton && uv tool install --editable .   # geliştirme
+```
 
 ## 4. İlk çalıştırman
 

@@ -1,0 +1,65 @@
+# Publish to PyPI on a version tag (v0.1.0, v0.2.0, …).
+#
+# Uses PyPI "trusted publishing" (OIDC): no API token is stored anywhere. One-time
+# setup on pypi.org → your project → Publishing → add a GitHub publisher with
+#   owner: ozanorfa · repository: baton · workflow: release.yml · environment: pypi
+# Then:  git tag v0.1.0 && git push origin v0.1.0
+#
+# The tag must match pyproject.toml's version — the first job refuses otherwise,
+# so a forgotten version bump can never publish the wrong number.
+
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Check that the tag matches pyproject.toml
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(uv version --short)"
+          if [ "$tag" != "$version" ]; then
+            echo "tag v$tag does not match pyproject version $version" >&2
+            exit 1
+          fi
+      - run: uv sync
+      - run: uv run ruff check .
+      - run: uv run pytest
+      - run: uv build
+      - name: Smoke-test the built wheel
+        run: |
+          uv run --isolated --no-project --with dist/*.whl batonai --version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # trusted publishing
+      contents: write   # GitHub release
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+      - name: GitHub release with the built files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --notes "See CHANGELOG.md for this release's notes. Install: \`uv tool install batonai\` or \`pipx install batonai\`."

@@ -1,9 +1,25 @@
 [project]
-name = "ai-orchestrator"
+name = "batonai"
 version = "0.1.0"
-description = "Local-first AI coding orchestrator: a deterministic pipeline over AI coding CLIs"
+description = "Local-first AI coding orchestrator: a deterministic planner → coder → reviewer pipeline over Claude Code, Codex and other AI coding CLIs"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Ozan Orfa" }]
 requires-python = ">=3.12"
+keywords = ["ai", "coding-assistant", "claude-code", "codex", "orchestrator", "pipeline", "cli"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Build Tools",
+]
 dependencies = [
     "typer>=0.12",
     "rich>=13.7",
@@ -11,11 +27,20 @@ dependencies = [
     "pyyaml>=6.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/ozanorfa/baton"
+Repository = "https://github.com/ozanorfa/baton"
+Issues = "https://github.com/ozanorfa/baton/issues"
+Changelog = "https://github.com/ozanorfa/baton/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/ozanorfa/baton/blob/main/docs/HOW_TO_USE.md"
+
 [project.scripts]
 batonai = "ai_orchestrator.cli.app:main"
 
 # Provider plugins register here (ADR-009). Built-ins are registered in code;
-# this group exists for third-party adapters.
+# this group exists for third-party adapters. The import package keeps its
+# original name (`ai_orchestrator`) so existing plugins stay compatible; only
+# the distribution name on PyPI is `batonai`.
 [project.entry-points."ai_orchestrator.providers"]
 
 [dependency-groups]
@@ -30,6 +55,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ai_orchestrator"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/ai_orchestrator", "README.md", "LICENSE", "CHANGELOG.md", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

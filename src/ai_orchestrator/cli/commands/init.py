@@ -68,7 +68,7 @@ def _interactive() -> bool:
 
 STARTER_CONFIG = """\
 # AI Orchestrator — project configuration (commit this file)
-# Anything omitted falls back to user config (~/.config/ai-orchestrator/config.yaml)
+# Anything omitted falls back to user config (~/.config/batonai/config.yaml)
 # and built-in defaults. `batonai config show` prints the merged result with sources.
 
 # The built-in stage order; trim it per project, e.g. a plan+code-only pipeline:

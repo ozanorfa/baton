@@ -67,9 +67,7 @@ def _known_commands() -> set[str]:
 
 def _version_callback(value: bool) -> None:
     if value:
-        # Names the installed package too: `batonai` is the command, but
-        # `ai-orchestrator` is what `uv tool list` / `pip show` know it as.
-        typer.echo(f"batonai (ai-orchestrator) {__version__}")
+        typer.echo(f"batonai {__version__}")
         raise typer.Exit()
 
 

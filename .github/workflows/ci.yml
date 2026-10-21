@@ -7,7 +7,11 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -18,3 +22,5 @@ jobs:
       - run: uv run pytest
         # unit + contract (recorded real CLI fixtures) + integration (fake
         # provider) — the whole suite is designed to run with zero AI access
+      - run: uv build
+        # packaging must stay valid between releases, not be discovered on tag day
