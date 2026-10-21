@@ -468,3 +468,10 @@ Running log of all work sessions: what was done, by whom (👤 user / 🤖 Claud
 - 📝 `CHANGELOG.md` (Keep-a-Changelog, 0.1.0 section). README/HOW_TO_USE (en/tr) install sections rewritten around `uv tool install batonai` / `pipx install batonai`, with git+ and editable variants; Linux marked "expected to work, unverified". `.claude/settings.local.json` added to `.gitignore` (personal tool settings; it was never tracked).
 - Homebrew deliberately deferred: a personal tap is a day's work once PyPI exists; homebrew-core has notability requirements a brand-new project cannot meet.
 - ✅ **346 passed**, ruff clean, build clean.
+
+## 2026-10-21 (cont.) · Repo public — and CI had been red since July
+
+- 👤 "repoyu public yaptım. sırada ne var."
+- 🐛 Before tagging a release, checked CI: **every run on main had failed since 2026-07-28**, unnoticed because nobody looked at the Actions tab. Three wizard tests (`init_ai=False`) let the wizard fall through to the *built-in defaults*, which name the real `claude`/`codex` binaries. On the developer machine they exist, so the health check passed by accident; on CI they do not, so the wizard blocked with exit 2 before asking anything. Fixed by giving those tests a **user-level** config (`$XDG_CONFIG_HOME/batonai/config.yaml`) bound to the fake provider — the project still has no `.ai/`, which is the scenario under test.
+- ✅ Re-ran the whole suite locally with the real provider CLIs **hidden from PATH** (a scratch PATH with only git/python/uv): 346 passed. That run is the honest CI simulation and worth repeating whenever a test touches provider health.
+- 📝 Created the `pypi` GitHub environment for the release workflow's trusted publishing.

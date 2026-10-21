@@ -22,17 +22,30 @@ runner = CliRunner()
 REQ = "add a feature [[write@coder:feature.py:done]]"  # scoped: only the coder edits
 
 
+FAKE_CONFIG = (
+    "pipeline:\n  stages: [planner, coder]\n"
+    "roles:\n  planner: {provider: fake}\n  coder: {provider: fake}\n"
+    "providers:\n"
+    f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
+)
+
+
 def wizard_project(tmp_path: Path, monkeypatch, *, init_ai: bool = True) -> Path:
     project = tmp_path / "proj"
     project.mkdir(parents=True)
     if init_ai:
         (project / ".ai").mkdir()
-        (project / ".ai" / "config.yaml").write_text(
-            "pipeline:\n  stages: [planner, coder]\n"
-            "roles:\n  planner: {provider: fake}\n  coder: {provider: fake}\n"
-            "providers:\n"
-            f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
-        )
+        (project / ".ai" / "config.yaml").write_text(FAKE_CONFIG)
+    else:
+        # No project config → the wizard would resolve the built-in defaults,
+        # which name the REAL claude/codex binaries. On a developer machine those
+        # exist and the health check passes by accident; on CI they do not and
+        # the wizard blocks before asking anything (found when CI went red,
+        # 2026-10-21). A user-level config keeps the test on the fake provider
+        # while the project itself still has no .ai/ — exactly the scenario.
+        user_cfg = tmp_path / "xdg" / "batonai" / "config.yaml"
+        user_cfg.parent.mkdir(parents=True)
+        user_cfg.write_text(FAKE_CONFIG)
     subprocess.run(["git", "init", "-q"], cwd=project, check=True)
     (project / "main.py").write_text("x = 1\n")
     (project / "pyproject.toml").write_text("[project]\nname='p'\n")
