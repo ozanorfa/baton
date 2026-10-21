@@ -58,7 +58,9 @@ def test_resume_continues_from_failed_stage(project, fake_registry) -> None:
     run_id = only_run_id(project)
     assert f"batonai resume {run_id}" in first.output  # failure UX advertises resume
 
-    state_before = json.loads((project / ".ai" / "runs" / run_id / "run.json").read_text(encoding="utf-8"))
+    state_before = json.loads((project / ".ai" / "runs" / run_id / "run.json").read_text(
+        encoding="utf-8"
+    ))
     planner_before = state_before["stages"][0]
     assert planner_before["status"] == "succeeded"
 
@@ -67,18 +69,24 @@ def test_resume_continues_from_failed_stage(project, fake_registry) -> None:
     assert "resuming:" in resumed.output
     assert "APPROVE" in resumed.output
 
-    state_after = json.loads((project / ".ai" / "runs" / run_id / "run.json").read_text(encoding="utf-8"))
+    state_after = json.loads((project / ".ai" / "runs" / run_id / "run.json").read_text(
+        encoding="utf-8"
+    ))
     assert state_after["status"] == "succeeded"
     # planner untouched: same record, not re-run (token waste = zero)
     assert state_after["stages"][0]["started_at"] == planner_before["started_at"]
     assert (project / "done.py").is_file()  # coder's second attempt did the work
 
     # coder's resumed prompt reused the planner artifact loaded from disk
-    coder_prompt = (project / ".ai" / "runs" / run_id / "prompts" / "02-coder.md").read_text(encoding="utf-8")
+    coder_prompt = (project / ".ai" / "runs" / run_id / "prompts" / "02-coder.md").read_text(
+        encoding="utf-8"
+    )
     plan = (project / ".ai" / "runs" / run_id / "artifacts" / "plan.md").read_text(encoding="utf-8")
     assert plan.strip() in coder_prompt
 
-    report = json.loads((project / ".ai" / "runs" / run_id / "report.json").read_text(encoding="utf-8"))
+    report = json.loads((project / ".ai" / "runs" / run_id / "report.json").read_text(
+        encoding="utf-8"
+    ))
     assert report["status"] == "succeeded" and report["verdict"] == "APPROVE"
 
 
@@ -111,7 +119,9 @@ def test_resume_refused_when_config_changed(project, fake_registry) -> None:
     assert failed.exit_code == 1
     run_id = only_run_id(project)
     config = project / ".ai" / "config.yaml"
-    config.write_text(config.read_text(encoding="utf-8").replace("[planner, coder, reviewer]", "[planner, coder]"))
+    config.write_text(config.read_text(
+        encoding="utf-8"
+    ).replace("[planner, coder, reviewer]", "[planner, coder]"))
     result = runner.invoke(app, ["resume", run_id])
     assert result.exit_code == 2
     assert "configuration changed" in result.output
@@ -149,8 +159,12 @@ def test_resume_with_designer_keeps_stage_enabled(project, fake_registry) -> Non
     designer = next(s for s in state["stages"] if s["name"] == "designer")
     assert designer["status"] == "succeeded"  # kept, not silently skipped
     # coder's resumed prompt still received the design artifact from disk
-    coder_prompt = (project / ".ai" / "runs" / run_id / "prompts" / "03-coder.md").read_text(encoding="utf-8")
-    design = (project / ".ai" / "runs" / run_id / "artifacts" / "design.md").read_text(encoding="utf-8")
+    coder_prompt = (project / ".ai" / "runs" / run_id / "prompts" / "03-coder.md").read_text(
+        encoding="utf-8"
+    )
+    design = (project / ".ai" / "runs" / run_id / "artifacts" / "design.md").read_text(
+        encoding="utf-8"
+    )
     assert design.strip() in coder_prompt
 
 
@@ -160,7 +174,9 @@ def test_timeout_becomes_clean_stage_failure(project, fake_registry) -> None:
     result = runner.invoke(app, ["run", "slow [[sleep@coder:5]]"], env={"COLUMNS": "220"})
     assert result.exit_code == 1
     assert "timed out after 1s" in result.output
-    state = json.loads((project / ".ai" / "runs" / only_run_id(project) / "run.json").read_text(encoding="utf-8"))
+    state = json.loads((project / ".ai" / "runs" / only_run_id(project) / "run.json").read_text(
+        encoding="utf-8"
+    ))
     assert state["stages"][1]["status"] == "failed"
 
 

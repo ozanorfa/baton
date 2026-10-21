@@ -67,9 +67,13 @@ def test_revise_continues_same_run_with_correction(project, fake_registry) -> No
     assert state["status"] == "succeeded"
     assert "set x to two" in state["request"]  # correction injected into the request
 
-    coder_prompt = (project / ".ai" / "runs" / run_id / "prompts" / "02-coder.md").read_text(encoding="utf-8")
+    coder_prompt = (project / ".ai" / "runs" / run_id / "prompts" / "02-coder.md").read_text(
+        encoding="utf-8"
+    )
     assert "set x to two" in coder_prompt  # reached the coder
-    assert (project / "app.py").read_text(encoding="utf-8") == "x=2\n"  # coder's revised write applied
+    assert (project / "app.py").read_text(
+        encoding="utf-8"
+    ) == "x=2\n"  # coder's revised write applied
 
 
 def test_revise_with_no_runs_errors(project, fake_registry) -> None:

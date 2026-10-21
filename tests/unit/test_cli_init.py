@@ -38,8 +38,12 @@ def test_init_is_idempotent(tmp_path: Path, monkeypatch) -> None:
     result = runner.invoke(app, ["init"])
     assert result.exit_code == 0
     assert "nothing to do" in result.output
-    assert (tmp_path / ".ai" / "project.md").read_text(encoding="utf-8") == "MY CUSTOM PROFILE"  # never clobbered
-    assert (tmp_path / ".ai" / ".gitignore").read_text(encoding="utf-8").count("runs/") == 1  # no duplicate entry
+    assert (tmp_path / ".ai" / "project.md").read_text(
+        encoding="utf-8"
+    ) == "MY CUSTOM PROFILE"  # never clobbered
+    assert (tmp_path / ".ai" / ".gitignore").read_text(
+        encoding="utf-8"
+    ).count("runs/") == 1  # no duplicate entry
 
 
 def test_init_leaves_the_users_root_gitignore_untouched(tmp_path: Path, monkeypatch) -> None:
@@ -47,7 +51,9 @@ def test_init_leaves_the_users_root_gitignore_untouched(tmp_path: Path, monkeypa
     monkeypatch.chdir(tmp_path)
     (tmp_path / ".gitignore").write_text("node_modules/\n", encoding="utf-8")
     runner.invoke(app, ["init"])
-    assert (tmp_path / ".gitignore").read_text(encoding="utf-8") == "node_modules/\n", "unmodified, byte for byte"
+    assert (tmp_path / ".gitignore").read_text(
+        encoding="utf-8"
+    ) == "node_modules/\n", "unmodified, byte for byte"
     assert "runs/" in (tmp_path / ".ai" / ".gitignore").read_text(encoding="utf-8")
 
 
@@ -118,7 +124,9 @@ def test_init_without_a_terminal_never_prompts(tmp_path: Path, monkeypatch) -> N
     )
     result = runner.invoke(app, ["init"])
     assert result.exit_code == 0
-    assert "providers:" not in (tmp_path / ".ai" / "config.yaml").read_text(encoding="utf-8").replace(
+    assert "providers:" not in (tmp_path / ".ai" / "config.yaml").read_text(
+        encoding="utf-8"
+    ).replace(
         "#   claude", ""
     ).replace("# providers:", "")
 

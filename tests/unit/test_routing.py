@@ -28,7 +28,9 @@ class StubAdapter(ProviderAdapter):
 
 
 def make_config(**provider_overrides) -> AppConfig:
-    data = yaml.safe_load((files("ai_orchestrator.config") / "defaults.yaml").read_text(encoding="utf-8"))
+    data = yaml.safe_load((files("ai_orchestrator.config") / "defaults.yaml").read_text(
+        encoding="utf-8"
+    ))
     for role in data["roles"].values():
         role["provider"] = "stub"
     data["providers"] = {"stub": {"command": "stub-bin", **provider_overrides}}

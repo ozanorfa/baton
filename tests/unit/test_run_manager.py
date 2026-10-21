@@ -52,7 +52,9 @@ def test_crash_between_write_and_rename_keeps_previous_state(
 
     reloaded = manager.load_run(state.run_id)  # previous consistent state intact
     assert reloaded.stage("planner").status is StageStatus.PENDING
-    json.loads((manager.run_dir(state.run_id) / "run.json").read_text(encoding="utf-8"))  # not corrupted
+    json.loads((manager.run_dir(state.run_id) / "run.json").read_text(
+        encoding="utf-8"
+    ))  # not corrupted
 
 
 def test_artifacts_and_prompts(manager: RunManager) -> None:

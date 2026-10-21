@@ -90,6 +90,8 @@ def test_project_template_override_used_in_run(tmp_path, fake_registry, monkeypa
     state = PipelineEngine(manager, transport, prompt_builder=context.build).execute(
         "anything", resolved
     )
-    planner = (manager.run_dir(state.run_id) / "prompts" / "01-planner.md").read_text(encoding="utf-8")
+    planner = (manager.run_dir(state.run_id) / "prompts" / "01-planner.md").read_text(
+        encoding="utf-8"
+    )
     assert planner.startswith("OVERRIDDEN PLANNER TEMPLATE")
     assert "# Role: Planner" not in planner

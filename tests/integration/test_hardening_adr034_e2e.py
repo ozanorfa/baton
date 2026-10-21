@@ -72,7 +72,9 @@ def test_revise_with_a_do_nothing_coder_fails_instead_of_passing(project, fake_r
     revised = runner.invoke(app, ["revise", f"please tweak it {APPROVE}"], env={"COLUMNS": "220"})
     assert revised.exit_code == 1, revised.output
     assert "no workspace changes" in revised.output
-    assert (project / "app.py").read_text(encoding="utf-8") == "x=1\n"  # the user's prior work is untouched
+    assert (project / "app.py").read_text(
+        encoding="utf-8"
+    ) == "x=1\n"  # the user's prior work is untouched
 
 
 def test_revise_that_really_edits_still_passes(project, fake_registry):
@@ -84,7 +86,9 @@ def test_revise_that_really_edits_still_passes(project, fake_registry):
     assert revised.exit_code == 0, revised.output
     # the reviewer still sees the cumulative working-tree diff
     run_id = only_run_id(project)
-    patch = (project / ".ai" / "runs" / run_id / "artifacts" / "diff.patch").read_text(encoding="utf-8")
+    patch = (project / ".ai" / "runs" / run_id / "artifacts" / "diff.patch").read_text(
+        encoding="utf-8"
+    )
     assert "x=2" in patch
 
 

@@ -66,7 +66,9 @@ def test_coder_changes_produce_diff_patch_for_reviewer(tmp_path, fake_registry, 
     patch = manager.load_artifact(state, "diff.patch")
     assert "hello.py" in patch and "print('hi')" in patch
     # the reviewer's prompt includes the diff (contract now admits diff.patch)
-    reviewer_prompt = (manager.run_dir(state.run_id) / "prompts" / "03-reviewer.md").read_text(encoding="utf-8")
+    reviewer_prompt = (manager.run_dir(state.run_id) / "prompts" / "03-reviewer.md").read_text(
+        encoding="utf-8"
+    )
     assert "diff.patch" in reviewer_prompt and "print('hi')" in reviewer_prompt
 
 

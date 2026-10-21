@@ -70,7 +70,9 @@ def test_fix_loop_fires_exactly_once_on_needs_work(project, fake_registry) -> No
     # exactly one fix pass — never a second loop even though the verdict stays NEEDS WORK
     assert _revised_count(project, run_id) == 1
     # the review findings reached the re-run coder
-    coder_prompt = (project / ".ai" / "runs" / run_id / "prompts" / "02-coder.md").read_text(encoding="utf-8")
+    coder_prompt = (project / ".ai" / "runs" / run_id / "prompts" / "02-coder.md").read_text(
+        encoding="utf-8"
+    )
     assert "Address them, then stop" in coder_prompt
     assert len(list((project / ".ai" / "runs").iterdir())) == 1  # same run — revise reuses it
 
