@@ -3,15 +3,60 @@
 argv list with shell=False — no shell interpolation anywhere. Timeouts and
 missing binaries become structured results, not exceptions: the engine's
 fail-stop logic deals in TransportResults.
+
+Process hygiene (ADR-034):
+
+* Every child runs in **its own session** (`start_new_session=True`), so a
+  timeout or a Ctrl-C kills the *whole tree* — provider CLIs spawn helpers
+  (MCP servers, language servers, node workers) that a plain `proc.kill()`
+  would orphan, still burning CPU and quota after baton has given up.
+* Because a new session leaves the terminal's foreground process group, the
+  child no longer receives the terminal's SIGINT by itself; the transport
+  therefore forwards Ctrl-C explicitly (kill the tree, then re-raise).
+* Output is decoded with `errors="replace"`: a single undecodable byte from a
+  third-party process must degrade to U+FFFD in the log, never abort a stage.
 """
 
 import contextlib
 import os
+import signal
 import subprocess
 import threading
 import time
 
 from ai_orchestrator.transport.base import Invocation, LineSink, TransportResult
+
+# How long to wait for a killed tree to actually exit before giving up on
+# collecting its remaining output. Kill is SIGKILL, so this is generous.
+_REAP_TIMEOUT_S = 5
+
+
+def _kill_tree(proc: subprocess.Popen) -> None:
+    """SIGKILL the child's whole process group (it is its own session leader).
+
+    Falls back to killing just the child where process groups are unavailable
+    or the group is already gone. Never raises: this runs on error paths.
+    """
+    with contextlib.suppress(Exception):
+        os.killpg(proc.pid, signal.SIGKILL)
+    with contextlib.suppress(Exception):
+        proc.kill()
+
+
+def _popen(invocation: Invocation) -> subprocess.Popen:
+    env = {**os.environ, **invocation.env}
+    return subprocess.Popen(
+        invocation.argv,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=invocation.workdir,
+        env=env,
+        text=True,
+        errors="replace",
+        shell=False,
+        start_new_session=True,
+    )
 
 
 class HeadlessTransport:
@@ -21,34 +66,14 @@ class HeadlessTransport:
         """Run the invocation; with `on_line`, stream stdout lines as they arrive.
 
         ADR-030: the streaming path exists so a long stage can show evidence of
-        life. It is deliberately opt-in — without a sink this is the original
-        single `subprocess.run` call, byte for byte, because the buffered path
-        is load-bearing and well understood.
+        life. Without a sink the buffered path (`communicate`) is used — simpler,
+        and the one `ask`/`review`/`doctor` take.
         """
         if on_line is not None:
             return self._run_streaming(invocation, on_line)
-        env = {**os.environ, **invocation.env}
         start = time.monotonic()
         try:
-            completed = subprocess.run(
-                invocation.argv,
-                input=invocation.stdin,
-                cwd=invocation.workdir,
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=invocation.timeout_s,
-                shell=False,
-            )
-        except subprocess.TimeoutExpired as exc:
-            return TransportResult(
-                exit_code=None,
-                stdout=_decode(exc.stdout),
-                stderr=_decode(exc.stderr),
-                duration_s=time.monotonic() - start,
-                timed_out=True,
-                error=f"timed out after {invocation.timeout_s}s",
-            )
+            proc = _popen(invocation)
         except FileNotFoundError:
             return TransportResult(
                 exit_code=None,
@@ -57,14 +82,31 @@ class HeadlessTransport:
                 duration_s=time.monotonic() - start,
                 error=f"binary not found: {invocation.argv[0]!r}",
             )
+        try:
+            stdout, stderr = proc.communicate(invocation.stdin, timeout=invocation.timeout_s)
+        except subprocess.TimeoutExpired:
+            _kill_tree(proc)
+            stdout, stderr = _reap(proc)
+            return TransportResult(
+                exit_code=None,
+                stdout=stdout,
+                stderr=stderr,
+                duration_s=time.monotonic() - start,
+                timed_out=True,
+                error=f"timed out after {invocation.timeout_s}s",
+            )
+        except BaseException:
+            # Ctrl-C (or anything else unexpected) must not leave the provider
+            # running detached in its own session — see module docstring.
+            _kill_tree(proc)
+            _reap(proc)
+            raise
         return TransportResult(
-            exit_code=completed.returncode,
-            stdout=completed.stdout,
-            stderr=completed.stderr,
+            exit_code=proc.returncode,
+            stdout=stdout,
+            stderr=stderr,
             duration_s=time.monotonic() - start,
         )
-
-
 
     def _run_streaming(self, invocation: Invocation, on_line: LineSink) -> TransportResult:
         """Popen + incremental stdout reads, with stdin and stderr on threads.
@@ -74,14 +116,9 @@ class HeadlessTransport:
         another so a chatty child cannot block on a full stderr pipe while we
         wait on stdout.
         """
-        env = {**os.environ, **invocation.env}
         start = time.monotonic()
         try:
-            proc = subprocess.Popen(
-                invocation.argv,
-                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                cwd=invocation.workdir, env=env, text=True, shell=False,
-            )
+            proc = _popen(invocation)
         except FileNotFoundError:
             return TransportResult(
                 exit_code=None, stdout="", stderr="",
@@ -119,8 +156,7 @@ class HeadlessTransport:
 
         def _kill_on_timeout() -> None:
             expired.set()
-            with contextlib.suppress(Exception):
-                proc.kill()
+            _kill_tree(proc)
 
         watchdog = threading.Timer(invocation.timeout_s, _kill_on_timeout)
         watchdog.daemon = True
@@ -128,18 +164,24 @@ class HeadlessTransport:
 
         out_parts: list[str] = []
         try:
-            for line in proc.stdout or ():
-                out_parts.append(line)
-                # A progress sink must never be able to fail a stage; the note
-                # is a convenience, the run is the product.
-                with contextlib.suppress(Exception):
-                    on_line(line)
-        except (OSError, ValueError):
-            pass
-
-        proc.wait()
-        watchdog.cancel()
-        draining.join(timeout=2)
+            with contextlib.suppress(OSError, ValueError):  # pipe closed under us
+                for line in proc.stdout or ():
+                    out_parts.append(line)
+                    # A progress sink must never be able to fail a stage; the
+                    # note is a convenience, the run is the product.
+                    with contextlib.suppress(Exception):
+                        on_line(line)
+            proc.wait()
+        except BaseException:
+            # Ctrl-C while streaming: the child is in its own session and would
+            # otherwise keep running after baton exits (see module docstring).
+            watchdog.cancel()
+            _kill_tree(proc)
+            _reap(proc)
+            raise
+        finally:
+            watchdog.cancel()
+        draining.join(timeout=_REAP_TIMEOUT_S)
 
         if expired.is_set():
             return TransportResult(
@@ -155,9 +197,10 @@ class HeadlessTransport:
         )
 
 
-def _decode(data: str | bytes | None) -> str:
-    if data is None:
-        return ""
-    if isinstance(data, bytes):
-        return data.decode(errors="replace")
-    return data
+def _reap(proc: subprocess.Popen) -> tuple[str, str]:
+    """Collect whatever a killed child left in its pipes; never raises."""
+    try:
+        stdout, stderr = proc.communicate(timeout=_REAP_TIMEOUT_S)
+    except (subprocess.TimeoutExpired, ValueError, OSError):
+        return "", ""
+    return stdout or "", stderr or ""

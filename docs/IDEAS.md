@@ -53,7 +53,7 @@ Graduated out of this holding pen. Implemented as `src/ai_orchestrator/providers
 
 ### 3. Zero-LLM Publisher fallback — the floor — ✅ SHIPPED 2026-07-21 (ADR-018)
 
-Graduated. Implemented as the `deterministic` provider (`src/ai_orchestrator/providers/deterministic.py`); select per project with `roles: {publisher: {provider: deterministic}}`. Conventional-commit message from `git diff HEAD --stat`: changed paths → scope, diffstat → summary; type inferred only where unambiguous (docs/test/chore). No model, no quota, no rate limit. Reasoning and the untracked-files trade-off in **[DECISIONS.md → ADR-018](DECISIONS.md)**. The auto-fallback-on-throttle variant was deferred (needs engine retry plumbing); per-project selection ships the value now.
+Graduated. Implemented as the `deterministic` provider (`src/ai_orchestrator/providers/deterministic.py`); select per project with `roles: {publisher: {provider: deterministic}}`. Conventional-commit message from the working-tree status (originally `git diff HEAD --stat`; since ADR-034 `git status --porcelain -z`, so new untracked files are included — the trade-off ADR-018 recorded is closed): changed paths → scope, per-file change kinds → summary; type inferred only where unambiguous (docs/test/chore). No model, no quota, no rate limit. Reasoning in **[DECISIONS.md → ADR-018](DECISIONS.md)** and the amendment in ADR-034. The auto-fallback-on-throttle variant was deferred (needs engine retry plumbing); per-project selection ships the value now.
 
 ### Suggested build order (when picked up)
 

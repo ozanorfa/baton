@@ -8,6 +8,7 @@ before so scripts and CI are unaffected.
 """
 
 import sys
+import warnings
 
 import typer
 
@@ -46,10 +47,22 @@ app.command()(revise)
 app.command()(review)
 app.command()(publish)
 
-_COMMANDS = {
-    "run", "ask", "doctor", "config", "init", "runs", "resume", "revise", "review",
-    "publish", "health", "setup",
-}
+
+
+def _known_commands() -> set[str]:
+    """Every registered command and sub-app name, read from Typer itself.
+
+    Derived, not hand-maintained (ADR-034): a hand-written set silently fell
+    out of step whenever a command was added, and then `batonai <newcmd>` was
+    rewritten into `batonai run "<newcmd>"` — a pipeline run by accident.
+    """
+    names = {
+        info.name or (info.callback.__name__ if info.callback else "")
+        for info in app.registered_commands
+    }
+    names |= {group.name for group in app.registered_groups if group.name}
+    names.discard("")
+    return names
 
 
 def _version_callback(value: bool) -> None:
@@ -81,11 +94,24 @@ def rewrite_argv(argv: list[str]) -> list[str]:
     like --with-designer). Known commands and bare option-only calls pass through."""
     args = argv[1:]
     first_positional = next((a for a in args if not a.startswith("-")), None)
-    if first_positional is None or first_positional in _COMMANDS:
+    if first_positional is None or first_positional in _known_commands():
         return argv
     return [argv[0], "run", *args]
 
 
+def _show_warning(message, category, filename, lineno, file=None, line=None) -> None:
+    """Config warnings (unknown keys, broken plugins) as one tidy CLI line.
+
+    Python's default `warnings` formatter prints `path/to/loader.py:274:
+    UserWarning: …` — an internal file path and a Python class name that mean
+    nothing to someone editing `.ai/config.yaml` (ADR-034).
+    """
+    from ai_orchestrator.cli import render
+
+    render.console.print(f"[yellow]⚠ {message}[/yellow]")
+
+
 def main() -> None:
+    warnings.showwarning = _show_warning
     sys.argv = rewrite_argv(sys.argv)
     app()

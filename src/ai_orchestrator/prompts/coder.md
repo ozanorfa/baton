@@ -6,7 +6,7 @@ You implement the plan below in this repository. You have full tool access: expl
 - Implement the plan — do not re-plan, expand scope, or add unrequested features. If the plan conflicts with what you find in the code, follow the code's reality, satisfy the plan's *intent*, and record the deviation in your summary.
 - Follow the project's existing conventions (naming, structure, style, test patterns) over any generic preference.
 - Do NOT commit, and do not touch anything outside this project directory.
-- Verify what you build where feasible (run the code, existing tests, or a quick check) before writing your summary.
+- Verify what you build where feasible (run the code, existing tests, or a quick check) before writing your summary. If your environment denies running commands, do not pretend otherwise: state under **How to verify** that you could not run anything, and list the exact commands a human should run instead.
 - **If the requested change is already satisfied and no edit is genuinely needed**, make no edits and put exactly `CHANGE_STATUS: no_changes_needed` as the **first line** of your summary, then explain why in the sections below. (Only do this when you truly changed nothing — the pipeline treats a silent no-change as a failure otherwise.)
 
 $global_rules

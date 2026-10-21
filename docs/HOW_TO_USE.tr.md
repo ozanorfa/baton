@@ -201,6 +201,13 @@ roles:
   coder: {provider: codex}     # örneğin bu proje için Claude kullanmak istemiyorsan
 ```
 
+**Coder'ın kendi işini testlerle doğrulamasına izin ver** (varsayılan: kapalı):
+```yaml
+providers:
+  claude: {allow_commands: true}
+```
+Başsız (headless) Claude Code, aksi söylenmedikçe her kabuk komutunu reddeder; bu ayar olmadan Coder dosya düzenler ama hiçbir şey çalıştıramaz — özetinin *How to verify* bölümünde bunu açıkça söyler. Açıldığında kabuk erişimi verilir **ama** git geçmişi/uzak depo komutları (`git commit/push/reset/checkout/…`, `gh`) açık bir yasak listesiyle engelli kalır — bkz. §9. Codex'in sandbox'ı komutlara zaten izin verir (ve ağı kapatır); Codex coder için bu ayar bir şey değiştirmez.
+
 ## 11. Bir şey başarısız olduğunda
 
 Çalıştırma başarısız olan aşamada durur — ondan sonrası hiç çalışmaz, o ana kadar yapılmış olan hiçbir şey kaybolmaz. Nedeni ve önerilen sonraki adımı görürsün:
@@ -208,6 +215,12 @@ roles:
 next steps: batonai resume <run-id> · batonai doctor
 ```
 `batonai resume <run-id>` çalıştır; tam olarak kaldığı yerden devam eder ve daha önce başarılı olan her şeyi yeniden kullanır — aynı iş için asla iki kere ödemezsin.
+
+**Çalıştırma sırasında Ctrl-C'ye basmak** o aşamayı durdurur, aynı özeti basar (kesilen aşama ✗ ile ve resume ipucuyla görünür) ve 130 koduyla çıkar. Coder'ın o ana kadar yazdığı dosyalar çalışma ağacında kalır — `git status` ile bak.
+
+**`batonai runs list`'te "unfinished" görünen bir çalıştırma**, baton'un dışarıdan öldürüldüğü (ya da şu anda bu projede başka bir baton'un çalıştığı) anlamına gelir. Başarı değildir; `batonai resume <run-id>` devam ettirir.
+
+**`revise`'da "no workspace changes were detected"** demek, Coder'ın *ikinci* geçişinin, o geçişten hemen önceki ağaca göre hiçbir şey değiştirmediği demektir — önceki değişikliklerin yerinde durur. Ya düzeltme zaten sağlanmıştı (Coder o zaman `CHANGE_STATUS: no_changes_needed` demeliydi) ya da bir izin engeline takıldı; artefakt ve ham loglar hangisi olduğunu söyler.
 
 ## 12. İyi sonuç almak için
 

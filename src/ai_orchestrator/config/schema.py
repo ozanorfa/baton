@@ -43,6 +43,13 @@ class ProviderConfig(BaseModel):
     command: str
     model: str | None = None
     timeout_s: int = Field(default=600, gt=0)
+    # ADR-034: let an edit-stage on this provider run shell commands (tests,
+    # linters, the app itself) so it can verify its own work. Off by default:
+    # the Coder's prompt asks it to verify, but headless `claude -p` denies
+    # every Bash call unless told otherwise, so without this the step silently
+    # fails. Turning it on never grants git history or remote operations —
+    # the adapter blocks those explicitly (see providers/claude.py).
+    allow_commands: bool = False
 
 
 class ContextConfig(BaseModel):
@@ -89,14 +96,15 @@ def warn_unknown_keys(model: BaseModel, source: str, path: str = "") -> list[str
     for name in type(model).model_fields:
         value = getattr(model, name)
         if isinstance(value, dict):
-            children = list(value.values())
+            # keep the mapping key in the path: `roles.coder.bogus`, not `roles.bogus`
+            children = [(f"{key}.", child) for key, child in value.items()]
         elif isinstance(value, list):
-            children = value
+            children = [("", child) for child in value]
         else:
-            children = [value]
-        for child in children:
+            children = [("", value)]
+        for sub, child in children:
             if isinstance(child, BaseModel):
-                found.extend(warn_unknown_keys(child, source, f"{path}{name}."))
+                found.extend(warn_unknown_keys(child, source, f"{path}{name}.{sub}"))
     if path == "" and found:
         warnings.warn(
             f"unknown config keys in {source}: {', '.join(sorted(found))}",

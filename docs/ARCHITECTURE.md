@@ -1,6 +1,6 @@
 # Architecture — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-29 · fully implemented, M0–M5 + post-MVP (ADR-017–033: opencode/deterministic/testrunner providers, `batonai revise`/`publish`/`review`, repowise code-health context, the `batonai` interactive front door and `setup` command, live progress notes) — adapter table below reflects *verified* CLI behavior, not assumptions
+**Status:** Living · updated 2026-10-21 · fully implemented, M0–M5 + post-MVP (ADR-017–034: opencode/deterministic/testrunner providers, `batonai revise`/`publish`/`review`, repowise code-health context, the `batonai` interactive front door and `setup` command, live progress notes, the ADR-034 hardening pass) — adapter table below reflects *verified* CLI behavior, not assumptions
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [DECISIONS.md](DECISIONS.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 ---
@@ -31,9 +31,10 @@ Four layers with strict downward-only dependencies. Every AI-CLI-specific detail
 │  └─ TestRunnerAdapter    (zero-LLM Tester, ADR-024)          │
 ├─────────────────────────────────────────────────────────────┤
 │  Transport Layer                                             │
-│  HeadlessTransport: buffered subprocess.run by default, an  │
-│  opt-in Popen+line-read streaming path for progress notes   │
-│  (ADR-030) · [post-MVP] TmuxTransport (full observability)  │
+│  HeadlessTransport: Popen in its OWN SESSION (timeouts and  │
+│  Ctrl-C kill the whole process tree, ADR-034); buffered     │
+│  communicate() by default, an opt-in line-read streaming    │
+│  path for progress notes (ADR-030) · [post-MVP] TmuxTransport│
 └─────────────────────────────────────────────────────────────┘
                             │
                             ▼
@@ -168,7 +169,7 @@ The split between `build_invocation` and `parse` keeps adapters **pure and unit-
 
 | Adapter | Invocation | Output | Tokens | Session | Verified quirks |
 |---|---|---|---|---|---|
-| **ClaudeCodeAdapter** (claude 2.1.207) | `claude -p --output-format json`, prompt on stdin | Structured JSON: result, `session_id`, usage, cost | ✅ measured + cost | ✅ `session_id` (`--resume`) | Edit-roles get `--permission-mode acceptEdits`. **A permission-blocked run exits 0 with `is_error:false`** — protocol-invisible; only the stage-level diff check catches it (T26) |
+| **ClaudeCodeAdapter** (claude 2.1.207) | `claude -p --output-format json`, prompt on stdin | Structured JSON: result, `session_id`, usage, cost | ✅ measured + cost | ✅ `session_id` (`--resume`) | Edit-roles get `--permission-mode acceptEdits`; with `allow_commands: true` also `--allowedTools Bash` plus a `--disallowedTools` deny list for git history/remote commands and `gh` (ADR-034). **A permission-blocked run exits 0 with `is_error:false`** — protocol-invisible; only the stage-level diff check catches it (T26) |
 | **CodexAdapter** (codex-cli 0.144.1) | `codex exec --json --skip-git-repo-check -s <sandbox> -`, prompt on stdin | JSONL events | ✅ measured (`turn.completed`) | ✅ `thread_id` (`codex exec resume`) | Sandbox maps to role write-access: `read-only` for Planner/Reviewer, `workspace-write` for edit-roles — role separation enforced by the OS sandbox, not just prompts |
 | **AntigravityAdapter** (agy 1.1.1) | `agy --print-timeout <t>s -p <prompt>` | Plain text | ❌ none reported | ❌ id not printed in `-p` mode | **No stdin prompt support** → argv exception to ADR-010 (amended). `--sandbox` is incompatible with print mode. `--print-timeout` (default 5m) pinned to request timeout |
 
@@ -180,7 +181,7 @@ Prompt payloads are passed via **stdin, not argv** (shell-escaping and length sa
 
 **Same-provider (ADR-015, shipped):** when consecutive stages share a provider — by default, Planner and Reviewer are both Codex — the engine resumes the earlier stage's session instead of cold-starting, gated by two safety checks: the adapter must report `supports_resume`, and the prior session's `allow_edits` must match the current stage's (some CLIs fix sandbox/write-access at session creation and reject changing it on resume — verified against `codex exec resume`). Per-project opt-out: `pipeline: {session_chaining: false}`. Live-verified: a real run showed one continuous Codex session id across Planner→Reviewer, with the cached-token ratio rising through the chain (70% → 83%) — each stage's fresh, full-price cost stayed roughly flat instead of re-paying for repo exploration.
 
-**Quota spread by design (ADR-016, refined by ADR-017):** the Designer defaults to Antigravity — a third pool separate from Codex (Planner/Reviewer) and Claude (Coder) — and the Publisher, the shallowest job, defaults to **opencode** (a free client pointed at a free-tier model, ADR-017), with an optional zero-LLM `deterministic` floor that builds the commit message from `git diff --stat` (ADR-018). These shallow, bounded jobs gain little from chaining and now sit off the paid pools entirely. Same total work; no single subscription absorbs it all.
+**Quota spread by design (ADR-016, refined by ADR-017):** the Designer defaults to Antigravity — a third pool separate from Codex (Planner/Reviewer) and Claude (Coder) — and the Publisher, the shallowest job, defaults to **opencode** (a free client pointed at a free-tier model, ADR-017), with an optional zero-LLM `deterministic` floor that builds the commit message from `git status --porcelain -z` (ADR-018, amended by ADR-034 so new files are seen). These shallow, bounded jobs gain little from chaining and now sit off the paid pools entirely. Same total work; no single subscription absorbs it all.
 
 The seam for post-MVP session persistence exists from day one: adapters record `session_id` in `run.json` when the CLI returns one, and `Capabilities.supports_resume` marks who can use it. Post-MVP, the engine passes the prior `session_id` back (`claude -p --resume <id>`, `codex exec resume`), cutting repeated project context — the largest token win on the roadmap. tmux, when it arrives, is a **TmuxTransport for observability** (watch a live pane); parsing always comes from the headless JSON path, never from scraping panes (see DECISIONS.md ADR-002).
 

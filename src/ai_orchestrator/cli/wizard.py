@@ -62,20 +62,24 @@ def _git_init(project_dir: Path) -> bool:
     return True
 
 
-def _ask_request() -> str:
-    """Prompt until a non-empty request is given; Ctrl-C/EOF exits cleanly."""
+def _ask_nonempty(question: str) -> str:
+    """Prompt until a non-empty answer is given; Ctrl-C/EOF exits cleanly."""
     while True:
-        answer = typer.prompt("\n  What do you want done?\n  ", prompt_suffix="").strip()
+        answer = typer.prompt(f"\n  {question}\n  ", prompt_suffix="").strip()
         if answer:
             return answer
         render.console.print("[dim]  (enter a request, or press Ctrl-C to quit)[/dim]")
+
+
+def _ask_request() -> str:
+    return _ask_nonempty("What do you want done?")
 
 
 MENU = (
     ("New request", "run"),
     ("Revise the last run", "revise"),
     ("Review my current changes", "review"),
-    ("Publish (commit) pending changes", "publish"),
+    ("Preview a commit message for pending changes", "publish"),
     ("Quit", "quit"),
 )
 
@@ -110,9 +114,8 @@ def _dispatch(action: str, state: scan.WorkspaceScan, health: bool) -> None:
             fix_loop=False, health=health,
         )
     elif action == "revise":
-        correction = typer.prompt("\n  What should change?\n  ", prompt_suffix="").strip()
         revise(
-            correction=correction, run_id=None, from_stage=None,
+            correction=_ask_nonempty("What should change?"), run_id=None, from_stage=None,
             with_designer=False, with_tester=False, with_publisher=False,
         )
     elif action == "review":
@@ -127,10 +130,12 @@ def _dispatch(action: str, state: scan.WorkspaceScan, health: bool) -> None:
 def launch() -> None:
     """Entry point for bare `batonai`. Raises typer.Exit with the usual codes.
 
-    Ctrl-C or EOF at any prompt is a clean cancellation (ADR-026): exit 130,
+    Ctrl-C or EOF at any *prompt* is a clean cancellation (ADR-026): exit 130,
     the conventional SIGINT code, with nothing created — Typer's own default
     would be a bare "Aborted." and exit 1, which is indistinguishable from a
-    stage failure.
+    stage failure. A Ctrl-C *during a pipeline stage* never reaches here: the
+    `run` command renders the interrupted run's summary itself and exits 130
+    (ADR-034) — so this message is only ever true when it is shown.
     """
     try:
         _launch()

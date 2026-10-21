@@ -28,8 +28,9 @@ def global_layer() -> str:
 
 def project_layer(project_dir: Path, profile_relpath: str) -> str:
     profile = project_dir / profile_relpath
-    if profile.is_file() and profile.read_text().strip():
-        return f"## Project context\n\n{profile.read_text().strip()}"
+    text = profile.read_text(errors="replace").strip() if profile.is_file() else ""
+    if text:
+        return f"## Project context\n\n{text}"
     return NO_PROFILE_NOTE
 
 

@@ -39,7 +39,9 @@ def doctor() -> None:
                 )
             )
             continue
-        adapter = adapter_cls(command=provider_cfg.command, model=provider_cfg.model)
+        adapter = adapter_cls.configure(
+            provider_cfg.command, provider_cfg.model, provider_cfg.allow_commands
+        )
         rows.append(
             render.DoctorRow(
                 provider=name,

@@ -17,8 +17,10 @@ from ai_orchestrator.cli.app import app
 FAKE_CLI = Path(__file__).parent / "fake_provider" / "fake_ai.py"
 runner = CliRunner()
 
+# `append`, not `write`: the fix pass must change the tree again, or the engine
+# (correctly, ADR-034) treats an identical tree as a silent no-op and fails it.
 NEEDS_WORK = (
-    "build it [[write@coder:app.py:x=1]] [[output@reviewer:**Verdict** — NEEDS WORK]]"
+    "build it [[append@coder:app.py:x=1]] [[output@reviewer:**Verdict** — NEEDS WORK]]"
 )
 APPROVE = (
     "build it [[write@coder:app.py:x=1]] [[output@reviewer:**Verdict** — APPROVE]]"

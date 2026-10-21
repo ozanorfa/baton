@@ -469,3 +469,35 @@ batonai setup    # the antigravity model prompt shows a real, live list (e.g. "g
 If `agy` is missing or the call fails, this silently falls back to no suggestion — never an error. codex and opencode have no such list; they show an explanatory hint instead (where to find a valid id) rather than nothing.
 
 Free logic checks: `uv run pytest tests/unit/test_model_catalog.py tests/unit/test_setup.py`.
+
+
+## Hardening pass — no silent states (ADR-034)
+
+**Free — a crash never leaves a run "running":**
+```bash
+uv run pytest tests/unit/test_hardening_adr034.py -q
+```
+Covers: an exception from the transport marks the stage and run FAILED on disk before propagating; a RUNNING run renders as "run not finished", never "run succeeded"; porcelain `-z` parsing keeps paths with spaces; undecodable bytes become U+FFFD instead of an error; a timed-out stage kills its *grandchild* too (both transport paths); claude's `allow_commands` flags; case-insensitive verdicts.
+
+**Free — end to end on the fake provider:**
+```bash
+uv run pytest tests/integration/test_hardening_adr034_e2e.py -q
+```
+Covers: `revise` with a do-nothing Coder fails ("no workspace changes") even though the tree is already dirty; a real revise still passes and the Reviewer sees the cumulative diff; an untracked `my new file.txt` reaches the diff; Ctrl-C mid-stage → summary + exit 130; `publish` reuses a run's draft only while `diff.patch` still matches the tree.
+
+**Live — the Coder actually runs your tests (costs one Coder stage):**
+```yaml
+# .ai/config.yaml
+providers:
+  claude: {allow_commands: true}
+```
+```bash
+batonai "add a failing-then-fixed unit test for <some function>"
+cat .ai/runs/<run-id>/artifacts/changes.md     # "How to verify" now reports a command that RAN
+grep -c '"Bash(git commit:\*)' .ai/runs/<run-id>/logs/*coder*.stdout || true
+```
+Without the setting, the same summary must say it could not run anything (the Coder prompt requires this). With it, try asking the Coder to commit: it must report that `git commit` was denied — the deny list, not the prompt, is what stops it.
+
+**Live — Ctrl-C during a stage:** start any run, press Ctrl-C while the Coder spinner is up. Expect the summary table with the Coder row ✗, the line "interrupted — the run above was stopped mid-stage…", exit code 130 (`echo $?`), and `ps aux | grep -c "[c]laude"` → `0` (the whole provider tree is gone). `batonai runs list` shows the run as `failed`, not `unfinished`.
+
+**Live — `publish` does not reuse a stale draft:** after a run with `--with-publisher`, edit any file, then `batonai publish`. Expect "the draft from run … describes a different diff than the working tree now holds — drafting afresh." and a new message.

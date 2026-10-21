@@ -11,6 +11,8 @@ directives embedded in the prompt so tests stay declarative:
     [[sleep:N]]             sleep N seconds before answering (timeout tests)
     [[output:text]]         reply with exactly `text`
     [[write:path:content]]  create a file in the cwd (edit-stage simulation)
+    [[append:path:content]] append a line to a file — a change on *every* pass,
+                            so revise/fix-loop re-runs register as real edits
 
 Any directive may be scoped to one pipeline stage with `@role`, matched
 against the prompt's `# Role: <name>` heading (from the role templates):
@@ -61,9 +63,9 @@ def main() -> int:
                 return 1
 
     for kind, arg in directives:
-        if kind == "write":
+        if kind in ("write", "append"):
             path, _, content = arg.partition(":")
-            with open(path, "w") as f:
+            with open(path, "w" if kind == "write" else "a") as f:
                 f.write(content + "\n")
 
     for kind, arg in directives:

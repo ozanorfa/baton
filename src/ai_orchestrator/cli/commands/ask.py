@@ -38,7 +38,9 @@ def ask(
         render.render_error(str(exc))
         raise typer.Exit(code=2) from exc
 
-    adapter = adapter_cls(command=provider_cfg.command, model=provider_cfg.model)
+    adapter = adapter_cls.configure(
+        provider_cfg.command, provider_cfg.model, provider_cfg.allow_commands
+    )
     request = AgentRequest(
         role=role,
         prompt=prompt,

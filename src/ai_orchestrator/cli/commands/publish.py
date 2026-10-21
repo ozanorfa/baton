@@ -17,6 +17,7 @@ from ai_orchestrator.cli import render
 from ai_orchestrator.config.loader import ConfigError, load_config
 from ai_orchestrator.core.models import AgentRequest
 from ai_orchestrator.core.run_manager import RunManager
+from ai_orchestrator.core.workspace import snapshot_changes
 from ai_orchestrator.providers import load_all
 from ai_orchestrator.providers.base import invoke
 from ai_orchestrator.providers.registry import UnknownProviderError
@@ -26,17 +27,22 @@ from ai_orchestrator.transport.headless import HeadlessTransport
 def _git(project_dir: Path, *args: str, stdin: str = "") -> subprocess.CompletedProcess:
     return subprocess.run(
         ["git", *args], cwd=project_dir, input=stdin,
-        capture_output=True, text=True, timeout=30, shell=False,
+        capture_output=True, text=True, errors="replace", timeout=30, shell=False,
     )
+
+
+def _git_or_none(project_dir: Path, *args: str) -> subprocess.CompletedProcess | None:
+    """`_git` for read-only probes: None when git is missing or hangs."""
+    try:
+        return _git(project_dir, *args)
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return None
 
 
 def _changed_files(project_dir: Path) -> list[str] | None:
     """Porcelain status lines, or None if git is missing / this isn't a repo."""
-    try:
-        status = _git(project_dir, "status", "--porcelain")
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        return None
-    if status.returncode != 0:
+    status = _git_or_none(project_dir, "status", "--porcelain")
+    if status is None or status.returncode != 0:
         return None
     return [ln for ln in status.stdout.splitlines() if ln.strip()]
 
@@ -94,8 +100,11 @@ def _fresh_draft(project_dir: Path) -> tuple[str | None, str]:
         return _deterministic_draft(project_dir)
 
     provider_cfg = loaded.config.providers[role_cfg.provider]
-    adapter = adapter_cls(command=provider_cfg.command, model=provider_cfg.model)
-    diff = _git(project_dir, "diff", "HEAD").stdout
+    adapter = adapter_cls.configure(
+        provider_cfg.command, provider_cfg.model, provider_cfg.allow_commands
+    )
+    snapshot = snapshot_changes(project_dir)  # tracked + untracked, baton's own files excluded
+    diff = snapshot.patch if snapshot is not None else ""
     prompt = (
         "Write a concise Conventional Commits message for these working-tree changes. "
         "Output only the commit message, no preamble.\n\n" + (diff or "(no diff)")
@@ -110,18 +119,37 @@ def _fresh_draft(project_dir: Path) -> tuple[str | None, str]:
     return _deterministic_draft(project_dir)
 
 
+def _run_draft_is_current(manager: RunManager, state, project_dir: Path) -> bool:
+    """A run's drafted message describes the diff *that run* produced. Reuse it
+    only while the working tree still shows exactly that diff (ADR-034): once
+    the user has edited further — or the draft belongs to an unrelated earlier
+    run — it would describe changes that are not the ones being committed."""
+    try:
+        recorded = manager.load_artifact(state, "diff.patch")
+    except (FileNotFoundError, OSError):
+        return False
+    current = snapshot_changes(project_dir)
+    return current is not None and current.patch == recorded
+
+
 def _resolve_draft(project_dir: Path) -> tuple[str | None, str]:
-    """Precedence: reuse the latest run's commit_message.md if present, else draft fresh."""
+    """Precedence: the latest run's commit_message.md while it still matches the
+    working tree; otherwise draft fresh."""
     manager = RunManager(project_dir)
     run_id = manager.latest_run_id()
     if run_id is not None:
         try:
             state = manager.load_run(run_id)
             text = manager.load_artifact(state, "commit_message.md")
-            if text.strip():
+        except (FileNotFoundError, OSError, ValueError):
+            text = ""
+        if text.strip():
+            if _run_draft_is_current(manager, state, project_dir):
                 return text, f"run {run_id}"
-        except (FileNotFoundError, OSError):
-            pass
+            render.console.print(
+                f"[dim]the draft from run {run_id} describes a different diff than the "
+                "working tree now holds — drafting afresh.[/dim]"
+            )
     return _fresh_draft(project_dir)
 
 

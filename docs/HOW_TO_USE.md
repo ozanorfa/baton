@@ -201,6 +201,13 @@ roles:
   coder: {provider: codex}     # e.g. if you'd rather not use Claude for this project
 ```
 
+**Let the Coder run your tests to check its own work** (off by default):
+```yaml
+providers:
+  claude: {allow_commands: true}
+```
+Headless Claude Code refuses every shell command unless told otherwise, so without this the Coder can edit files but cannot run anything — it will say so under *How to verify* in its summary. Turning it on grants shell access **except** git history/remote commands (`git commit/push/reset/checkout/…`, `gh`), which stay blocked by an explicit deny list — see §9. Codex's sandbox already allows commands (and blocks the network), so for a Codex coder this setting changes nothing.
+
 ## 11. When something fails
 
 The run stops at the failed stage — nothing after it runs, nothing already done is lost. You'll see the cause and a suggested next step:
@@ -208,6 +215,12 @@ The run stops at the failed stage — nothing after it runs, nothing already don
 next steps: batonai resume <run-id> · batonai doctor
 ```
 Run `batonai resume <run-id>` and it picks up exactly where it stopped, re-using everything that already succeeded — you never pay twice for the same work.
+
+**Pressing Ctrl-C during a run** stops the current stage, prints the same summary (the interrupted stage is marked ✗ with a resume hint) and exits with code 130. Files the Coder already wrote stay in your working tree — check `git status`.
+
+**A run shown as "unfinished"** in `batonai runs list` means baton was killed outright (or another baton is mid-run in this project right now). It is not a success; `batonai resume <run-id>` continues it.
+
+**On `revise`, "no workspace changes were detected"** means the Coder's *second* pass changed nothing compared to the tree as it was right before that pass — your earlier changes are untouched. Either the correction was already satisfied (the Coder should then have said `CHANGE_STATUS: no_changes_needed`) or it hit a permission block; the artifact and raw logs tell which.
 
 ## 12. Getting good results
 

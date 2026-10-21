@@ -71,17 +71,24 @@ STARTER_CONFIG = """\
 # Anything omitted falls back to user config (~/.config/ai-orchestrator/config.yaml)
 # and built-in defaults. `batonai config show` prints the merged result with sources.
 
+# The built-in stage order; trim it per project, e.g. a plan+code-only pipeline:
 # pipeline:
-#   stages: [planner, designer, coder, reviewer]
+#   stages: [planner, coder]
+# (default: [planner, designer, coder, tester, reviewer, publisher] — designer,
+#  tester and publisher are optional and off unless enabled below or per run)
 
 roles:
   planner: {provider: codex}
   designer: {provider: antigravity, enabled: false} # enable per-run with --with-designer
   coder: {provider: claude}
+  tester: {provider: testrunner, enabled: false}    # zero-LLM; --with-tester
   reviewer: {provider: codex}
+  publisher: {provider: opencode, enabled: false}   # drafts only; --with-publisher
 
 # providers:
 #   claude: {command: claude, model: null, timeout_s: 900}
+#   # allow_commands: true lets the Coder run tests/linters to verify its work;
+#   # git history and remote commands stay blocked regardless (ADR-034).
 #   codex: {command: codex, timeout_s: 600}
 #   antigravity: {command: agy, timeout_s: 600}
 """

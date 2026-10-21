@@ -55,7 +55,7 @@ providers:
     model: null # e.g. "openrouter/<:free model>"; point at a backend via `opencode auth`
     timeout_s: 600 # free client — model comes from a user-configured free tier (ADR-017)
   deterministic:
-    command: git # zero-LLM publisher floor (ADR-018): commit message from `git diff --stat`
+    command: git # zero-LLM publisher floor (ADR-018): commit message from `git status` (sees new files too)
     timeout_s: 60 # no model, no quota; select per project: roles: {publisher: {provider: deterministic}}
   testrunner:
     command: auto # zero-LLM tester (ADR-024): auto-detect the test command (pytest/npm test/…)

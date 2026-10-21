@@ -6,14 +6,8 @@ from pathlib import Path
 import typer
 
 from ai_orchestrator.cli import render
-from ai_orchestrator.config.loader import ConfigError, load_config
-from ai_orchestrator.context.manager import ContextManager
-from ai_orchestrator.core.engine import PipelineEngine, ResumeError
-from ai_orchestrator.core.models import RunStatus
-from ai_orchestrator.core.reporter import save_report
-from ai_orchestrator.core.routing import RoutingEngine, RoutingError, build_stage_specs
+from ai_orchestrator.cli.commands import _shared as shared
 from ai_orchestrator.core.run_manager import RunManager
-from ai_orchestrator.providers import load_all
 from ai_orchestrator.transport.headless import HeadlessTransport
 
 
@@ -42,58 +36,22 @@ def resume(
         state = manager.load_run(run_id)
     except FileNotFoundError as exc:
         render.render_error(str(exc))
-        raise typer.Exit(code=2) from exc
+        raise typer.Exit(code=shared.EXIT_USAGE) from exc
 
-    overrides: dict[str, object] = {}
-    if with_designer:
-        overrides["roles.designer.enabled"] = True
-    if with_tester:
-        overrides["roles.tester.enabled"] = True
-    if with_publisher:
-        overrides["roles.publisher.enabled"] = True
-    try:
-        loaded = load_config(project_dir, overrides=overrides)
-    except ConfigError as exc:
-        render.render_error(str(exc))
-        raise typer.Exit(code=2) from exc
-
+    loaded = shared.load_config_or_exit(
+        project_dir,
+        shared.stage_overrides(
+            with_designer=with_designer, with_tester=with_tester, with_publisher=with_publisher
+        ),
+    )
     transport = HeadlessTransport()
-    try:
-        specs = build_stage_specs(loaded.config)
-        resolved = RoutingEngine(loaded.config, load_all()).resolve(specs, transport)
-    except RoutingError as exc:
-        render.render_error(f"preflight failed: {exc}")
-        raise typer.Exit(code=2) from exc
-
-    config_names = [s.name for s in specs]
-    run_names = [s.name for s in state.stages]
-    if config_names != run_names:
-        render.render_error(
-            f"cannot resume: the pipeline configuration changed since run {run_id}.\n"
-            f"  run was:    {run_names}\n"
-            f"  config now: {config_names}\n"
-            "Start a fresh run instead."
-        )
-        raise typer.Exit(code=2)
+    resolved = shared.preflight_or_exit(loaded, transport)
+    shared.check_same_pipeline(state, resolved, "resume")
 
     render.console.print(f"[bold]resuming:[/bold] {state.request}")
-    context = ContextManager(
-        project_dir,
-        loaded.config.context.project_profile,
-        include_health=loaded.config.context.health,
+    engine, manager = shared.build_engine(project_dir, loaded, transport)
+    state = shared.drive(
+        lambda: engine.resume(state, resolved, from_stage=from_stage), manager,
+        run_id_hint=run_id,
     )
-    progress = render.ProgressRenderer()
-    engine = PipelineEngine(
-        manager, transport, prompt_builder=context.build, event_sink=progress.handle,
-        session_chaining=loaded.config.pipeline.session_chaining,
-    )
-    try:
-        state = engine.resume(state, resolved, from_stage=from_stage)
-    except ResumeError as exc:
-        render.render_error(str(exc))
-        raise typer.Exit(code=2) from exc
-
-    report = save_report(state, manager)
-    render.render_run_summary(state, manager.run_dir(state.run_id), report)
-    if state.status is not RunStatus.SUCCEEDED:
-        raise typer.Exit(code=1)
+    shared.finish(state, manager)

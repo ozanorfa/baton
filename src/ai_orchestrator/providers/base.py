@@ -35,6 +35,18 @@ class ProviderAdapter(ABC):
     def __init__(self, command: str, model: str | None = None):
         self.command = command
         self.model = model
+        # ADR-034: set by `configure()`, not the constructor, so third-party
+        # adapters (ADR-009) with their own `__init__` keep working unchanged.
+        self.allow_commands: bool = False
+
+    @classmethod
+    def configure(
+        cls, command: str, model: str | None = None, allow_commands: bool = False
+    ) -> "ProviderAdapter":
+        """The one way the CLI builds an adapter from a ProviderConfig."""
+        adapter = cls(command=command, model=model)
+        adapter.allow_commands = allow_commands
+        return adapter
 
     @abstractmethod
     def health_check(self, transport: Transport) -> Health:

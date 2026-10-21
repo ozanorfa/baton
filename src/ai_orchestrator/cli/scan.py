@@ -137,7 +137,9 @@ def check_providers(config: AppConfig, transport: Transport) -> tuple[ProviderIs
         except UnknownProviderError as exc:
             issues.append(ProviderIssue(name, tuple(roles), str(exc)))
             continue
-        adapter = adapter_cls(command=provider_cfg.command, model=provider_cfg.model)
+        adapter = adapter_cls.configure(
+            provider_cfg.command, provider_cfg.model, provider_cfg.allow_commands
+        )
         health: Health = adapter.health_check(transport)
         if not health.ok:
             issues.append(ProviderIssue(name, tuple(roles), health.detail or "unhealthy"))

@@ -67,7 +67,9 @@ def review(
     request = message or "Review the current working-tree changes."
     prompt = context.build(spec, request, {"diff.patch": snapshot.patch})
 
-    adapter = adapter_cls(command=provider_cfg.command, model=provider_cfg.model)
+    adapter = adapter_cls.configure(
+        provider_cfg.command, provider_cfg.model, provider_cfg.allow_commands
+    )
     agent_request = AgentRequest(
         role="reviewer", prompt=prompt, workdir=project_dir,
         timeout_s=provider_cfg.timeout_s, allow_edits=False,

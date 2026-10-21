@@ -17,7 +17,7 @@ def list_runs() -> None:
     manager = RunManager(Path.cwd())
     run_ids = manager.list_run_ids()
     if not run_ids:
-        render.console.print("no runs yet — try: ai \"<request>\"")
+        render.console.print("no runs yet — try: batonai \"<request>\"")
         return
     rows = []
     for run_id in run_ids:

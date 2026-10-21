@@ -13,7 +13,12 @@ from pydantic import BaseModel
 from ai_orchestrator.core.models import RunState, StageStatus
 from ai_orchestrator.core.run_manager import RunManager
 
-VERDICT_PATTERN = re.compile(r"Verdict\W{0,10}(APPROVE WITH NOTES|APPROVE|NEEDS WORK)")
+# Case-insensitive (ADR-034): a reviewer writing "verdict: needs work" is still a
+# blocking verdict — the fix-loop must trigger on it. The match is normalised to
+# the canonical upper-case form so every consumer compares against one spelling.
+VERDICT_PATTERN = re.compile(
+    r"Verdict\W{0,10}(APPROVE WITH NOTES|APPROVE|NEEDS WORK)", re.IGNORECASE
+)
 
 
 class StageReport(BaseModel):
@@ -60,7 +65,7 @@ def build_report(state: RunState, run_manager: RunManager) -> Report:
     if review_path.is_file():
         match = VERDICT_PATTERN.search(review_path.read_text())
         if match:
-            verdict = match.group(1)
+            verdict = match.group(1).upper()
 
     starts = [s.started_at for s in state.stages if s.started_at]
     ends = [s.finished_at for s in state.stages if s.finished_at]

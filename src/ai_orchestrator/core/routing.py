@@ -69,8 +69,8 @@ class RoutingEngine:
                         f"stage {spec.name!r} is bound to provider {role_cfg.provider!r}, "
                         f"which has no registered adapter: {exc}"
                     ) from exc
-                adapters[role_cfg.provider] = adapter_cls(
-                    command=provider_cfg.command, model=provider_cfg.model
+                adapters[role_cfg.provider] = adapter_cls.configure(
+                    provider_cfg.command, provider_cfg.model, provider_cfg.allow_commands
                 )
             allow_edits = contract_for(spec.role).allow_edits
             resolved.append(

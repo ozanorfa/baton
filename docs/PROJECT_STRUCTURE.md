@@ -1,6 +1,6 @@
 # Project Structure — AI Coding Orchestrator
 
-**Status:** Living · updated 2026-07-12 · matches the repo — all planned milestones (M0–M5) built, plus ADR-013 (workspace awareness) and ADR-014 (Publisher role)
+**Status:** Living · updated 2026-10-21 · matches the repo — all planned milestones (M0–M5) built, plus post-MVP work through ADR-034
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Naming: distribution package **`ai-orchestrator`**, import package **`ai_orchestrator`**, console script **`batonai`** (all referenced by ADR-009's entry-point group `ai_orchestrator.providers`).
@@ -59,6 +59,9 @@ cli/
 │                           #   live discovery (`agy models`) where a provider supports it,
 │                           #   a static fallback otherwise; never validated (ADR-031)
 ├── commands/
+│   ├── _shared.py          # ADR-034: the one prelude/epilogue for run/resume/revise —
+│   │                       #   flags→overrides, config, preflight, engine wiring, and the
+│   │                       #   Ctrl-C handling (summary + exit 130)
 │   ├── run.py              # `batonai run "<request>"` — the pipeline (+ --with-designer,
 │   │                       #   dirty-git-tree / no-baseline-commit warnings, ADR-029)
 │   ├── init.py             # `batonai init` — bootstrap .ai/ in a project; offers a
@@ -144,7 +147,7 @@ providers/
 ├── antigravity.py        # AntigravityAdapter (ADR-012) — the Designer's provider
 ├── opencode.py           # OpencodeAdapter (ADR-017) — free-tier client, Publisher only
 ├── deterministic.py      # DeterministicAdapter (ADR-018) — zero-LLM Publisher floor,
-│                         #   a conventional-commit message from `git diff --stat`
+│                         #   a conventional-commit message from `git status -z` (ADR-034)
 └── testrunner.py         # TestRunnerAdapter (ADR-024) — zero-LLM Tester, runs the
                           #   project's own test command and reports pass/fail
 ```
@@ -201,7 +204,8 @@ tests/
 └── integration/            # full pipeline against a FAKE provider CLI — fast, free,
     │                       #   deterministic, no real AI calls
     └── fake_provider/      # fake_ai.py (CLI driven by prompt directives like
-                            #   [[fail:msg]]) + fakeplug.py adapter + a COMMITTED
+                            #   [[fail:msg]], [[write@coder:path:text]], [[append:…]])
+                            #   + fakeplug.py adapter + a COMMITTED
                             #   dist-info so discovery runs through the real
                             #   entry-point mechanism (no test-only paths in src/)
 ```

@@ -9,7 +9,14 @@ from rich.panel import Panel
 from rich.table import Table
 
 from ai_orchestrator.config.loader import LoadedConfig
-from ai_orchestrator.core.models import AgentResult, Health, RunState, StageStatus, utcnow
+from ai_orchestrator.core.models import (
+    AgentResult,
+    Health,
+    RunState,
+    RunStatus,
+    StageStatus,
+    utcnow,
+)
 
 console = Console()
 error_console = Console(stderr=True, style="bold red")
@@ -70,8 +77,13 @@ def render_usage_line(result: AgentResult) -> None:
 
 
 def render_commit_draft(message: str, source: str) -> None:
-    """Show the commit message that `batonai publish` would use, in a panel."""
-    console.print(Panel(message.strip(), title="commit message", subtitle=source, expand=False))
+    """Show the commit message that `batonai publish` would use, in a panel.
+
+    The source goes on its own line: as a panel subtitle it was clipped to the
+    panel's width, so a one-line message hid which run or provider drafted it.
+    """
+    console.print(Panel(message.strip(), title="commit message", expand=False))
+    console.print(f"[dim]source: {source}[/dim]")
 
 
 def render_publish_plan(changed: list[str], will_push: bool) -> None:
@@ -164,6 +176,7 @@ def render_run_summary(state: RunState, run_dir: Path, report=None) -> None:
             StageStatus.FAILED: "[red]✗[/red]",
             StageStatus.SKIPPED: "[dim]○ skipped[/dim]",
             StageStatus.PENDING: "[dim]· pending[/dim]",
+            StageStatus.RUNNING: "[yellow]… running[/yellow]",
         }.get(stage.status, str(stage.status))
         table.add_row(
             stage.name,
@@ -187,7 +200,7 @@ def render_run_summary(state: RunState, run_dir: Path, report=None) -> None:
         if report.total_cost_usd is not None:
             console.print(f"* {COST_NOTE}", style="dim")
 
-    if state.status.value == "failed":
+    if state.status is RunStatus.FAILED:
         failed_idx, failed = next(
             (i, s) for i, s in enumerate(state.stages, start=1)
             if s.status is StageStatus.FAILED
@@ -200,6 +213,21 @@ def render_run_summary(state: RunState, run_dir: Path, report=None) -> None:
         console.print(
             f"next steps:  [bold]batonai resume {state.run_id}[/bold] "
             "(retry from the failed stage) · [bold]batonai doctor[/bold] (provider health)"
+        )
+    elif state.status is RunStatus.RUNNING:
+        # ADR-034: a run.json still saying "running" means either another
+        # baton process is mid-run, or one died without the chance to record
+        # the failure. It is NOT a success and must never render as one.
+        active = next((s.name for s in state.stages if s.status is StageStatus.RUNNING), None)
+        where = f" (stage {active!r})" if active else ""
+        console.print(
+            f"[yellow]run not finished{where}[/yellow] — still in progress in another "
+            "process, or the process died before recording a result."
+        )
+        console.print(f"run detail:  {run_dir}")
+        console.print(
+            f"next steps:  if nothing is running, [bold]batonai resume {state.run_id}[/bold] "
+            "continues from the unfinished stage"
         )
     else:
         if report is not None and report.verdict:
@@ -214,6 +242,7 @@ _STATUS_GLYPH = {
     StageStatus.FAILED: "✗",
     StageStatus.SKIPPED: "○",
     StageStatus.PENDING: "·",
+    StageStatus.RUNNING: "…",
 }
 
 
@@ -227,6 +256,7 @@ def render_runs_list(rows) -> None:
         status = {
             "succeeded": "[green]succeeded[/green]",
             "failed": "[red]failed[/red]",
+            "running": "[yellow]unfinished[/yellow]",
         }.get(state.status.value, state.status.value)
         cost = f"${report.total_cost_usd:.2f}" if report.total_cost_usd is not None else "—"
         request = state.request if len(state.request) <= 48 else state.request[:45] + "…"

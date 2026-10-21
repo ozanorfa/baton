@@ -213,8 +213,12 @@ class PipelineEngine:
             succeeded = record_i.status is StageStatus.SUCCEEDED
             historical_stage = specs_by_name.get(record_i.name)
             if succeeded and record_i.provider and record_i.session_id and historical_stage:
-                provider_sessions[record_i.provider] = (
-                    record_i.session_id, historical_stage.allow_edits
+                # On revise the carried map already holds each provider's LATEST
+                # session (e.g. the Reviewer's own), which must win over an
+                # earlier head stage's (the Planner's): a re-run Reviewer that
+                # resumes its own transcript remembers what it flagged last time.
+                provider_sessions.setdefault(
+                    record_i.provider, (record_i.session_id, historical_stage.allow_edits)
                 )
 
         for position, stage in enumerate(resolved, start=1):
@@ -272,30 +276,41 @@ class PipelineEngine:
                         {"event": "stage_progress", "stage": _stage.spec.name, "note": note}
                     )
 
+            # ADR-034: the "did the coder change anything?" check compares
+            # against the tree as it was *right before this stage*, not against
+            # HEAD. On `revise`/fix-loop the tree is already dirty with the
+            # previous pass's edits, so a HEAD-relative check would always say
+            # "changed" and the silent-permission-block detector would be blind.
+            baseline = snapshot_changes(self.run_manager.project_dir) if stage.allow_edits else None
+
             try:
                 raw = self.transport.run(
                     stage.adapter.build_invocation(agent_request), on_line=_sink
                 )
+                # Persist raw output before evaluating anything (ARCHITECTURE §2.2).
+                logs_dir = self.run_manager.logs_dir(state.run_id)
+                stdout_path = logs_dir / f"{position:02d}-{stage.spec.name}.stdout"
+                stdout_path.write_text(raw.stdout)
+                (logs_dir / f"{position:02d}-{stage.spec.name}.stderr").write_text(raw.stderr)
+                result = stage.adapter.parse(raw)
             except KeyboardInterrupt:
                 # Ctrl-C must leave a resumable run, not a corrupt one (T34).
-                record.status = StageStatus.FAILED
-                record.finished_at = utcnow()
-                record.error = (
-                    f"interrupted by user (Ctrl-C); continue with: batonai resume {state.run_id}"
+                self._abort_stage(
+                    state, record, log,
+                    f"interrupted by user (Ctrl-C); continue with: batonai resume {state.run_id}",
                 )
-                state.status = RunStatus.FAILED
-                self.run_manager.save(state)
-                log.emit(ev.STAGE_FAILED, stage=stage.spec.name, error=record.error)
-                log.emit(ev.RUN_FINISHED, run_id=state.run_id, status=state.status)
                 raise
-
-            # Persist raw output before evaluating anything (ARCHITECTURE §2.2).
-            logs_dir = self.run_manager.logs_dir(state.run_id)
-            stdout_path = logs_dir / f"{position:02d}-{stage.spec.name}.stdout"
-            stdout_path.write_text(raw.stdout)
-            (logs_dir / f"{position:02d}-{stage.spec.name}.stderr").write_text(raw.stderr)
-
-            result = stage.adapter.parse(raw)
+            except Exception as exc:  # noqa: BLE001 — persist, then propagate
+                # ADR-034: an unexpected error (a transport bug, a crashing
+                # plugin adapter) must not leave run.json saying "running"
+                # forever — that state is unrecoverable from the CLI and renders
+                # as a success in `runs show`. Record it, then let it surface.
+                self._abort_stage(
+                    state, record, log,
+                    f"unexpected error in stage: {type(exc).__name__}: {exc}; "
+                    f"continue with: batonai resume {state.run_id}",
+                )
+                raise
             record.finished_at = utcnow()
             record.session_id = result.session_id
             record.usage = result.usage
@@ -323,7 +338,15 @@ class PipelineEngine:
 
             if stage.allow_edits:
                 snapshot = snapshot_changes(self.run_manager.project_dir)
-                if snapshot is not None and not snapshot.changed:
+                # "Unchanged" = the working tree's diff is byte-identical to the
+                # pre-stage baseline (see above). A missing baseline (git
+                # unavailable) disables the check, exactly as before.
+                stage_changed = (
+                    snapshot is not None
+                    and snapshot.changed
+                    and (baseline is None or snapshot.patch != baseline.patch)
+                )
+                if snapshot is not None and not stage_changed:
                     if NO_CHANGES_MARKER in result.text:
                         # A declared no-op (ADR-021): the stage explicitly said no
                         # change was needed. Distinct from the silent permission
@@ -365,3 +388,17 @@ class PipelineEngine:
             self.run_manager.save(state)
         log.emit(ev.RUN_FINISHED, run_id=state.run_id, status=state.status)
         return state
+
+    def _abort_stage(
+        self, state: RunState, record: StageResult, log: EventLog, error: str
+    ) -> None:
+        """Mark the running stage and the run FAILED and persist — the one thing
+        every abnormal exit (Ctrl-C, crash) must do before propagating, so the
+        run stays inspectable and `batonai resume` has a true starting point."""
+        record.status = StageStatus.FAILED
+        record.finished_at = utcnow()
+        record.error = error
+        state.status = RunStatus.FAILED
+        self.run_manager.save(state)
+        log.emit(ev.STAGE_FAILED, stage=record.name, error=error)
+        log.emit(ev.RUN_FINISHED, run_id=state.run_id, status=state.status)

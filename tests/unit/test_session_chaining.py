@@ -180,10 +180,11 @@ def test_mismatched_allow_edits_never_chains(manager) -> None:
     assert codex.received_session_ids == [None, None]  # never chained — access levels differ
 
 
-def test_revise_coder_resumes_own_session_and_reviewer_rechains(manager) -> None:
-    """ADR-019: after a full run, `revise` re-runs from the Coder. The Coder must
-    resume its OWN prior session (the correction is the next turn), and the
-    Reviewer must still resume the Planner's codex session. Planner is not re-run."""
+def test_revise_coder_resumes_own_session_and_reviewer_resumes_its_own(manager) -> None:
+    """ADR-019/ADR-034: after a full run, `revise` re-runs from the Coder. The
+    Coder resumes its OWN prior session (the correction is the next turn), and
+    so does the Reviewer — its own transcript already contains the Planner's
+    (it was chained from it) plus what it flagged last time. Planner is not re-run."""
     codex = RecordingAdapter(
         "codex",
         [
@@ -208,9 +209,9 @@ def test_revise_coder_resumes_own_session_and_reviewer_rechains(manager) -> None
     claude.results.append(AgentResult(success=True, text="CODE2", session_id="claude-2"))
     engine.revise(state, stages, "make the button blue")
 
-    # Coder re-ran resuming its OWN session; Reviewer re-chained to Planner; Planner not re-run.
+    # Coder re-ran resuming its OWN session; Reviewer resumed ITS OWN; Planner not re-run.
     assert claude.received_session_ids == [None, "claude-1"]
-    assert codex.received_session_ids == [None, "codex-1", "codex-1"]
+    assert codex.received_session_ids == [None, "codex-1", "codex-2"]
 
 
 def test_revise_appends_correction_to_request(manager) -> None:

@@ -19,7 +19,7 @@ runner = CliRunner()
 
 # The fake provider only edits the workspace when the request carries this
 # directive; without it a run in a clean repo fails the ADR-007 no-change check.
-REQ = "add a feature [[write:feature.py:done]]"
+REQ = "add a feature [[write@coder:feature.py:done]]"  # scoped: only the coder edits
 
 
 def wizard_project(tmp_path: Path, monkeypatch, *, init_ai: bool = True) -> Path:
