@@ -14,11 +14,12 @@ batonai "Add Face ID support to the Flutter application"
 
 ## Status
 
-**v0.1.0 — first public release** (2026-10-21; PyPI publication pending, install from GitHub meanwhile — see below). Everything described in this README is built, tested and in use:
+**v0.2.0** (2026-10-21; [releases](https://github.com/ozanorfa/baton/releases) carry the wheel — PyPI publication pending, see below). Everything described in this README is built, tested and in use:
 
 - the six-stage pipeline with Claude Code, Codex, Antigravity, opencode, a zero-LLM test runner and a zero-LLM commit-message floor;
 - resumable runs, `revise`/`review`/`publish`, same-provider session chaining, the interactive front door, per-project provider/model setup, live progress notes, optional code-health context;
-- a 2026-10-21 hardening pass (ADR-034) that closed every *silent* failure path a from-scratch review found.
+- a 2026-10-21 hardening pass (ADR-034) that closed every *silent* failure path a from-scratch review found;
+- Windows support (ADR-035), with the full test suite running on macOS, Linux and Windows in CI.
 
 **Verified on:** macOS live with real provider CLIs (one real Flutter app end to end: Face ID feature, verdict APPROVE WITH NOTES); the 348-test suite, which needs no AI access, runs green on macOS, Linux and Windows in CI. **Not yet:** a live run with real CLIs on Linux or Windows (see the Windows note in the user guide), any measurement of output quality against a single-model session — see [CHANGELOG.md](CHANGELOG.md) for releases, [docs/WORKLOG.md](docs/WORKLOG.md) for history, [docs/DECISIONS.md](docs/DECISIONS.md) for the reasoning behind every design choice.
 
