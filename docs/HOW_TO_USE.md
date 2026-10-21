@@ -146,7 +146,7 @@ The optional Publisher stage (and `batonai ask --role publisher`) is wired to **
 | `batonai --health "<request>"` | Tell every stage which existing files are code-health hotspots (complexity/nesting), so they tread carefully there. Needs the `repowise` tool installed; adds ~4s and a temporary index — off by default (ADR-025) |
 | `batonai ask --role coder "<question>"` | One cheap, one-shot call to a single AI — no pipeline, no artifacts. Good for small questions or tiny edits |
 | `batonai health` | Show which files baton considers code-health hotspots (the same text every stage receives). Free, no run needed — needs `repowise` installed |
-| `batonai doctor` | Check that all providers are installed and logged in |
+| `batonai doctor` | Check that your providers are installed and logged in. Providers of stages that are off show as *optional* and don't count as failures |
 | `batonai init` | Set up `.ai/` in a project (safe to run again; never overwrites your edits). Asks which model each provider should use — press Enter to keep whatever your CLIs already do; `--no-models` skips the question (ADR-031) |
 | `batonai setup` | Change which AI does which job (Coder on Claude, Planner on Codex…) and which model each one runs. Ask any time; Enter keeps what you have (ADR-032) |
 | `batonai config show` | See the full effective configuration and where every value came from |
