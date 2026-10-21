@@ -31,8 +31,9 @@ Four layers with strict downward-only dependencies. Every AI-CLI-specific detail
 │  └─ TestRunnerAdapter    (zero-LLM Tester, ADR-024)          │
 ├─────────────────────────────────────────────────────────────┤
 │  Transport Layer                                             │
-│  HeadlessTransport: Popen in its OWN SESSION (timeouts and  │
-│  Ctrl-C kill the whole process tree, ADR-034); buffered     │
+│  HeadlessTransport: Popen in its own session/process group  │
+│  (timeouts and Ctrl-C kill the whole tree on POSIX and      │
+│  Windows alike, ADR-034/035); explicit UTF-8; buffered      │
 │  communicate() by default, an opt-in line-read streaming    │
 │  path for progress notes (ADR-030) · [post-MVP] TmuxTransport│
 └─────────────────────────────────────────────────────────────┘

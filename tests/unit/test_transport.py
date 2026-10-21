@@ -12,7 +12,8 @@ def invocation(argv: list[str], stdin: str = "", timeout_s: int = 10, **kw) -> I
 
 
 def test_stdin_delivery_and_exit_code() -> None:
-    result = transport.run(invocation(["/bin/cat"], stdin="hello prompt\nline 2"))
+    cat = [sys.executable, "-c", "import sys; sys.stdout.write(sys.stdin.read())"]
+    result = transport.run(invocation(cat, stdin="hello prompt\nline 2"))
     assert result.ok
     assert result.exit_code == 0
     assert result.stdout == "hello prompt\nline 2"

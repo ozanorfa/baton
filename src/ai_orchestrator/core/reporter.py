@@ -63,7 +63,7 @@ def build_report(state: RunState, run_manager: RunManager) -> Report:
     verdict = None
     review_path = run_manager.artifacts_dir(state.run_id) / "review.md"
     if review_path.is_file():
-        match = VERDICT_PATTERN.search(review_path.read_text())
+        match = VERDICT_PATTERN.search(review_path.read_text(encoding="utf-8"))
         if match:
             verdict = match.group(1).upper()
 
@@ -103,5 +103,5 @@ def build_report(state: RunState, run_manager: RunManager) -> Report:
 def save_report(state: RunState, run_manager: RunManager) -> Report:
     report = build_report(state, run_manager)
     path = run_manager.run_dir(state.run_id) / "report.json"
-    path.write_text(report.model_dump_json(indent=2))
+    path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
     return report

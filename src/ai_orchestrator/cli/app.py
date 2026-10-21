@@ -7,6 +7,7 @@ option. Bare `batonai` with no arguments at all opens the interactive wizard
 before so scripts and CI are unaffected.
 """
 
+import contextlib
 import sys
 import warnings
 
@@ -109,7 +110,23 @@ def _show_warning(message, category, filename, lineno, file=None, line=None) -> 
     render.console.print(f"[yellow]⚠ {message}[/yellow]")
 
 
+def _utf8_console() -> None:
+    """Make stdout/stderr UTF-8 when they are not already (ADR-035).
+
+    On Windows a redirected or piped stream defaults to the legacy code page,
+    and the first `✓` or `→` baton prints would raise UnicodeEncodeError. An
+    interactive console is already Unicode-capable; this only touches streams
+    that would otherwise fail. errors="replace" so output never aborts.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        enc = (getattr(stream, "encoding", "") or "").lower().replace("-", "")
+        if enc != "utf8" and hasattr(stream, "reconfigure"):
+            with contextlib.suppress(Exception):
+                stream.reconfigure(encoding="utf-8", errors="replace")
+
+
 def main() -> None:
+    _utf8_console()
     warnings.showwarning = _show_warning
     sys.argv = rewrite_argv(sys.argv)
     app()

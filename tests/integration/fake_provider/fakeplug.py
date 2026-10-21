@@ -4,6 +4,7 @@ Registered through the real entry-point mechanism (see the dist-info next to
 this file) — no test-only code paths exist in src/.
 """
 
+import sys
 from pathlib import Path
 
 from ai_orchestrator.core.models import AgentRequest, AgentResult, Capabilities, Health
@@ -15,9 +16,18 @@ class FakeAdapter(ProviderAdapter):
     name = "fake"
     capabilities = Capabilities(edits_files=True)
 
+    def _argv(self) -> list[str]:
+        """`fake_ai.py` runs via its shebang on POSIX; Windows has no shebangs,
+        so the interpreter goes in front. Real adapters never need this — their
+        commands are genuine executables (`claude.cmd` etc.)."""
+        if self.command.endswith(".py"):
+            return [sys.executable, self.command]
+        return [self.command]
+
     def health_check(self, transport: Transport) -> Health:
         raw = transport.run(
-            Invocation(argv=[self.command, "--version"], stdin="", workdir=Path.cwd(), timeout_s=10)
+            Invocation(argv=[*self._argv(), "--version"], stdin="", workdir=Path.cwd(),
+                       timeout_s=10)
         )
         if not raw.ok:
             return Health(ok=False, binary=self.command, detail=raw.error or raw.stderr.strip())
@@ -25,7 +35,7 @@ class FakeAdapter(ProviderAdapter):
 
     def build_invocation(self, request: AgentRequest) -> Invocation:
         return Invocation(
-            argv=[self.command],
+            argv=self._argv(),
             stdin=request.prompt,
             workdir=request.workdir,
             timeout_s=request.timeout_s,

@@ -43,7 +43,7 @@ def _git_init(project_dir: Path) -> bool:
     try:
         proc = subprocess.run(
             ["git", "init", "-q"],
-            cwd=project_dir, capture_output=True, text=True,
+            cwd=project_dir, capture_output=True, text=True, encoding="utf-8",
             timeout=GIT_INIT_TIMEOUT_S, shell=False,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError) as exc:

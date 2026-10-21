@@ -13,6 +13,7 @@ failure → NEEDS WORK → fix-loop). Only a missing test command or a timeout f
 the stage itself.
 """
 
+import os
 import shlex
 from pathlib import Path
 
@@ -66,7 +67,9 @@ class TestRunnerAdapter(ProviderAdapter):
 
     def build_invocation(self, request: AgentRequest) -> Invocation:
         command = _resolve(self.command, request.workdir)
-        argv = shlex.split(command) if command else [NOT_DETECTED]
+        # posix=False on Windows: a configured `C:\\tools\\pytest.exe -q` must keep
+        # its backslashes instead of having them eaten as escapes (ADR-035).
+        argv = shlex.split(command, posix=os.name != "nt") if command else [NOT_DETECTED]
         return Invocation(
             argv=argv,
             stdin="",

@@ -153,8 +153,15 @@ def test_undecodable_output_degrades_instead_of_crashing(streaming: bool) -> Non
 
 
 def _alive(pid: int) -> bool:
+    if sys.platform == "win32":
+        import subprocess
+
+        out = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}", "/NH"], capture_output=True, text=True
+        ).stdout
+        return str(pid) in out
     try:
-        os.kill(pid, 0)
+        os.kill(pid, 0)  # signal 0 = existence check (POSIX only)
     except ProcessLookupError:
         return False
     except PermissionError:

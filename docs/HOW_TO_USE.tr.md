@@ -40,6 +40,8 @@ uv tool install batonai      # veya: pipx install batonai
 
 Bu, `batonai` komutunu **her klasörden** çalıştırabileceğin şekilde kurar. Önce [uv](https://docs.astral.sh/uv/) ya da [pipx](https://pipx.pypa.io/) gerekir — ikisi de Python araçlarını kendi yalıtılmış ortamlarına kurar, sistem Python'una dokunmaz. Sonrası için: güncellemek `uv tool upgrade batonai`, kaldırmak `uv tool uninstall batonai`.
 
+**Windows'ta:** Python 3.12+ ve `uv`'yi (ya da `pipx`'i) normal yoldan kur; aynı komut PowerShell veya Windows Terminal'de çalışır, WSL gerekmez. Kullanıcı düzeyi config dosyan `%APPDATA%\batonai\config.yaml` konumundadır. Baton'un kendi yaptığı her şey CI'da Windows üzerinde test ediliyor; sağlayıcı CLI'ları ise üreticilerin kendi programları, bu yüzden önce `batonai doctor` çalıştır. Varsayılan pipeline'daki Claude Code ve Codex, prompt'u stdin üzerinden gönderdiği için güvenli tercihlerdir. İsteğe bağlı Designer (`agy`) ve Publisher (`opencode`) prompt'u komut satırı argümanı olarak geçirir; Windows'ta bu `cmd.exe` tırnaklama kurallarından geçer ve orada denenmedi — `%`, `^` veya `"` içeren bir prompt tuhaf davranırsa sebebi budur.
+
 En yeni, henüz yayınlanmamış kodu mu istiyorsun, ya da baton'un kendisi üzerinde mi çalışacaksın?
 ```bash
 uv tool install git+https://github.com/ozanorfa/baton          # en güncel main

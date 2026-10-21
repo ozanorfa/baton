@@ -18,7 +18,8 @@ def _warn_if_dirty_git_tree(project_dir: Path) -> None:
     try:
         status = subprocess.run(
             ["git", "status", "--porcelain"],
-            cwd=project_dir, capture_output=True, text=True, timeout=10, shell=False,
+            cwd=project_dir, capture_output=True, text=True, encoding="utf-8",
+            timeout=10, shell=False,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         return
@@ -47,7 +48,8 @@ def _has_commits(project_dir: Path) -> bool:
     try:
         proc = subprocess.run(
             ["git", "rev-parse", "--verify", "HEAD"],
-            cwd=project_dir, capture_output=True, text=True, timeout=10, shell=False,
+            cwd=project_dir, capture_output=True, text=True, encoding="utf-8",
+            timeout=10, shell=False,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         return True  # can't tell → don't cry wolf

@@ -33,7 +33,7 @@ class EventLog:
 
     def emit(self, event: str, **fields: Any) -> None:
         record = {"ts": datetime.now(UTC).isoformat(), "event": event, **fields}
-        with self.path.open("a") as f:
+        with self.path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record, default=str) + "\n")
         if self.sink is not None:
             self.sink(record)
@@ -41,4 +41,5 @@ class EventLog:
     def read(self) -> list[dict[str, Any]]:
         if not self.path.is_file():
             return []
-        return [json.loads(line) for line in self.path.read_text().splitlines() if line]
+        lines = self.path.read_text(encoding="utf-8").splitlines()
+        return [json.loads(line) for line in lines if line]

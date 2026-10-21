@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import subprocess
 
+from ai_orchestrator.transport.headless import resolve_executable
+
 DISCOVERY_TIMEOUT_S = 5
 # A prompt suggestion list, not a picker — stop well short of a full dump.
 DISCOVERY_MAX = 8
@@ -65,13 +67,14 @@ def discover_models(provider: str, command: str) -> tuple[str, ...]:
         return ()
     try:
         proc = subprocess.run(
-            [command, *extra],
+            [resolve_executable(command), *extra],  # `agy.cmd` on Windows (ADR-035)
             # stdin=DEVNULL, not inherited: live-tested (2026-07-29), `agy models`
             # returns its plain list in ~2s when stdin is /dev/null, but hangs
             # indefinitely when it inherits an ambient terminal/pipe stdin — this
             # command must never gamble on whatever fd the caller happens to have.
             stdin=subprocess.DEVNULL,
-            capture_output=True, text=True, timeout=DISCOVERY_TIMEOUT_S, shell=False,
+            capture_output=True, text=True, encoding="utf-8",
+            timeout=DISCOVERY_TIMEOUT_S, shell=False,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         return ()

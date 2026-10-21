@@ -129,7 +129,7 @@ def repo_map(project_dir: Path) -> str:
 
 def _doc_title(path: Path) -> str:
     try:
-        for line in path.read_text(errors="replace").splitlines()[:10]:
+        for line in path.read_text(errors="replace", encoding="utf-8").splitlines()[:10]:
             line = line.strip()
             if line.startswith("#"):
                 return line.lstrip("# ").strip()
@@ -175,7 +175,7 @@ def _readme_excerpt(project_dir: Path) -> str | None:
     for name in ("README.md", "readme.md"):
         path = project_dir / name
         if path.is_file():
-            text = path.read_text(errors="replace").strip()
+            text = path.read_text(errors="replace", encoding="utf-8").strip()
             if not text:
                 return None
             if len(text) > README_EXCERPT_CHARS:

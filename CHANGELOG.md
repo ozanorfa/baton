@@ -8,6 +8,13 @@ history in [docs/WORKLOG.md](docs/WORKLOG.md).
 
 ## [Unreleased]
 
+### Added
+- **Windows support** (ADR-035): portable process-tree control (`taskkill` on
+  Windows, `killpg` on POSIX), npm `.cmd` shims found via `PATHEXT`, untracked
+  file diffs generated in Python instead of via `/dev/null`, explicit UTF-8 for
+  every file and subprocess, `%APPDATA%\batonai\config.yaml` for the user
+  config, and the full test suite running on `windows-latest` in CI.
+
 ## [0.1.0] — 2026-10-21
 
 First public release. Everything below was built between 2026-07-11 and

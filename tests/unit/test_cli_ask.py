@@ -6,6 +6,8 @@ from typer.testing import CliRunner
 from ai_orchestrator.cli.app import app
 
 runner = CliRunner()
+# Exits 0 for `<OK_BIN> --version` on every platform (prints the interpreter version).
+OK_BIN = sys.executable
 
 # A stand-in "claude" CLI: reads stdin, emits valid claude-shaped JSON.
 FAKE_CLAUDE = (
@@ -28,9 +30,17 @@ def setup_project(tmp_path: Path, monkeypatch, command: str) -> None:
 
 
 def make_fake_cli(tmp_path: Path) -> Path:
-    script = tmp_path / "fake_claude.sh"
-    script.write_text(f"#!/bin/sh\nexec {sys.executable} -c \"{FAKE_CLAUDE}\"\n")
-    script.chmod(0o755)
+    """A single-token executable wrapping the fake: a .sh on POSIX, a .cmd on
+    Windows — the same shape the real npm-installed CLIs have there."""
+    body = tmp_path / "fake_claude.py"
+    body.write_text(FAKE_CLAUDE + "\n", encoding="utf-8")
+    if sys.platform == "win32":
+        script = tmp_path / "fake_claude.cmd"
+        script.write_text(f'@"{sys.executable}" "{body}" %*\r\n', encoding="utf-8")
+    else:
+        script = tmp_path / "fake_claude.sh"
+        script.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{body}" "$@"\n', encoding="utf-8")
+        script.chmod(0o755)
     return script
 
 
@@ -45,7 +55,7 @@ def test_ask_round_trips_through_role_provider(tmp_path: Path, monkeypatch) -> N
 
 
 def test_ask_unknown_role_exits_2(tmp_path: Path, monkeypatch) -> None:
-    setup_project(tmp_path, monkeypatch, "/usr/bin/true")
+    setup_project(tmp_path, monkeypatch, OK_BIN)
     result = runner.invoke(app, ["ask", "--role", "wizard", "hi"])
     assert result.exit_code == 2
     assert "unknown role 'wizard'" in result.output

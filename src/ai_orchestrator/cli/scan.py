@@ -175,7 +175,7 @@ def git_state(project_dir: Path) -> tuple[bool, bool, bool]:
             ["git", "status", "--porcelain"],
             cwd=project_dir,
             capture_output=True,
-            text=True,
+            text=True, encoding="utf-8",
             timeout=GIT_STATUS_TIMEOUT_S,
             shell=False,
         )
@@ -191,7 +191,7 @@ def _git_ok(project_dir: Path, *args: str) -> bool:
     try:
         proc = subprocess.run(
             ["git", *args], cwd=project_dir, capture_output=True,
-            text=True, timeout=GIT_STATUS_TIMEOUT_S, shell=False,
+            text=True, encoding="utf-8", timeout=GIT_STATUS_TIMEOUT_S, shell=False,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         return False

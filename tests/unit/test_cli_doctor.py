@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -5,6 +6,8 @@ from typer.testing import CliRunner
 from ai_orchestrator.cli.app import app
 
 runner = CliRunner()
+# Exits 0 for `<OK_BIN> --version` on every platform (prints the interpreter version).
+OK_BIN = sys.executable
 
 
 def setup_project(tmp_path: Path, monkeypatch, config_text: str) -> None:
@@ -16,7 +19,7 @@ def setup_project(tmp_path: Path, monkeypatch, config_text: str) -> None:
 
 
 def test_doctor_healthy_with_fake_commands(tmp_path: Path, monkeypatch) -> None:
-    # /usr/bin/true exits 0 for any argv → every health check passes. doctor
+    # {OK_BIN} exits 0 for any argv → every health check passes. doctor
     # checks EVERY configured provider, so all of them must resolve to a working
     # binary — not just the three used by the default enabled roles (else this
     # fails on a machine without opencode installed, e.g. CI).
@@ -24,12 +27,12 @@ def test_doctor_healthy_with_fake_commands(tmp_path: Path, monkeypatch) -> None:
         tmp_path,
         monkeypatch,
         "providers:\n"
-        "  claude: {command: /usr/bin/true}\n"
-        "  codex: {command: /usr/bin/true}\n"
-        "  antigravity: {command: /usr/bin/true}\n"
-        "  opencode: {command: /usr/bin/true}\n"
-        "  deterministic: {command: /usr/bin/true}\n"
-        "  testrunner: {command: /usr/bin/true}\n",
+        f"  claude: {{command: {OK_BIN}}}\n"
+        f"  codex: {{command: {OK_BIN}}}\n"
+        f"  antigravity: {{command: {OK_BIN}}}\n"
+        f"  opencode: {{command: {OK_BIN}}}\n"
+        f"  deterministic: {{command: {OK_BIN}}}\n"
+        f"  testrunner: {{command: {OK_BIN}}}\n",
     )
     result = runner.invoke(app, ["doctor"], env={"COLUMNS": "200"})
     assert result.exit_code == 0
@@ -42,9 +45,9 @@ def test_doctor_missing_binary_is_actionable_row_not_crash(tmp_path: Path, monke
         tmp_path,
         monkeypatch,
         "providers:\n"
-        "  claude: {command: /usr/bin/true}\n"
+        f"  claude: {{command: {OK_BIN}}}\n"
         "  codex: {command: /nonexistent/codex-bin}\n"
-        "  antigravity: {command: /usr/bin/true}\n",
+        f"  antigravity: {{command: {OK_BIN}}}\n",
     )
     result = runner.invoke(app, ["doctor"], env={"COLUMNS": "200"})
     assert result.exit_code == 1  # unhealthy → nonzero for scripts
@@ -71,8 +74,8 @@ def test_doctor_missing_optional_provider_does_not_fail(tmp_path: Path, monkeypa
         tmp_path,
         monkeypatch,
         "providers:\n"
-        "  claude: {command: /usr/bin/true}\n"
-        "  codex: {command: /usr/bin/true}\n"
+        f"  claude: {{command: {OK_BIN}}}\n"
+        f"  codex: {{command: {OK_BIN}}}\n"
         "  antigravity: {command: /nonexistent/agy}\n"
         "  opencode: {command: /nonexistent/opencode}\n",
     )
@@ -90,8 +93,8 @@ def test_doctor_missing_optional_provider_fails_once_its_stage_is_enabled(
         monkeypatch,
         "roles:\n  publisher: {enabled: true}\n"
         "providers:\n"
-        "  claude: {command: /usr/bin/true}\n"
-        "  codex: {command: /usr/bin/true}\n"
+        f"  claude: {{command: {OK_BIN}}}\n"
+        f"  codex: {{command: {OK_BIN}}}\n"
         "  opencode: {command: /nonexistent/opencode}\n",
     )
     result = runner.invoke(app, ["doctor"], env={"COLUMNS": "200"})

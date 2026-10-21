@@ -109,7 +109,7 @@ def _run_health(project_dir: Path) -> dict | None:
         proc = subprocess.run(
             [exe, "health", str(project_dir), "--format", "json"],
             capture_output=True,
-            text=True,
+            text=True, encoding="utf-8",
             timeout=HEALTH_TIMEOUT_S,
             cwd=str(project_dir),
         )
@@ -217,7 +217,7 @@ def read_cache(project_dir: Path) -> dict | None:
     """
     path = project_dir / CACHE_RELPATH
     try:
-        record = json.loads(path.read_text())
+        record = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
     if not isinstance(record, dict) or "generated_at" not in record:
@@ -244,7 +244,7 @@ def write_cache(project_dir: Path, data: dict, section: str) -> None:
     }
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(record, indent=2))
+        path.write_text(json.dumps(record, indent=2), encoding="utf-8")
     except OSError:
         pass  # a cache that cannot be written must never break a run
 

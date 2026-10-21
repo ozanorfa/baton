@@ -1,6 +1,6 @@
 # Architectural Decision Records — AI Coding Orchestrator
 
-**Status:** Living · 34 ADRs · updated 2026-10-21
+**Status:** Living · 35 ADRs · updated 2026-10-21
 **Related docs:** [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) · [TASKS.md](TASKS.md) · [MVP.md](MVP.md)
 
 Convention: one ADR per consequential decision. New decisions get new ADRs; reversals supersede, never rewrite history. Any future proposal for dynamic/LLM-driven orchestration **requires** an ADR here before code (risk R7 guard).
@@ -41,6 +41,7 @@ Convention: one ADR per consequential decision. New decisions get new ADRs; reve
 | [ADR-032](#adr-032) | `batonai setup`: the routing and model decisions stay revisable | Accepted |
 | [ADR-033](#adr-033) | Model suggestions are shared and live-discovered, not silently absent | Accepted |
 | [ADR-034](#adr-034) | Hardening pass: no silent states — crashes recorded, trees compared to a baseline, process trees killed, opt-in command access | Accepted |
+| [ADR-035](#adr-035) | Windows is a supported platform: portable process control, explicit UTF-8, CI on all three OSes | Accepted |
 
 ---
 
@@ -741,3 +742,33 @@ Investigating further found a second real capability going unused: `agy` (the an
 **Trade-offs.** (a) `start_new_session` means a provider CLI that *expected* to share the terminal's process group — for example to detect Ctrl-C itself and clean up gracefully — now gets SIGKILL from baton instead. Headless `-p`/`exec` modes have no such cleanup to lose; the engine already persisted everything before the kill. (b) The baseline snapshot adds one `git status`+`git diff` per edit-stage (tens of milliseconds). (c) `allow_commands` is a blocklist, and blocklists are never complete: a Coder with it on could still run `rm -rf` inside the project directory — which is the trust ADR-007 already grants it through file edits. What the list guarantees is narrower and exact: no git history, no remote. (d) Stage-scoped change detection makes the fake provider's "write the same bytes again" pattern a failure, which is correct but means test authors must mean *change* when they say change.
 
 **Alternatives considered.** (a) Stashing the dirty tree before an edit-stage to get a clean stage-only diff — rejected: baton must never mutate the user's index or tree (ADR-007). (b) `--permission-mode bypassPermissions` for the Coder — rejected: it also removes the one mechanical barrier to `git commit`/`push`, and ADR-014 is a guarantee, not a preference. (c) Deleting the "running" state's rendering problem by writing a PID file and detecting liveness — over-engineering for a state that, after the generic exception guard, only a `kill -9` can produce. (d) Keeping three copies of the pipeline-command prelude and fixing Ctrl-C in each — rejected; the copies had already diverged, and the fix needed to be identical.
+
+## ADR-035 — Windows is a supported platform
+
+**Status:** Accepted · 2026-10-21 · **Implemented 2026-10-21** (verified by the CI matrix, not by a developer's Windows machine).
+
+**Context.** The project went public with "macOS tested, Linux expected, Windows not supported". The owner's view: a large share of the people who would try this run Windows, and "use WSL" is a barrier, not an answer. A review of what actually tied the code to POSIX found a short list — but every item was the kind that fails on the first run, not in a corner:
+
+1. The transport used `start_new_session` and `os.killpg(SIGKILL)` (ADR-034) — neither exists on Windows; the first provider call would raise.
+2. Untracked files were diffed with `git diff --no-index -- /dev/null <file>`; `/dev/null` does not exist on Windows, so every new file the Coder created would vanish from the Reviewer's diff — silently, the exact failure class ADR-034 was about.
+3. The provider CLIs on Windows are npm shims (`claude.cmd`, `codex.cmd`). `CreateProcess` does not search `PATHEXT`, so launching `["claude", ...]` without a shell fails with "binary not found" even when `claude` works in the user's terminal.
+4. Every `read_text`/`write_text`/`open` and every `subprocess` call relied on the platform default encoding. On Windows that is a legacy code page, so a Turkish character in `.ai/project.md`, an `…` in a prompt template, or any non-ASCII byte in a provider's JSON would raise `UnicodeDecodeError` — again on the first run, and again inside a stage.
+5. `shlex.split` in POSIX mode eats the backslashes of a configured Windows test command.
+6. The user config lived under `~/.config/`, which is not where Windows users look.
+7. `✓`/`→`/box-drawing output on a redirected (non-console) stream would raise `UnicodeEncodeError` under a non-UTF-8 code page.
+8. Tests leaned on `/bin/cat`, `/usr/bin/true`, shell-script wrappers and `os.kill(pid, 0)`; the fake provider ran through a shebang.
+
+**Decision.** Support Windows natively, and have CI prove it on every PR.
+
+- **Process control is platform-dispatched in one place.** `transport/headless.py` starts children with `start_new_session` on POSIX and `CREATE_NEW_PROCESS_GROUP` on Windows, and `_kill_tree` uses `killpg` or `taskkill /F /T` respectively. The ADR-034 guarantee (a timeout or Ctrl-C takes the whole provider tree) holds on both; the test that spawns a grandchild `sleep 60` and asserts it is dead after a 1 s timeout runs on all three OSes.
+- **The executable is resolved with `shutil.which` before launch**, in the transport and in the one other place that launches a provider directly (model discovery). On POSIX this is what `execvp` already did, so nothing changes; on Windows it is what finds `claude.cmd`.
+- **Untracked-file hunks are generated in Python** (`difflib.unified_diff`, with git's `new file mode` header and a binary-file note), replacing the `/dev/null` git call. Same output format, no per-file subprocess, no platform dependency.
+- **UTF-8 is explicit everywhere.** Every file read/write in `src/` passes `encoding="utf-8"`; every subprocess passes `encoding="utf-8", errors="replace"`. stdout/stderr are reconfigured to UTF-8 (`errors="replace"`) at startup when they are not already — an interactive Windows console is Unicode-capable regardless, so this only affects redirected streams, which would otherwise abort.
+- **Windows-native paths**: `shlex.split(..., posix=False)` on Windows for the test command; the user config is `%APPDATA%\batonai\config.yaml` there (`XDG_CONFIG_HOME` still wins when set, and the pre-0.1.0 location is still read as a fallback).
+- **CI runs the full suite on `windows-latest`** alongside ubuntu and macos, and `main` requires all three. The suite needed no Windows-specific skips: the fake provider puts the interpreter in front of its `.py` on Windows, test "binaries" are `sys.executable` (`python --version` exits 0 everywhere) or a `.cmd` wrapper, and process liveness is probed with `tasklist` there.
+
+**What this does not claim.** No developer has run baton interactively on a Windows machine with real provider CLIs. CI proves the orchestrator itself — engine, transport, diff capture, config, every command on the fake provider — on Windows. Two things remain to be seen live: (a) Antigravity and opencode take the prompt in argv; on Windows a `.cmd` shim is launched through `cmd.exe`, whose quoting rules are not those of a POSIX exec, so a prompt containing `%`, `^` or `"` may be altered. Claude Code and Codex read the prompt from stdin (ADR-010) and are unaffected — and they are the default pipeline. (b) Whether each vendor's CLI behaves identically on Windows is the vendor's business; `batonai doctor` reports what it finds. README says exactly this.
+
+**Trade-offs.** (a) `taskkill /F` is a hard kill, like `SIGKILL`; neither gives the provider a chance to clean up, which ADR-034 already accepted. (b) `shutil.which` adds one PATH lookup per launch — microseconds. (c) Forcing UTF-8 on redirected output means a user piping baton into a cp1252-only tool sees replacement characters rather than a crash; the alternative was the crash. (d) The CI matrix is 50% longer in wall-clock terms; the macOS runner is already the slow one, so the critical path did not move.
+
+**Alternatives considered.** (a) "Use WSL" — rejected by the owner as the answer for most Windows users; kept in the docs as an option. (b) `psutil` for process trees — a native-extension dependency for one function that `taskkill`/`killpg` already provide. (c) Keeping `git diff --no-index` with `NUL` on Windows — Git for Windows' handling of `NUL` as a pathspec is not documented; generating the hunk in Python is portable by construction and removes a subprocess per file. (d) Setting `PYTHONUTF8=1` for users — would have hidden the encoding bugs in CI while leaving every real user exposed.
