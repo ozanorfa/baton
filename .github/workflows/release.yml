@@ -1,8 +1,11 @@
 # Publish to PyPI on a version tag (v0.1.0, v0.2.0, …).
 #
-# Uses PyPI "trusted publishing" (OIDC): no API token is stored anywhere. One-time
-# setup on pypi.org → your project → Publishing → add a GitHub publisher with
-#   owner: ozanorfa · repository: baton · workflow: release.yml · environment: pypi
+# Always creates the GitHub release with the built wheel + sdist attached.
+# Additionally publishes to PyPI via "trusted publishing" (OIDC, no stored
+# token) once the repository variable PYPI_PUBLISH is "true". One-time setup:
+#   pypi.org → your project → Publishing → add a GitHub publisher with
+#     owner: ozanorfa · repository: baton · workflow: release.yml · environment: pypi
+#   gh variable set PYPI_PUBLISH --body true
 # Then:  git tag v0.1.0 && git push origin v0.1.0
 #
 # The tag must match pyproject.toml's version — the first job refuses otherwise,
@@ -54,7 +57,13 @@ jobs:
         with:
           name: dist
           path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      # PyPI upload is gated on a repository variable so a tag can produce a
+      # GitHub release (with the wheel + sdist attached) before the PyPI
+      # trusted publisher exists. Flip it on once:
+      #   gh variable set PYPI_PUBLISH --body true
+      - name: Publish to PyPI
+        if: vars.PYPI_PUBLISH == 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
       - name: GitHub release with the built files
         env:
           GH_TOKEN: ${{ github.token }}
@@ -62,4 +71,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME" dist/* \
             --repo "$GITHUB_REPOSITORY" \
             --title "$GITHUB_REF_NAME" \
-            --notes "See CHANGELOG.md for this release's notes. Install: \`uv tool install batonai\` or \`pipx install batonai\`."
+            --notes "See CHANGELOG.md for this release's notes. Install from PyPI (\`uv tool install batonai\`) when published, or from the attached wheel: \`uv tool install ./batonai-*.whl\`."

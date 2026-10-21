@@ -103,6 +103,8 @@ The Coder stage **edits your repository unattended** (scoped to the project dire
 
 ## Development
 
+Contributions go through pull requests against a protected `main` — see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ```bash
 uv sync
 uv run pytest          # unit + contract (recorded real CLI fixtures) + integration (fake provider)
