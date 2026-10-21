@@ -20,12 +20,12 @@ CONFIG = (
 def project(tmp_path: Path, monkeypatch, *, established: bool) -> Path:
     proj = tmp_path / "proj"
     (proj / ".ai").mkdir(parents=True)
-    (proj / ".ai" / "config.yaml").write_text(CONFIG)
+    (proj / ".ai" / "config.yaml").write_text(CONFIG, encoding="utf-8")
     if established:
-        (proj / "README.md").write_text("# RealApp\n\nAn app that is real.\n")
+        (proj / "README.md").write_text("# RealApp\n\nAn app that is real.\n", encoding="utf-8")
         (proj / "src").mkdir()
         for i in range(4):
-            (proj / "src" / f"part{i}.py").write_text("pass\n")
+            (proj / "src" / f"part{i}.py").write_text("pass\n", encoding="utf-8")
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     monkeypatch.chdir(proj)
     return proj
@@ -33,7 +33,7 @@ def project(tmp_path: Path, monkeypatch, *, established: bool) -> Path:
 
 def planner_prompt(proj: Path) -> str:
     run_dir = next((proj / ".ai" / "runs").iterdir())
-    return (run_dir / "prompts" / "01-planner.md").read_text()
+    return (run_dir / "prompts" / "01-planner.md").read_text(encoding="utf-8")
 
 
 def test_established_project_prompts_carry_orientation(tmp_path, fake_registry, monkeypatch):

@@ -13,7 +13,7 @@ OK_BIN = sys.executable
 def setup_project(tmp_path: Path, monkeypatch, config_text: str) -> None:
     project = tmp_path / "proj"
     (project / ".ai").mkdir(parents=True)
-    (project / ".ai" / "config.yaml").write_text(config_text)
+    (project / ".ai" / "config.yaml").write_text(config_text, encoding="utf-8")
     monkeypatch.chdir(project)
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
 

@@ -15,7 +15,7 @@ runner = CliRunner()
 def git_project(tmp_path: Path, monkeypatch, config: str) -> Path:
     project = tmp_path / "proj"
     (project / ".ai").mkdir(parents=True)
-    (project / ".ai" / "config.yaml").write_text(config)
+    (project / ".ai" / "config.yaml").write_text(config, encoding="utf-8")
     subprocess.run(["git", "init", "-q"], cwd=project, check=True)
     subprocess.run(["git", "add", "-A"], cwd=project, check=True)
     subprocess.run(
@@ -67,7 +67,7 @@ def test_with_publisher_flag_enables_stage_and_drafts_only(
     run_dir = next((project / ".ai" / "runs").iterdir())
     draft = run_dir / "artifacts" / "commit_message.md"
     assert draft.is_file()
-    assert "feat: add x" in draft.read_text()
+    assert "feat: add x" in draft.read_text(encoding="utf-8")
 
     # ADR-014: prepare-only — still exactly the fixture's one commit
     log = subprocess.run(
@@ -106,7 +106,7 @@ def test_publisher_can_use_a_different_provider_than_coder(
     run_dir = next((project / ".ai" / "runs").iterdir())
     import json
 
-    state = json.loads((run_dir / "run.json").read_text())
+    state = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
     providers = {s["name"]: s["provider"] for s in state["stages"]}
     assert providers["coder"] == "fake"
     assert providers["publisher"] == "fake_alt"  # deterministically different, guaranteed

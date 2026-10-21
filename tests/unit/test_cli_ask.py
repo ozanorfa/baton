@@ -23,8 +23,7 @@ def setup_project(tmp_path: Path, monkeypatch, command: str) -> None:
     (project / ".ai").mkdir(parents=True)
     (project / ".ai" / "config.yaml").write_text(
         f"providers:\n  claude:\n    command: {command}\n"
-        "roles:\n  coder: {provider: claude}\n"
-    )
+        "roles:\n  coder: {provider: claude}\n", encoding="utf-8")
     monkeypatch.chdir(project)
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
 

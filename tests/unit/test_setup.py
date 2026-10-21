@@ -56,7 +56,8 @@ def test_no_choices_is_a_no_op():
 
 def test_written_config_is_valid_and_loadable(tmp_path: Path, monkeypatch):
     (tmp_path / ".ai").mkdir()
-    (tmp_path / ".ai" / "config.yaml").write_text("roles:\n  coder: {provider: claude}\n")
+    (tmp_path / ".ai" / "config.yaml").write_text("roles:\n  coder: {provider: claude}\n",
+        encoding="utf-8")
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     doc = S.apply_choices(S._load_document(tmp_path), {"coder": "codex"}, {"codex": "o3"})
     S._write_document(tmp_path, doc)
@@ -81,19 +82,21 @@ def test_model_answers_are_not_validated(monkeypatch):
 
 def test_setup_reports_when_nothing_changed(tmp_path, monkeypatch):
     (tmp_path / ".ai").mkdir()
-    (tmp_path / ".ai" / "config.yaml").write_text("roles:\n  coder: {provider: claude}\n")
+    (tmp_path / ".ai" / "config.yaml").write_text("roles:\n  coder: {provider: claude}\n",
+        encoding="utf-8")
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(S.typer, "prompt", lambda *a, **k: "")  # Enter everywhere
-    before = (tmp_path / ".ai" / "config.yaml").read_text()
+    before = (tmp_path / ".ai" / "config.yaml").read_text(encoding="utf-8")
     result = runner.invoke(app, ["setup"])
     assert result.exit_code == 0 and "nothing changed" in result.output
-    assert (tmp_path / ".ai" / "config.yaml").read_text() == before, "file untouched"
+    assert (tmp_path / ".ai" / "config.yaml").read_text(encoding="utf-8") == before, "file untouched"
 
 
 def test_setup_shows_the_current_assignment_first(tmp_path, monkeypatch):
     (tmp_path / ".ai").mkdir()
-    (tmp_path / ".ai" / "config.yaml").write_text("roles:\n  coder: {provider: claude}\n")
+    (tmp_path / ".ai" / "config.yaml").write_text("roles:\n  coder: {provider: claude}\n",
+        encoding="utf-8")
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(S.typer, "prompt", lambda *a, **k: "")
@@ -103,13 +106,14 @@ def test_setup_shows_the_current_assignment_first(tmp_path, monkeypatch):
 
 def test_setup_writes_loadable_yaml_end_to_end(tmp_path, monkeypatch):
     (tmp_path / ".ai").mkdir()
-    (tmp_path / ".ai" / "config.yaml").write_text("roles:\n  coder: {provider: claude}\n")
+    (tmp_path / ".ai" / "config.yaml").write_text("roles:\n  coder: {provider: claude}\n",
+        encoding="utf-8")
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     monkeypatch.chdir(tmp_path)
     answers = iter(["", "", "codex", "", "", "haiku", ""] * 3)
     monkeypatch.setattr(S.typer, "prompt", lambda *a, **k: next(answers, ""))
     assert runner.invoke(app, ["setup"]).exit_code == 0
-    assert yaml.safe_load((tmp_path / ".ai" / "config.yaml").read_text()) is not None
+    assert yaml.safe_load((tmp_path / ".ai" / "config.yaml").read_text(encoding="utf-8")) is not None
 
 
 def test_each_provider_is_asked_about_once(tmp_path, monkeypatch):
@@ -117,8 +121,7 @@ def test_each_provider_is_asked_about_once(tmp_path, monkeypatch):
     (tmp_path / ".ai").mkdir()
     (tmp_path / ".ai" / "config.yaml").write_text(
         "roles:\n  planner: {provider: codex}\n  coder: {provider: codex}\n"
-        "  reviewer: {provider: codex}\n"
-    )
+        "  reviewer: {provider: codex}\n", encoding="utf-8")
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     monkeypatch.chdir(tmp_path)
     asked: list[str] = []

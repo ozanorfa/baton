@@ -92,7 +92,7 @@ def _leaf_paths(data: dict, prefix: str = "") -> list[str]:
 
 def _read_yaml(path: Path) -> dict:
     try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        data = yaml.safe_load(path.read_text(encoding="utf-8", errors="replace"))
     except yaml.YAMLError as exc:
         # Without this, a mistyped .ai/config.yaml escapes as a raw parser
         # traceback out of *every* command (found via the wizard's exit-2 test,

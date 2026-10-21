@@ -45,8 +45,7 @@ def project(tmp_path: Path, monkeypatch) -> Path:
         # it, and the default (opencode) is a REAL client on a developer machine.
         "  publisher: {provider: deterministic}\n"
         "providers:\n"
-        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
-    )
+        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n", encoding="utf-8")
     _git(proj, "init", "-q")
     _git(proj, "add", "-A")
     _git(proj, "commit", "-qm", "init")
@@ -66,14 +65,14 @@ def test_revise_with_a_do_nothing_coder_fails_instead_of_passing(project, fake_r
     first = runner.invoke(app, ["run", f"build [[write@coder:app.py:x=1]] {APPROVE}"],
                           env={"COLUMNS": "220"})
     assert first.exit_code == 0, first.output
-    assert (project / "app.py").read_text() == "x=1\n"  # tree is now dirty
+    assert (project / "app.py").read_text(encoding="utf-8") == "x=1\n"  # tree is now dirty
 
     # The revised coder replies happily but writes nothing. Before ADR-034 the
     # HEAD-relative check saw app.py and called this a success.
     revised = runner.invoke(app, ["revise", f"please tweak it {APPROVE}"], env={"COLUMNS": "220"})
     assert revised.exit_code == 1, revised.output
     assert "no workspace changes" in revised.output
-    assert (project / "app.py").read_text() == "x=1\n"  # the user's prior work is untouched
+    assert (project / "app.py").read_text(encoding="utf-8") == "x=1\n"  # the user's prior work is untouched
 
 
 def test_revise_that_really_edits_still_passes(project, fake_registry):
@@ -85,7 +84,7 @@ def test_revise_that_really_edits_still_passes(project, fake_registry):
     assert revised.exit_code == 0, revised.output
     # the reviewer still sees the cumulative working-tree diff
     run_id = only_run_id(project)
-    patch = (project / ".ai" / "runs" / run_id / "artifacts" / "diff.patch").read_text()
+    patch = (project / ".ai" / "runs" / run_id / "artifacts" / "diff.patch").read_text(encoding="utf-8")
     assert "x=2" in patch
 
 
@@ -108,11 +107,11 @@ def test_untracked_file_with_a_space_reaches_the_diff(tmp_path: Path):
     repo = tmp_path / "r"
     repo.mkdir()
     _git(repo, "init", "-q")
-    (repo / "a.txt").write_text("one\n")
+    (repo / "a.txt").write_text("one\n", encoding="utf-8")
     _git(repo, "add", "-A")
     _git(repo, "commit", "-qm", "c")
-    (repo / "my new file.txt").write_text("spaced content\n")
-    (repo / "ünïcödé.txt").write_text("unicode content\n")
+    (repo / "my new file.txt").write_text("spaced content\n", encoding="utf-8")
+    (repo / "ünïcödé.txt").write_text("unicode content\n", encoding="utf-8")
     snap = snapshot_changes(repo)
     assert snap is not None and snap.changed
     assert "spaced content" in snap.patch
@@ -151,13 +150,13 @@ def _seed_run_with_draft(project: Path, draft: str, diff_patch: str) -> None:
     (run_dir / "run.json").write_text(json.dumps({
         "run_id": "2026-01-01_0000_aaaa", "request": "r", "project_dir": str(project),
         "status": "succeeded", "stages": [],
-    }))
-    (run_dir / "artifacts" / "commit_message.md").write_text(draft)
-    (run_dir / "artifacts" / "diff.patch").write_text(diff_patch)
+    }), encoding="utf-8")
+    (run_dir / "artifacts" / "commit_message.md").write_text(draft, encoding="utf-8")
+    (run_dir / "artifacts" / "diff.patch").write_bytes(diff_patch.encode("utf-8"))
 
 
 def test_publish_reuses_run_draft_only_while_tree_matches(project, fake_registry):
-    (project / "change.txt").write_text("new\n")
+    (project / "change.txt").write_text("new\n", encoding="utf-8")
     current = snapshot_changes(project).patch
     _seed_run_with_draft(project, "feat: from the run\n", current)
 
@@ -165,7 +164,8 @@ def test_publish_reuses_run_draft_only_while_tree_matches(project, fake_registry
     assert same.exit_code == 0, same.output
     assert "feat: from the run" in same.output and "run 2026-01-01_0000_aaaa" in same.output
 
-    (project / "change.txt").write_text("new and more\n")  # the user edited further
+    (project / "change.txt").write_text("new and more\n",
+        encoding="utf-8")  # the user edited further
     stale = runner.invoke(app, ["publish"], env={"COLUMNS": "220"})
     assert stale.exit_code == 0, stale.output
     assert "feat: from the run" not in stale.output

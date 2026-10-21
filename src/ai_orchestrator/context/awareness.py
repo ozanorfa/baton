@@ -165,7 +165,9 @@ def docs_index(project_dir: Path) -> list[tuple[str, str]]:
         if file_id in seen_ids:
             continue
         seen_ids.add(file_id)
-        index.append((str(path.relative_to(project_dir)), _doc_title(path)))
+        # as_posix(): the index is prose for a model, and `docs\\state.md` would
+        # both read oddly and break the tests' expectations on Windows (ADR-035)
+        index.append((path.relative_to(project_dir).as_posix(), _doc_title(path)))
         if len(index) >= DOCS_INDEX_MAX:
             break
     return index

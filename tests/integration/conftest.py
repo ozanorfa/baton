@@ -30,7 +30,6 @@ def fake_project(tmp_path: Path, monkeypatch) -> Path:
         "  planner: {provider: fake}\n"
         "  coder: {provider: fake}\n"
         "providers:\n"
-        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
-    )
+        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n", encoding="utf-8")
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     return project

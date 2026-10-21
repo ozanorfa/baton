@@ -125,7 +125,7 @@ def test_health_section_survives_timeout(tmp_path: Path, monkeypatch) -> None:
 def test_cleanup_removes_index_we_created(tmp_path: Path) -> None:
     idx = tmp_path / H._INDEX_DIR
     idx.mkdir()
-    (idx / "wiki.db").write_text("x")
+    (idx / "wiki.db").write_text("x", encoding="utf-8")
     H._cleanup_index(tmp_path, index_preexisted=False)
     assert not idx.exists()
 
@@ -133,7 +133,7 @@ def test_cleanup_removes_index_we_created(tmp_path: Path) -> None:
 def test_cleanup_preserves_users_own_index(tmp_path: Path) -> None:
     idx = tmp_path / H._INDEX_DIR
     idx.mkdir()
-    (idx / "wiki.db").write_text("x")
+    (idx / "wiki.db").write_text("x", encoding="utf-8")
     H._cleanup_index(tmp_path, index_preexisted=True)
     assert idx.exists()  # never touch a pre-existing, user-created index
 
@@ -227,7 +227,7 @@ def test_source_files_survive_the_filter() -> None:
 
 def _project(tmp_path):
     (tmp_path / ".ai").mkdir()
-    (tmp_path / "a.py").write_text("def f():\n    return 1\n")
+    (tmp_path / "a.py").write_text("def f():\n    return 1\n", encoding="utf-8")
     return tmp_path
 
 
@@ -272,7 +272,7 @@ def test_cache_is_invalidated_by_a_source_edit(tmp_path, monkeypatch):
 
 def test_cache_from_another_format_is_discarded_not_migrated(tmp_path, monkeypatch):
     project = _project(tmp_path)
-    (project / H.CACHE_RELPATH).write_text('{"something": "else"}')
+    (project / H.CACHE_RELPATH).write_text('{"something": "else"}', encoding="utf-8")
     monkeypatch.setattr(H, "_run_health", lambda p: SAMPLE)
     assert H.read_cache(project) is None
     assert H.health_section(project), "it recomputes rather than failing"

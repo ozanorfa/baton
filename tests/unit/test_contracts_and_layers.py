@@ -56,7 +56,7 @@ def test_inputs_section_skips_absent_artifacts_silently() -> None:
 def test_project_layer_reads_profile_or_notes_absence(tmp_path: Path) -> None:
     assert project_layer(tmp_path, ".ai/project.md") == NO_PROFILE_NOTE
     (tmp_path / ".ai").mkdir()
-    (tmp_path / ".ai" / "project.md").write_text("Flutter 3.x, Riverpod")
+    (tmp_path / ".ai" / "project.md").write_text("Flutter 3.x, Riverpod", encoding="utf-8")
     assert "Flutter 3.x, Riverpod" in project_layer(tmp_path, ".ai/project.md")
 
 
@@ -64,7 +64,7 @@ def test_agent_template_project_override_wins(tmp_path: Path) -> None:
     built_in = agent_template(contract_for("planner"), tmp_path).template
     assert "Role: Planner" in built_in
     (tmp_path / ".ai" / "prompts").mkdir(parents=True)
-    (tmp_path / ".ai" / "prompts" / "planner.md").write_text("CUSTOM $request")
+    (tmp_path / ".ai" / "prompts" / "planner.md").write_text("CUSTOM $request", encoding="utf-8")
     assert agent_template(contract_for("planner"), tmp_path).template == "CUSTOM $request"
 
 

@@ -21,8 +21,7 @@ def four_role_project(tmp_path: Path, monkeypatch) -> Path:
         "  coder: {provider: fake}\n"
         "  reviewer: {provider: fake}\n"
         "providers:\n"
-        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
-    )
+        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n", encoding="utf-8")
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     monkeypatch.chdir(project)
     return project
@@ -47,14 +46,14 @@ def test_with_designer_flag_enables_stage(tmp_path, fake_registry, monkeypatch) 
     run_dir = next((project / ".ai" / "runs").iterdir())
     assert (run_dir / "artifacts" / "design.md").exists()
     # contract flow: coder prompt embeds the design artifact
-    coder_prompt = (run_dir / "prompts" / "03-coder.md").read_text()
-    assert (run_dir / "artifacts" / "design.md").read_text().strip() in coder_prompt
+    coder_prompt = (run_dir / "prompts" / "03-coder.md").read_text(encoding="utf-8")
+    assert (run_dir / "artifacts" / "design.md").read_text(encoding="utf-8").strip() in coder_prompt
 
 
 def test_config_enabled_designer_runs_without_flag(tmp_path, fake_registry, monkeypatch) -> None:
     project = four_role_project(tmp_path, monkeypatch)
     config = project / ".ai" / "config.yaml"
-    config.write_text(config.read_text().replace(
+    config.write_text(config.read_text(encoding="utf-8").replace(
         "designer: {provider: fake}", "designer: {provider: fake, enabled: true}"
     ))
     result = runner.invoke(app, ["run", "add feature"], env={"COLUMNS": "200"})

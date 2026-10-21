@@ -39,13 +39,13 @@ def test_two_stage_run_end_to_end(fake_project, fake_registry) -> None:
     assert (run_dir / "logs" / "01-planner.stdout").is_file()
 
     # artifact content flowed planner → coder
-    plan = (run_dir / "artifacts" / "plan.md").read_text()
+    plan = (run_dir / "artifacts" / "plan.md").read_text(encoding="utf-8")
     assert plan.startswith("FAKE RESPONSE")
-    coder_prompt = (run_dir / "prompts" / "02-coder.md").read_text()
+    coder_prompt = (run_dir / "prompts" / "02-coder.md").read_text(encoding="utf-8")
     assert plan.strip() in coder_prompt  # coder received the plan artifact
 
     # run.json is valid and consistent
-    data = json.loads((run_dir / "run.json").read_text())
+    data = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
     assert data["status"] == "succeeded"
     assert [s["status"] for s in data["stages"]] == ["succeeded", "succeeded"]
 

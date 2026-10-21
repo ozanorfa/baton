@@ -27,9 +27,9 @@ def full_fake_project(tmp_path: Path, monkeypatch) -> Path:
         "  coder: {provider: fake}\n"
         "  reviewer: {provider: fake}\n"
         "providers:\n"
-        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
-    )
-    (project / ".ai" / "project.md").write_text("STACK-MARKER: Flutter 9.9 with TestState")
+        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n", encoding="utf-8")
+    (project / ".ai" / "project.md").write_text("STACK-MARKER: Flutter 9.9 with TestState",
+        encoding="utf-8")
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     return project
 
@@ -49,10 +49,10 @@ def test_prompts_respect_contracts_and_layers(tmp_path, fake_registry, monkeypat
     assert state.status is RunStatus.SUCCEEDED
 
     prompts_dir = manager.run_dir(state.run_id) / "prompts"
-    planner = (prompts_dir / "01-planner.md").read_text()
-    designer = (prompts_dir / "02-designer.md").read_text()
-    coder = (prompts_dir / "03-coder.md").read_text()
-    reviewer = (prompts_dir / "04-reviewer.md").read_text()
+    planner = (prompts_dir / "01-planner.md").read_text(encoding="utf-8")
+    designer = (prompts_dir / "02-designer.md").read_text(encoding="utf-8")
+    coder = (prompts_dir / "03-coder.md").read_text(encoding="utf-8")
+    reviewer = (prompts_dir / "04-reviewer.md").read_text(encoding="utf-8")
 
     plan_output = manager.load_artifact(state, "plan.md").strip()
     design_output = manager.load_artifact(state, "design.md").strip()
@@ -79,8 +79,7 @@ def test_prompts_respect_contracts_and_layers(tmp_path, fake_registry, monkeypat
 def test_project_template_override_used_in_run(tmp_path, fake_registry, monkeypatch) -> None:
     project = full_fake_project(tmp_path, monkeypatch)
     (project / ".ai" / "prompts" / "planner.md").write_text(
-        "OVERRIDDEN PLANNER TEMPLATE\n\n$request\n"
-    )
+        "OVERRIDDEN PLANNER TEMPLATE\n\n$request\n", encoding="utf-8")
     loaded = load_config(project, env={})
     transport = HeadlessTransport()
     resolved = RoutingEngine(loaded.config, fake_registry).resolve(
@@ -91,6 +90,6 @@ def test_project_template_override_used_in_run(tmp_path, fake_registry, monkeypa
     state = PipelineEngine(manager, transport, prompt_builder=context.build).execute(
         "anything", resolved
     )
-    planner = (manager.run_dir(state.run_id) / "prompts" / "01-planner.md").read_text()
+    planner = (manager.run_dir(state.run_id) / "prompts" / "01-planner.md").read_text(encoding="utf-8")
     assert planner.startswith("OVERRIDDEN PLANNER TEMPLATE")
     assert "# Role: Planner" not in planner

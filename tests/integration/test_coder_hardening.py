@@ -30,8 +30,7 @@ def git_project(tmp_path: Path, monkeypatch) -> Path:
         "  coder: {provider: fake}\n"
         "  reviewer: {provider: fake}\n"
         "providers:\n"
-        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
-    )
+        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n", encoding="utf-8")
     subprocess.run(["git", "init", "-q"], cwd=project, check=True)
     subprocess.run(["git", "add", "-A"], cwd=project, check=True)
     subprocess.run(
@@ -67,7 +66,7 @@ def test_coder_changes_produce_diff_patch_for_reviewer(tmp_path, fake_registry, 
     patch = manager.load_artifact(state, "diff.patch")
     assert "hello.py" in patch and "print('hi')" in patch
     # the reviewer's prompt includes the diff (contract now admits diff.patch)
-    reviewer_prompt = (manager.run_dir(state.run_id) / "prompts" / "03-reviewer.md").read_text()
+    reviewer_prompt = (manager.run_dir(state.run_id) / "prompts" / "03-reviewer.md").read_text(encoding="utf-8")
     assert "diff.patch" in reviewer_prompt and "print('hi')" in reviewer_prompt
 
 
@@ -93,7 +92,7 @@ def test_snapshot_detects_tracked_and_untracked(tmp_path):
     repo = tmp_path / "r"
     repo.mkdir()
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
-    (repo / "a.txt").write_text("one\n")
+    (repo / "a.txt").write_text("one\n", encoding="utf-8")
     subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
     subprocess.run(
         ["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "c"],
@@ -102,8 +101,8 @@ def test_snapshot_detects_tracked_and_untracked(tmp_path):
     snap = snapshot_changes(repo)
     assert snap is not None and not snap.changed
 
-    (repo / "a.txt").write_text("one\ntwo\n")  # tracked modification
-    (repo / "new.txt").write_text("brand new\n")  # untracked file
+    (repo / "a.txt").write_text("one\ntwo\n", encoding="utf-8")  # tracked modification
+    (repo / "new.txt").write_text("brand new\n", encoding="utf-8")  # untracked file
     snap = snapshot_changes(repo)
     assert snap.changed
     assert "+two" in snap.patch and "+brand new" in snap.patch

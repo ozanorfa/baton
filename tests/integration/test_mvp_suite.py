@@ -32,8 +32,7 @@ def mvp_project(tmp_path: Path, monkeypatch) -> Path:
         "  reviewer: {provider: fake}\n"
         "  publisher: {provider: fake, enabled: true}\n"
         "providers:\n"
-        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
-    )
+        f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n", encoding="utf-8")
     subprocess.run(["git", "init", "-q"], cwd=project, check=True)
     subprocess.run(["git", "add", "-A"], cwd=project, check=True)
     subprocess.run(
@@ -62,7 +61,7 @@ def test_full_pipeline_report_correctness(mvp_project, fake_registry) -> None:
     assert result.exit_code == 0
 
     run_dir = run_dir_of(mvp_project)
-    report = json.loads((run_dir / "report.json").read_text())
+    report = json.loads((run_dir / "report.json").read_text(encoding="utf-8"))
 
     assert report["status"] == "succeeded"
     assert report["verdict"] == "APPROVE"
@@ -80,7 +79,7 @@ def test_full_pipeline_report_correctness(mvp_project, fake_registry) -> None:
                 "commit_message.md")
     for name in expected:
         assert (artifacts / name).is_file(), name
-    assert "VALUE = 42" in (artifacts / "diff.patch").read_text()
+    assert "VALUE = 42" in (artifacts / "diff.patch").read_text(encoding="utf-8")
     assert (mvp_project / "feature.py").is_file()
 
     # publisher never touches git (ADR-014: prepare-only) — still just the
@@ -100,7 +99,7 @@ def test_failure_at_each_stage_position(mvp_project, fake_registry, victim) -> N
     result = runner.invoke(app, ["run", request], env={"COLUMNS": "220"})
     assert result.exit_code == 1
 
-    report = json.loads((run_dir_of(mvp_project) / "report.json").read_text())
+    report = json.loads((run_dir_of(mvp_project) / "report.json").read_text(encoding="utf-8"))
     assert report["status"] == "failed"
 
     stage_status = {s["name"]: s["status"] for s in report["stages"]}

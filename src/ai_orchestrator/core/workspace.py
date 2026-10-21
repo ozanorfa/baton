@@ -121,7 +121,8 @@ def _new_file_patch(project_dir: Path, rel: str) -> str:
         return ""
     if b"\0" in data[:8000]:
         return f"{header}Binary files /dev/null and b/{rel} differ\n"
-    lines = data.decode("utf-8", errors="replace").splitlines(keepends=True)
+    text = data.decode("utf-8", errors="replace").replace("\r\n", "\n")
+    lines = text.splitlines(keepends=True)
     body = "".join(
         difflib.unified_diff([], lines, fromfile="/dev/null", tofile=f"b/{rel}", n=0)
     )

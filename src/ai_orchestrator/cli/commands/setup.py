@@ -32,7 +32,7 @@ def _load_document(project_dir: Path) -> dict:
     if not path.is_file():
         return {}
     try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        data = yaml.safe_load(path.read_text(encoding="utf-8", errors="replace"))
     except yaml.YAMLError as exc:
         render.render_error(f"{path}: not valid YAML — {exc}")
         raise typer.Exit(code=2) from exc

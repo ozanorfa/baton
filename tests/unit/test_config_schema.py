@@ -8,7 +8,7 @@ from ai_orchestrator.config.schema import AppConfig, warn_unknown_keys
 
 
 def load_defaults() -> dict:
-    text = (files("ai_orchestrator.config") / "defaults.yaml").read_text()
+    text = (files("ai_orchestrator.config") / "defaults.yaml").read_text(encoding="utf-8")
     return yaml.safe_load(text)
 
 

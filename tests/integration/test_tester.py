@@ -26,8 +26,7 @@ def make_project(tmp_path: Path, monkeypatch, test_command: str) -> Path:
         "  reviewer: {provider: fake}\n"
         "providers:\n"
         f"  fake: {{command: {FAKE_CLI}, timeout_s: 30}}\n"
-        f'  testrunner: {{command: "{test_command}", timeout_s: 30}}\n'
-    )
+        f'  testrunner: {{command: "{test_command}", timeout_s: 30}}\n', encoding="utf-8")
     subprocess.run(["git", "init", "-q"], cwd=proj, check=True)
     subprocess.run(["git", "add", "-A"], cwd=proj, check=True)
     subprocess.run(
@@ -44,7 +43,7 @@ def only_run_id(project: Path) -> str:
 
 
 def _stage(project: Path, run_id: str, name: str) -> dict:
-    state = json.loads((project / ".ai" / "runs" / run_id / "run.json").read_text())
+    state = json.loads((project / ".ai" / "runs" / run_id / "run.json").read_text(encoding="utf-8"))
     return next(s for s in state["stages"] if s["name"] == name)
 
 
@@ -53,7 +52,7 @@ def test_passing_tests_report_and_succeed(tmp_path, monkeypatch, fake_registry) 
     result = runner.invoke(app, ["run", "--with-tester", REQUEST], env={"COLUMNS": "220"})
     assert result.exit_code == 0
     run_id = only_run_id(project)
-    report = (project / ".ai" / "runs" / run_id / "artifacts" / "test_report.md").read_text()
+    report = (project / ".ai" / "runs" / run_id / "artifacts" / "test_report.md").read_text(encoding="utf-8")
     assert "PASSED" in report
     assert _stage(project, run_id, "tester")["status"] == "succeeded"
 
@@ -65,11 +64,11 @@ def test_failing_tests_still_succeed_and_reach_reviewer(
     result = runner.invoke(app, ["run", "--with-tester", REQUEST], env={"COLUMNS": "220"})
     assert result.exit_code == 0  # report-and-continue: no fail-stop
     run_id = only_run_id(project)
-    report = (project / ".ai" / "runs" / run_id / "artifacts" / "test_report.md").read_text()
+    report = (project / ".ai" / "runs" / run_id / "artifacts" / "test_report.md").read_text(encoding="utf-8")
     assert "FAILED" in report
     assert _stage(project, run_id, "tester")["status"] == "succeeded"  # tester itself succeeded
     # the reviewer received the test report as an admitted input
-    reviewer_prompt = (project / ".ai" / "runs" / run_id / "prompts" / "04-reviewer.md").read_text()
+    reviewer_prompt = (project / ".ai" / "runs" / run_id / "prompts" / "04-reviewer.md").read_text(encoding="utf-8")
     assert "Test report" in reviewer_prompt and "FAILED" in reviewer_prompt
 
 

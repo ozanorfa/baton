@@ -261,7 +261,7 @@ def test_verdict_is_matched_case_insensitively_and_normalised(tmp_path: Path) ->
     assert save_report(state, manager).verdict == "NEEDS WORK"
     manager.save_artifact(state, "review.md", "Verdict: Approve With Notes\n")
     assert save_report(state, manager).verdict == "APPROVE WITH NOTES"
-    data = json.loads((manager.run_dir(state.run_id) / "report.json").read_text())
+    data = json.loads((manager.run_dir(state.run_id) / "report.json").read_text(encoding="utf-8"))
     assert data["verdict"] == "APPROVE WITH NOTES"
 
 

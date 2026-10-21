@@ -53,7 +53,7 @@ def test_report_totals_and_verdict(tmp_path: Path) -> None:
 def test_report_json_uses_null_never_zero(tmp_path: Path) -> None:
     state, manager = make_run(tmp_path)
     save_report(state, manager)
-    data = json.loads((manager.run_dir(state.run_id) / "report.json").read_text())
+    data = json.loads((manager.run_dir(state.run_id) / "report.json").read_text(encoding="utf-8"))
 
     reviewer = data["stages"][2]
     assert reviewer["input_tokens"] is None  # unmeasured → null, not 0

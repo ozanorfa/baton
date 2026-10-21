@@ -41,7 +41,7 @@ def test_cli_run_failure_exit_1_with_guidance(fake_project, fake_registry, monke
 def test_cli_run_preflight_failure_exit_2(fake_project, fake_registry, monkeypatch, tmp_path):
     monkeypatch.chdir(fake_project)
     config = fake_project / ".ai" / "config.yaml"
-    config.write_text(config.read_text().replace("command: ", "command: /nonexistent-", 1))
+    config.write_text(config.read_text(encoding="utf-8").replace("command: ", "command: /nonexistent-", 1))
     result = runner.invoke(app, ["run", "anything"])
     assert result.exit_code == 2
     assert "preflight failed" in result.output

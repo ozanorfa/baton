@@ -91,7 +91,7 @@ def test_happy_path_two_stages(manager: RunManager) -> None:
     assert manager.load_artifact(state, "plan.md") == "THE PLAN"
     assert manager.load_artifact(state, "changes.md") == "THE CHANGES"
     # the coder's prompt embeds the planner's artifact (naive M2 builder)
-    prompt = (manager.run_dir(state.run_id) / "prompts" / "02-coder.md").read_text()
+    prompt = (manager.run_dir(state.run_id) / "prompts" / "02-coder.md").read_text(encoding="utf-8")
     assert "THE PLAN" in prompt and "add feature" in prompt
     # reloaded state matches persisted state
     assert manager.load_run(state.run_id) == state
@@ -150,4 +150,4 @@ def test_raw_output_persisted_per_stage(manager: RunManager) -> None:
     adapter = ScriptedAdapter({"planner": AgentResult(success=True, text="P")})
     state = PipelineEngine(manager, RoleEchoTransport()).execute("req", [stage("planner", adapter)])
     stdout_file = manager.logs_dir(state.run_id) / "01-planner.stdout"
-    assert stdout_file.read_text() == "planner"  # raw transport output, pre-parse
+    assert stdout_file.read_text(encoding="utf-8") == "planner"  # raw transport output, pre-parse
